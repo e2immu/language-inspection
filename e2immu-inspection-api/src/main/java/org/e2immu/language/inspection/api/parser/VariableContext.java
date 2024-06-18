@@ -14,4 +14,8 @@ public interface VariableContext {
     void add(ParameterInfo variable);
 
     void add(LocalVariable variable);
+
+    VariableContext newEmpty();
+
+    VariableContext newVariableContext();
 }

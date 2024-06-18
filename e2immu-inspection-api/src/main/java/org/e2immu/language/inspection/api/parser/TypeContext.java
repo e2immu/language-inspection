@@ -10,6 +10,9 @@ import org.e2immu.language.inspection.api.resource.TypeMap;
 public interface TypeContext {
     void addToImportMap(ImportStatement importStatement);
 
+    // including new import map
+    TypeContext newCompilationUnit(TypeMap.Builder typeMap, CompilationUnit compilationUnit);
+
     TypeMap.Builder typeMap();
 
     ImportMap importMap();
