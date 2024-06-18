@@ -1,6 +1,6 @@
 package org.e2immu.inputapi;
 
-import org.e2immu.cstapi.info.TypeInfo;
+import org.e2immu.language.cst.api.info.TypeInfo;
 
 public interface TypeMap {
     void add(TypeInfo typeInfo, InspectionState inspectionState);
