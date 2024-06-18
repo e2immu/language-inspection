@@ -1,4 +1,4 @@
-package org.e2immu.inputapi;
+package org.e2immu.language.inspection.api;
 
 import org.e2immu.language.cst.api.info.TypeInfo;
 import org.e2immu.language.cst.api.type.TypeParameter;

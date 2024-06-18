@@ -1,4 +1,4 @@
-package org.e2immu.inputapi;
+package org.e2immu.language.inspection.api;
 
 public interface Input {
     static boolean acceptFQN(String fqn) {

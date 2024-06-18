@@ -1,4 +1,4 @@
-package org.e2immu.inputapi;
+package org.e2immu.language.inspection.api;
 
 import java.util.List;
 import java.util.Map;
