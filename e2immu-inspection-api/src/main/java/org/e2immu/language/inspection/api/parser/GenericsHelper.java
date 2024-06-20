@@ -1,5 +1,6 @@
 package org.e2immu.language.inspection.api.parser;
 
+import org.e2immu.language.cst.api.analysis.Property;
 import org.e2immu.language.cst.api.info.MethodInfo;
 import org.e2immu.language.cst.api.info.TypeInfo;
 import org.e2immu.language.cst.api.type.NamedType;
