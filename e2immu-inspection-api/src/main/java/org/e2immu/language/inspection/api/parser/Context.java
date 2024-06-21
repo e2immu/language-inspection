@@ -9,8 +9,6 @@ import org.e2immu.language.cst.api.runtime.Runtime;
 import org.e2immu.language.cst.api.type.ParameterizedType;
 import org.e2immu.language.inspection.api.resource.TypeMap;
 
-import java.util.List;
-
 public interface Context {
     AnonymousTypeCounters anonymousTypeCounters();
 
@@ -45,4 +43,7 @@ public interface Context {
     TypeContext typeContext();
 
     VariableContext variableContext();
+
+    Summary summary();
+
 }
