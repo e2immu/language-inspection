@@ -259,7 +259,8 @@ public class MethodResolutionImpl {
         int pos = 0;
         while (!methodCandidates.isEmpty() && evaluatedExpressions.size() < expressions.size()) {
             ForwardType fwd = context.erasureForwardType();
-            Expression evaluatedExpression = context.resolver().parseExpression(context, expressions.get(pos), fwd);
+            Expression evaluatedExpression = context.parseHelper().parseExpression(context, "", fwd,
+                    expressions.get(pos));
             evaluatedExpressions.put(pos, Objects.requireNonNull(evaluatedExpression));
             filterCandidatesByParameter(evaluatedExpression, pos, methodCandidates, compatibilityScore);
             pos++;

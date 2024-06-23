@@ -17,38 +17,45 @@ import org.slf4j.LoggerFactory;
 public class ContextImpl implements Context {
     private static final Logger LOGGER = LoggerFactory.getLogger(ContextImpl.class);
 
-    private final Runtime runtime;
+    private record Data(Runtime runtime, Summary summary, Resolver resolver) {
+    }
+
+    private final Data data;
     private final TypeInfo enclosingType;
     private final MethodInfo enclosingMethod;
     private final FieldInfo enclosingField;
     private final TypeContext typeContext;
     private final VariableContext variableContext;
-    private final AnonymousTypeCounters anonymousTypeCounters;
     private final ForwardType typeOfEnclosingSwitchExpression;
-    private final Resolver resolver;
-    private final Summary summary;
+    private final AnonymousTypeCounters anonymousTypeCounters;
 
     public ContextImpl(Runtime runtime,
                        Summary summary,
                        Resolver resolver,
-                       TypeInfo enclosingType,
-                       MethodInfo enclosingMethod,
-                       FieldInfo enclosingField,
                        TypeContext typeContext,
                        VariableContext variableContext,
                        AnonymousTypeCounters anonymousTypeCounters,
                        ForwardType typeOfEnclosingSwitchExpression) {
-        this.runtime = runtime;
-        this.resolver = resolver;
+        this(new Data(runtime, summary, resolver), null, null, null,
+                typeContext, variableContext, anonymousTypeCounters, typeOfEnclosingSwitchExpression);
+    }
+
+    private ContextImpl(Data data, TypeInfo enclosingType,
+                        MethodInfo enclosingMethod,
+                        FieldInfo enclosingField, TypeContext typeContext,
+                        VariableContext variableContext,
+                        AnonymousTypeCounters anonymousTypeCounters,
+                        ForwardType typeOfEnclosingSwitchExpression) {
+        this.data = data;
         this.enclosingType = enclosingType;
         this.enclosingMethod = enclosingMethod;
         this.enclosingField = enclosingField;
         this.typeContext = typeContext;
         this.variableContext = variableContext;
-        this.anonymousTypeCounters = anonymousTypeCounters;
         this.typeOfEnclosingSwitchExpression = typeOfEnclosingSwitchExpression;
-        this.summary = summary;
+        this.anonymousTypeCounters = anonymousTypeCounters;
     }
+
 
     public Info info() {
         if (enclosingField != null) return enclosingField;
@@ -58,13 +65,13 @@ public class ContextImpl implements Context {
 
     @Override
     public Runtime runtime() {
-        return runtime;
+        return data.runtime;
     }
 
 
     @Override
     public Resolver resolver() {
-        return resolver;
+        return data.resolver;
     }
 
 
@@ -97,7 +104,7 @@ public class ContextImpl implements Context {
 
     @Override
     public Summary summary() {
-        return summary;
+        return data.summary;
     }
 
 
@@ -118,14 +125,14 @@ public class ContextImpl implements Context {
 
     public ContextImpl newCompilationUnit(Resolver resolver, TypeMap.Builder typeMap, CompilationUnit compilationUnit) {
         TypeContext typeContext = typeContext().newCompilationUnit(typeMap, compilationUnit);
-        return new ContextImpl(runtime, summary, resolver, null, null, null,
+        return new ContextImpl(data, null, null, null,
                 typeContext, variableContext.newEmpty(), anonymousTypeCounters.newEmpty(), null);
     }
 
     @Override
     public Context newVariableContext(String reason, VariableContext variableContext) {
         LOGGER.debug("Creating a new variable context for {}", reason);
-        return new ContextImpl(runtime, summary, resolver, enclosingType, enclosingMethod, enclosingField,
+        return new ContextImpl(data, enclosingType, enclosingMethod, enclosingField,
                 typeContext, variableContext, anonymousTypeCounters, typeOfEnclosingSwitchExpression);
     }
 
@@ -133,26 +140,26 @@ public class ContextImpl implements Context {
     public Context newVariableContext(String reason) {
         LOGGER.debug("Creating a new variable context for {}", reason);
         VariableContext newVariableContext = variableContext.newVariableContext();
-        return new ContextImpl(runtime, summary, resolver, enclosingType, enclosingMethod, enclosingField,
+        return new ContextImpl(data, enclosingType, enclosingMethod, enclosingField,
                 typeContext, newVariableContext, anonymousTypeCounters, typeOfEnclosingSwitchExpression);
     }
 
     @Override
     public Context newVariableContextForMethodBlock(MethodInfo methodInfo, ForwardType forwardType) {
-        return new ContextImpl(runtime, summary, resolver, methodInfo.typeInfo(), methodInfo, null,
+        return new ContextImpl(data, methodInfo.typeInfo(), methodInfo, null,
                 typeContext, dependentVariableContext(), anonymousTypeCounters, forwardType);
     }
 
 
     public ContextImpl newTypeContext(String reason) {
         LOGGER.debug("Creating a new type context for {}", reason);
-        return new ContextImpl(runtime, summary, resolver, enclosingType, enclosingMethod, enclosingField,
+        return new ContextImpl(data, enclosingType, enclosingMethod, enclosingField,
                 typeContext.newTypeContext(), variableContext, anonymousTypeCounters, typeOfEnclosingSwitchExpression);
     }
 
 
     public ContextImpl newTypeContext(FieldInfo fieldInfo) {
-        return new ContextImpl(runtime, summary, resolver, enclosingType, null, fieldInfo, typeContext,
+        return new ContextImpl(data, enclosingType, null, fieldInfo, typeContext,
                 variableContext, anonymousTypeCounters, typeOfEnclosingSwitchExpression);
     }
 
@@ -163,7 +170,7 @@ public class ContextImpl implements Context {
 
 
     public ContextImpl newSubType(TypeInfo subType) {
-        return new ContextImpl(runtime, summary, resolver, subType, null, null,
+        return new ContextImpl(data, subType, null, null,
                 typeContext.newTypeContext(), variableContext, anonymousTypeCounters, null);
     }
 
@@ -171,7 +178,7 @@ public class ContextImpl implements Context {
     public ContextImpl newSwitchExpressionContext(TypeInfo subType,
                                                   VariableContext variableContext,
                                                   ForwardType typeOfEnclosingSwitchExpression) {
-        return new ContextImpl(runtime, summary, resolver, subType, null, null, typeContext,
+        return new ContextImpl(data, subType, null, null, typeContext,
                 variableContext, anonymousTypeCounters, typeOfEnclosingSwitchExpression);
     }
 
@@ -192,5 +199,10 @@ public class ContextImpl implements Context {
 
     public ForwardType emptyForwardType() {
         return new ForwardTypeImpl(null, false, false, TypeParameterMap.EMPTY);
+    }
+
+    @Override
+    public ParseHelper parseHelper() {
+        return resolver().parseHelper();
     }
 }

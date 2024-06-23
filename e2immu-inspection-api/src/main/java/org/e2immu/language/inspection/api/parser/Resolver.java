@@ -9,7 +9,7 @@ public interface Resolver {
 
     void add(TypeInfo.Builder builder);
 
-    Expression parseExpression(Context context, Object expression, ForwardType forward);
-
     void resolve();
+
+    ParseHelper parseHelper();
 }
