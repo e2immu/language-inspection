@@ -182,11 +182,15 @@ public class ContextImpl implements Context {
 
 
     public ForwardType newForwardType(ParameterizedType parameterizedType) {
-        return new ForwardTypeImpl(parameterizedType);
+        return new ForwardTypeImpl(parameterizedType, false, false, TypeParameterMap.EMPTY);
     }
 
+    @Override
+    public ForwardType erasureForwardType() {
+        return new ForwardTypeImpl(null, true, false, TypeParameterMap.EMPTY);
+    }
 
     public ForwardType emptyForwardType() {
-        return new ForwardTypeImpl();
+        return new ForwardTypeImpl(null, false, false, TypeParameterMap.EMPTY);
     }
 }

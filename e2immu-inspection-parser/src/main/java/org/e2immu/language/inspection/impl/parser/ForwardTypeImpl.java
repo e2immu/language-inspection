@@ -9,29 +9,12 @@ import org.e2immu.language.inspection.api.parser.GenericsHelper;
 import org.e2immu.language.inspection.api.parser.MethodTypeParameterMap;
 import org.e2immu.language.inspection.api.parser.TypeParameterMap;
 
-public record ForwardTypeImpl(ParameterizedType type, boolean mustBeArray, TypeParameterMap extra) implements ForwardType {
-
-    public ForwardTypeImpl() {
-        this(null, false, TypeParameterMap.EMPTY);
-    }
-
-    public ForwardTypeImpl(ParameterizedType type) {
-        this(type, false, TypeParameterMap.EMPTY);
-    }
-
-    public ForwardTypeImpl(ParameterizedType type, boolean erasure) {
-        this(type, erasure, TypeParameterMap.EMPTY);
-    }
+public record ForwardTypeImpl(ParameterizedType type, boolean erasure, boolean mustBeArray, TypeParameterMap extra)
+        implements ForwardType {
 
     @Override
     public ForwardTypeImpl withMustBeArray() {
-        return new ForwardTypeImpl(type, true, extra);
-    }
-
-    // we'd rather have java.lang.Boolean, because as soon as type parameters are involved, primitives
-    // are boxed
-    public static ForwardTypeImpl expectBoolean(Runtime runtime) {
-        return new ForwardTypeImpl(runtime.boxedBooleanTypeInfo().asSimpleParameterizedType(), false);
+        return new ForwardTypeImpl(type, erasure, true, extra);
     }
 
     @Override

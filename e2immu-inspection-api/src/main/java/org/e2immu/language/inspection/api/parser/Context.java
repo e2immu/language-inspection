@@ -22,6 +22,8 @@ public interface Context {
 
     TypeInfo enclosingType();
 
+    ForwardType erasureForwardType();
+
     Info info();
 
     Context newCompilationUnit(Resolver resolver, TypeMap.Builder typeMap, CompilationUnit compilationUnit);

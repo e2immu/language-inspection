@@ -7,10 +7,7 @@ import org.e2immu.language.cst.api.runtime.Runtime;
 import org.e2immu.language.cst.api.type.NamedType;
 import org.e2immu.language.cst.api.type.ParameterizedType;
 import org.e2immu.language.cst.api.type.TypeParameter;
-import org.e2immu.language.inspection.api.parser.ForwardType;
-import org.e2immu.language.inspection.api.parser.MethodTypeParameterMap;
-import org.e2immu.language.inspection.api.parser.TypeContext;
-import org.e2immu.language.inspection.api.parser.TypeParameterMap;
+import org.e2immu.language.inspection.api.parser.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -253,16 +250,16 @@ public class MethodResolutionImpl {
                && actualType.typeParameter().isMethodTypeParameter()
                && actualType.typeParameter().typeBounds().isEmpty();
     }
-/*
-    private FilterResult filterMethodCandidatesInErasureMode(ExpressionContext expressionContext,
+
+    private FilterResult filterMethodCandidatesInErasureMode(Context context,
                                                              Map<MethodTypeParameterMap, Integer> methodCandidates,
-                                                             List<com.github.javaparser.ast.expr.Expression> expressions) {
+                                                             List<Object> expressions) {
         Map<Integer, Expression> evaluatedExpressions = new HashMap<>();
         Map<MethodInfo, Integer> compatibilityScore = new HashMap<>();
         int pos = 0;
         while (!methodCandidates.isEmpty() && evaluatedExpressions.size() < expressions.size()) {
-            ForwardReturnTypeInfo forward = new ForwardReturnTypeInfo(null, true);
-            Expression evaluatedExpression = expressionContext.parseExpression(expressions.get(pos), forward);
+            ForwardType fwd = context.erasureForwardType();
+            Expression evaluatedExpression = context.resolver().parseExpression(context, expressions.get(pos), fwd);
             evaluatedExpressions.put(pos, Objects.requireNonNull(evaluatedExpression));
             filterCandidatesByParameter(evaluatedExpression, pos, methodCandidates, compatibilityScore);
             pos++;
@@ -279,27 +276,27 @@ public class MethodResolutionImpl {
      * @return a list of size>1 when also candidate 1 is accessible... this will result in an error?
      *
     private List<MethodTypeParameterMap> sortRemainingCandidatesByShallowPublic(Map<MethodTypeParameterMap, Integer> methodCandidates) {
-        if (methodCandidates.size() > 1) {
-            Comparator<MethodTypeParameterMap> comparator =
-                    (m1, m2) -> {
-                        boolean m1Accessible = m1.methodInfo().analysisAccessible(typeContext);
-                        boolean m2Accessible = m2.methodInfo().analysisAccessible(typeContext);
-                        if (m1Accessible && !m2Accessible) return -1;
-                        if (m2Accessible && !m1Accessible) return 1;
-                        return 0; // don't know what to prioritize
-                    };
-            List<MethodTypeParameterMap> sorted = new ArrayList<>(methodCandidates.keySet());
-            sorted.sort(comparator);
-            MethodTypeParameterMap m1 = sorted.get(1);
-            if (m1.methodInfo().analysisAccessible(typeContext)) {
-                return sorted;
-            }
-            return List.of(sorted.get(0));
-        }
-        // not two accessible
-        return List.copyOf(methodCandidates.keySet());
+    if (methodCandidates.size() > 1) {
+    Comparator<MethodTypeParameterMap> comparator =
+    (m1, m2) -> {
+    boolean m1Accessible = m1.methodInfo().analysisAccessible(typeContext);
+    boolean m2Accessible = m2.methodInfo().analysisAccessible(typeContext);
+    if (m1Accessible && !m2Accessible) return -1;
+    if (m2Accessible && !m1Accessible) return 1;
+    return 0; // don't know what to prioritize
+    };
+    List<MethodTypeParameterMap> sorted = new ArrayList<>(methodCandidates.keySet());
+    sorted.sort(comparator);
+    MethodTypeParameterMap m1 = sorted.get(1);
+    if (m1.methodInfo().analysisAccessible(typeContext)) {
+    return sorted;
     }
-*/
+    return List.of(sorted.get(0));
+    }
+    // not two accessible
+    return List.copyOf(methodCandidates.keySet());
+    }
+     */
     /**
      * Build the correct ForwardReturnTypeInfo to properly evaluate the argument at position i
      *
@@ -318,7 +315,7 @@ public class MethodResolutionImpl {
         if (outsideContext == null || outsideContext.isVoid() || outsideContext.typeInfo() == null) {
             // Cannot do better than parameter type, have no outside context;
             ParameterizedType translated = parameterType.applyTranslation(runtime, extra.map());
-            return new ForwardTypeImpl(translated, false, extra);
+            return new ForwardTypeImpl(translated, false, false, extra);
         }
         Set<TypeParameter> typeParameters = parameterType.extractTypeParameters();
         Map<NamedType, ParameterizedType> outsideMap = outsideContext.initialTypeParameterMap(runtime);
@@ -331,12 +328,12 @@ public class MethodResolutionImpl {
                 if (returnType.typeParameter() != null) {
                     Map<NamedType, ParameterizedType> translate = Map.of(returnType.typeParameter(), outsideContext);
                     ParameterizedType translated = parameterType.applyTranslation(runtime, translate);
-                    return new ForwardTypeImpl(translated, false, extra);
+                    return new ForwardTypeImpl(translated, false, false, extra);
                 }
             }
             // No type parameters to fill in or to extract
             ParameterizedType translated = parameterType.applyTranslation(runtime, extra.map());
-            return new ForwardTypeImpl(translated, false, extra);
+            return new ForwardTypeImpl(translated, false, false, extra);
         }
         Map<NamedType, ParameterizedType> translate = new HashMap<>(extra.map());
         for (TypeParameter typeParameter : typeParameters) {
@@ -360,11 +357,11 @@ public class MethodResolutionImpl {
         }
         if (translate.isEmpty()) {
             // Nothing to translate
-            return new ForwardTypeImpl(parameterType, false, extra);
+            return new ForwardTypeImpl(parameterType, false, false, extra);
         }
         ParameterizedType translated = parameterType.applyTranslation(runtime, translate);
         // Translated context and parameter
-        return new ForwardTypeImpl(translated, false, extra);
+        return new ForwardTypeImpl(translated, false, false, extra);
 
     }
 
