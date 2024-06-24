@@ -15,6 +15,8 @@ public interface HierarchyHelper {
 
     boolean parentalHierarchyContains(TypeInfo me, TypeInfo target);
 
+    TypeInfo recursivelyImplements(TypeInfo enclosingType, String s);
+
     interface IsMyself {
 
         boolean isNo();

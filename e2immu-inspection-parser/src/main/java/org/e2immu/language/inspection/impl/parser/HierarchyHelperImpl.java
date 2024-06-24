@@ -86,4 +86,19 @@ public class HierarchyHelperImpl implements HierarchyHelper {
         if (target.equals(parent.typeInfo())) return true;
         return parentalHierarchyContains(parent.typeInfo(), target);
     }
+
+    @Override
+    public TypeInfo recursivelyImplements(TypeInfo me, String fqn) {
+        if (me.fullyQualifiedName().equals(fqn)) return me;
+        ParameterizedType parentClass = me.parentClass();
+        if (parentClass != null && !parentClass.isJavaLangObject()) {
+            TypeInfo res = recursivelyImplements(parentClass.typeInfo(), fqn);
+            if (res != null) return res;
+        }
+        for (ParameterizedType implemented : me.interfacesImplemented()) {
+            TypeInfo res = recursivelyImplements(implemented.typeInfo(), fqn);
+            if (res != null) return res;
+        }
+        return null;
+    }
 }

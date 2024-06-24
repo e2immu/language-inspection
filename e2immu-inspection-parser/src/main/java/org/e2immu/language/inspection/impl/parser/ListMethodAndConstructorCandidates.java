@@ -1,12 +1,14 @@
 package org.e2immu.language.inspection.impl.parser;
 
+import org.e2immu.language.cst.api.expression.Expression;
+import org.e2immu.language.cst.api.expression.TypeExpression;
 import org.e2immu.language.cst.api.info.MethodInfo;
 import org.e2immu.language.cst.api.info.TypeInfo;
 import org.e2immu.language.cst.api.runtime.Runtime;
 import org.e2immu.language.cst.api.type.NamedType;
 import org.e2immu.language.cst.api.type.ParameterizedType;
-import org.e2immu.language.inspection.api.parser.ImportMap;
-import org.e2immu.language.inspection.api.parser.MethodTypeParameterMap;
+import org.e2immu.language.cst.api.variable.Variable;
+import org.e2immu.language.inspection.api.parser.*;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -207,6 +209,86 @@ public class ListMethodAndConstructorCandidates {
         assert typeInfo != null;
         // FIXME ensure that typeInfo's inspection is done, if this is bytecode inspection
         return List.of(typeInfo);
+    }
+
+
+    public record Scope(Expression expression,
+                        ParameterizedType type,
+                        ScopeNature nature,
+                        TypeParameterMap typeParameterMap) {
+
+        public boolean objectIsImplicit() {
+            assert expression == null || nature != ScopeNature.ABSENT;
+            return expression == null;
+        }
+
+        public Expression ensureExplicit(Runtime runtime,
+                                         HierarchyHelper hierarchyHelper,
+                                         MethodInfo methodInfo,
+                                         boolean scopeIsThis,
+                                         TypeInfo enclosingType) {
+        /*
+         in 3 situations, we compute (or potentially correct) the scope.
+         In the case of a static method, we always replace by the class containing the method.
+         In the case of this: we use the type of the current class in case of extension, but not in case of sub-typing,
+         because we have to be able to indicate that we're reading the correct "this" in the VariableAccess report.
+         In case of parent-child, we activate the "super" boolean.
+         See e.g. Lambda_15.
+         IMPROVE! https://github.com/e2immu/e2immu/issues/60
+         */
+            if (objectIsImplicit() || methodInfo.isStatic() || scopeIsThis) {
+                TypeInfo exact = methodInfo.typeInfo();
+                if (methodInfo.isStatic()) {
+                    return runtime.newTypeExpression(exact.asParameterizedType(runtime), runtime.diamondNo());
+                }
+                TypeInfo typeInfo;
+                boolean writeSuper;
+                TypeInfo explicitlyWriteType;
+                if (enclosingType == exact
+                    || exact.isJavaLangObject()
+                    || hierarchyHelper.recursivelyImplements(enclosingType, exact.fullyQualifiedName()) != null) {
+                    typeInfo = enclosingType; // the same type
+                    writeSuper = false;
+                    explicitlyWriteType = null;
+                } else if (hierarchyHelper.parentalHierarchyContains(enclosingType, exact)) {
+                    typeInfo = enclosingType;
+                    writeSuper = true;
+                    explicitlyWriteType = null;
+                } else {
+                    // relationship must be inner class of ...
+                    typeInfo = exact;
+                    writeSuper = false;
+                    explicitlyWriteType = exact;
+                }
+                Variable thisVariable = runtime.newThis(typeInfo, explicitlyWriteType, writeSuper);
+                return runtime.newVariableExpression(thisVariable);
+            }
+            return expression;
+        }
+
+        static Scope computeScope(Runtime runtime,
+                                  ParseHelper parseHelper,
+                                  Context context,
+                                  String index,
+                                  Object unparsedScope,
+                                  TypeParameterMap extra) {
+            ForwardType forward = new ForwardTypeImpl(null, false, extra);
+            Expression scope = parseHelper.parseExpression(context, index, forward, unparsedScope);
+            // depending on the object, we'll need to find the method somewhere
+            ParameterizedType scopeType;
+            ScopeNature scopeNature;
+
+            if (scope == null) {
+                scopeType = runtime.newParameterizedType(context.enclosingType(), 0);
+                scopeNature = ScopeNature.ABSENT; // could be static, could be object instance
+            } else {
+                scopeType = scope.parameterizedType();
+                scopeNature = scope instanceof TypeExpression ? ScopeNature.STATIC : ScopeNature.INSTANCE;
+            }
+            Map<NamedType, ParameterizedType> scopeTypeMap = scopeType.initialTypeParameterMap(runtime);
+            return new Scope(scope, scopeType, scopeNature, new TypeParameterMap(scopeTypeMap));
+        }
+
     }
 
 }

@@ -9,13 +9,7 @@ import org.e2immu.language.inspection.api.parser.GenericsHelper;
 import org.e2immu.language.inspection.api.parser.MethodTypeParameterMap;
 import org.e2immu.language.inspection.api.parser.TypeParameterMap;
 
-public record ForwardTypeImpl(ParameterizedType type, boolean erasure, boolean mustBeArray, TypeParameterMap extra)
-        implements ForwardType {
-
-    @Override
-    public ForwardTypeImpl withMustBeArray() {
-        return new ForwardTypeImpl(type, erasure, true, extra);
-    }
+public record ForwardTypeImpl(ParameterizedType type, boolean erasure, TypeParameterMap extra) implements ForwardType {
 
     @Override
     public MethodTypeParameterMap computeSAM(Runtime runtime, GenericsHelper genericsHelper, TypeInfo primaryType) {
@@ -40,6 +34,6 @@ public record ForwardTypeImpl(ParameterizedType type, boolean erasure, boolean m
 
     @Override
     public String toString() {
-        return "[FWD: " + (type == null ? "null" : type.detailedString()) + ", array? " + mustBeArray + "]";
+        return "[FWD: " + (type == null ? "null" : type.detailedString()) + ", erasure? " + erasure + "]";
     }
 }

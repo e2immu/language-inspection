@@ -316,7 +316,7 @@ public class MethodResolutionImpl {
         if (outsideContext == null || outsideContext.isVoid() || outsideContext.typeInfo() == null) {
             // Cannot do better than parameter type, have no outside context;
             ParameterizedType translated = parameterType.applyTranslation(runtime, extra.map());
-            return new ForwardTypeImpl(translated, false, false, extra);
+            return new ForwardTypeImpl(translated, false, extra);
         }
         Set<TypeParameter> typeParameters = parameterType.extractTypeParameters();
         Map<NamedType, ParameterizedType> outsideMap = outsideContext.initialTypeParameterMap(runtime);
@@ -329,12 +329,12 @@ public class MethodResolutionImpl {
                 if (returnType.typeParameter() != null) {
                     Map<NamedType, ParameterizedType> translate = Map.of(returnType.typeParameter(), outsideContext);
                     ParameterizedType translated = parameterType.applyTranslation(runtime, translate);
-                    return new ForwardTypeImpl(translated, false, false, extra);
+                    return new ForwardTypeImpl(translated, false, extra);
                 }
             }
             // No type parameters to fill in or to extract
             ParameterizedType translated = parameterType.applyTranslation(runtime, extra.map());
-            return new ForwardTypeImpl(translated, false, false, extra);
+            return new ForwardTypeImpl(translated, false, extra);
         }
         Map<NamedType, ParameterizedType> translate = new HashMap<>(extra.map());
         for (TypeParameter typeParameter : typeParameters) {
@@ -358,11 +358,11 @@ public class MethodResolutionImpl {
         }
         if (translate.isEmpty()) {
             // Nothing to translate
-            return new ForwardTypeImpl(parameterType, false, false, extra);
+            return new ForwardTypeImpl(parameterType, false, extra);
         }
         ParameterizedType translated = parameterType.applyTranslation(runtime, translate);
         // Translated context and parameter
-        return new ForwardTypeImpl(translated, false, false, extra);
+        return new ForwardTypeImpl(translated, false, extra);
 
     }
 
