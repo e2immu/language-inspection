@@ -9,6 +9,8 @@ public interface Resolver {
 
     void add(TypeInfo.Builder builder);
 
+    Resolver newEmpty();
+
     void resolve();
 
     ParseHelper parseHelper();

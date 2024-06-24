@@ -32,6 +32,9 @@ public class ResolverImpl implements Resolver {
     private final List<Todo> todos = new LinkedList<>();
     private final List<TypeInfo.Builder> types = new LinkedList<>();
 
+    public Resolver newEmpty() {
+        return new ResolverImpl(parseHelper);
+    }
 
     public void add(Info.Builder<?> infoBuilder, ForwardType forwardType, Object eci, Object expression,
                     Context context) {
