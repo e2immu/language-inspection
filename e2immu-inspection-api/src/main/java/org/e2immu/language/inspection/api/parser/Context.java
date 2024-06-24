@@ -29,6 +29,8 @@ public interface Context {
 
     Info info();
 
+    MethodResolution methodResolution();
+
     Context newCompilationUnit(Resolver resolver, TypeMap.Builder typeMap, CompilationUnit compilationUnit);
 
     Context newLambdaContext(MethodInfo sam);

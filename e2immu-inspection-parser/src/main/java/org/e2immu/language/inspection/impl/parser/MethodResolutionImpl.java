@@ -1,12 +1,17 @@
 package org.e2immu.language.inspection.impl.parser;
 
+import org.e2immu.language.cst.api.element.Comment;
+import org.e2immu.language.cst.api.element.Source;
 import org.e2immu.language.cst.api.expression.Expression;
+import org.e2immu.language.cst.api.expression.VariableExpression;
 import org.e2immu.language.cst.api.info.MethodInfo;
 import org.e2immu.language.cst.api.info.ParameterInfo;
+import org.e2immu.language.cst.api.info.TypeInfo;
 import org.e2immu.language.cst.api.runtime.Runtime;
 import org.e2immu.language.cst.api.type.NamedType;
 import org.e2immu.language.cst.api.type.ParameterizedType;
 import org.e2immu.language.cst.api.type.TypeParameter;
+import org.e2immu.language.cst.api.variable.This;
 import org.e2immu.language.inspection.api.parser.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,16 +19,346 @@ import org.slf4j.LoggerFactory;
 import java.util.*;
 import java.util.stream.Collectors;
 
-public class MethodResolutionImpl {
+public class MethodResolutionImpl implements MethodResolution {
     private static final Logger LOGGER = LoggerFactory.getLogger(MethodResolutionImpl.class);
     private final Runtime runtime;
+    private final GenericsHelper genericsHelper;
+    private final HierarchyHelper hierarchyHelper;
     private final int notAssignable;
+    private final ListMethodAndConstructorCandidates listMethodAndConstructorCandidates;
 
-    public MethodResolutionImpl(Runtime runtime) {
+    public MethodResolutionImpl(Runtime runtime, ImportMap importMap) {
         this.runtime = runtime;
+        this.genericsHelper = new GenericsHelperImpl(runtime);
+        this.hierarchyHelper = new HierarchyHelperImpl();
         notAssignable = runtime.isNotAssignable();
+        listMethodAndConstructorCandidates = new ListMethodAndConstructorCandidates(runtime, importMap);
     }
 
+
+    @Override
+    public Set<ParameterizedType> computeScope(Context context,
+                                               String index,
+                                               String methodName,
+                                               Object unparsedScope,
+                                               List<Object> unparsedArguments) {
+        ListMethodAndConstructorCandidates.Scope scope = listMethodAndConstructorCandidates
+                .computeScope(context.parseHelper(), context, index, unparsedScope, TypeParameterMap.EMPTY);
+        int numArguments = unparsedArguments.size();
+        Map<MethodTypeParameterMap, Integer> methodCandidates = initialMethodCandidates(scope, numArguments, methodName);
+
+        FilterResult filterResult = filterMethodCandidatesInErasureMode(context, methodCandidates, unparsedArguments);
+        if (methodCandidates.size() > 1) {
+            trimMethodsWithBestScore(methodCandidates, filterResult.compatibilityScore);
+            if (methodCandidates.size() > 1) {
+                trimVarargsVsMethodsWithFewerParameters(methodCandidates);
+            }
+        }
+        sortRemainingCandidatesByShallowPublic(methodCandidates);
+
+        if (methodCandidates.isEmpty()) {
+            throw new RuntimeException("Have no method candidates remaining in erasure mode for "
+                                       + methodName + ", " + numArguments);
+        }
+
+        Set<ParameterizedType> types;
+        if (scope.expression() != null
+            && !(scope.expression() instanceof ErasedExpression)
+            && scope.expression().parameterizedType().arrays() > 0
+            && "clone".equals(methodName)) {
+            /* this condition is hyper-specialized (see MethodCall_54; but the alternative would be to return JLO,
+               and that causes problems along the way
+             */
+            types = Set.of(scope.expression().parameterizedType());
+        } else {
+            types = methodCandidates.keySet().stream()
+                    .map(mc -> erasureReturnType(mc, filterResult, scope))
+                    .collect(Collectors.toUnmodifiableSet());
+        }
+        return types;
+    }
+
+    @Override
+    public Expression resolveMethod(Context context, List<Comment> comments, Source source, String index, ForwardType forwardType,
+                                    String methodName, Object unparsedScope, List<Object> unparsedArguments) {
+        ListMethodAndConstructorCandidates.Scope scope = listMethodAndConstructorCandidates
+                .computeScope(context.parseHelper(), context, index, unparsedScope, TypeParameterMap.EMPTY);
+        int numArguments = unparsedArguments.size();
+        Map<MethodTypeParameterMap, Integer> methodCandidates = initialMethodCandidates(scope, numArguments, methodName);
+        if (methodCandidates.isEmpty()) {
+            throw new Summary.ParseException(context.info(), "No method candidates for " + methodName
+                                                             + ", " + numArguments + " arg(s)");
+        }
+        TypeParameterMap extra = forwardType.extra().merge(scope.typeParameterMap());
+        Candidate candidate = chooseCandidateAndEvaluateCall(context, index, methodName, methodCandidates,
+                unparsedArguments, forwardType.type(), extra);
+
+        if (candidate == null) {
+            throw new Summary.ParseException(context.info(), "Failed to find a unique method candidate");
+        }
+        LOGGER.debug("Resulting method is {}", candidate.method.methodInfo());
+
+        boolean scopeIsThis = scope.expression() instanceof VariableExpression ve && ve.variable() instanceof This;
+        Expression newScope = scope.ensureExplicit(runtime, hierarchyHelper, candidate.method.methodInfo(),
+                scopeIsThis, context.enclosingType());
+        ParameterizedType returnType = candidate.returnType(runtime, context.enclosingType().primaryType(), extra);
+        LOGGER.debug("Concrete return type of {} is {}", methodName, returnType.detailedString());
+
+        return runtime.newMethodCallBuilder()
+                .setSource(source).addComments(comments)
+                .setObjectIsImplicit(scope.objectIsImplicit())
+                .setObject(newScope)
+                .setMethodInfo(candidate.method.methodInfo())
+                .setConcreteReturnType(returnType)
+                .setParameterExpressions(candidate.newParameterExpressions).build();
+    }
+
+    record Candidate(List<Expression> newParameterExpressions,
+                     Map<NamedType, ParameterizedType> mapExpansion,
+                     MethodTypeParameterMap method) {
+
+        ParameterizedType returnType(Runtime runtime,
+                                     TypeInfo primaryType,
+                                     TypeParameterMap extra) {
+            ParameterizedType pt = mapExpansion.isEmpty()
+                    ? method.getConcreteReturnType(runtime)
+                    : method.expand(runtime, primaryType, mapExpansion).getConcreteReturnType(runtime);
+            ParameterizedType withExtra = pt.applyTranslation(runtime, extra.map());
+            // See TypeParameter_4
+            return withExtra.isUnboundWildcard() ? runtime.objectParameterizedType() : withExtra;
+        }
+    }
+
+    private Map<MethodTypeParameterMap, Integer> initialMethodCandidates(ListMethodAndConstructorCandidates.Scope scope,
+                                                                         int numArguments,
+                                                                         String methodName) {
+        Map<MethodTypeParameterMap, Integer> methodCandidates = new HashMap<>();
+        listMethodAndConstructorCandidates.recursivelyResolveOverloadedMethods(scope.type(), methodName,
+                numArguments, false, scope.typeParameterMap().map(), methodCandidates,
+                scope.nature());
+        if (methodCandidates.isEmpty()) {
+            throw new RuntimeException("No candidates at all for method name " + methodName + ", "
+                                       + numArguments + " args in type " + scope.type().detailedString());
+        }
+        return methodCandidates;
+    }
+
+    private ParameterizedType erasureReturnType(MethodTypeParameterMap mc, FilterResult filterResult,
+                                                ListMethodAndConstructorCandidates.Scope scope) {
+        MethodInfo candidate = mc.methodInfo();
+        TypeParameterMap map0 = filterResult.typeParameterMap(runtime, candidate);
+        TypeParameterMap map1 = map0.merge(scope.typeParameterMap());
+        TypeInfo methodType = candidate.typeInfo();
+        TypeInfo scopeType = scope.type().bestTypeInfo();
+        TypeParameterMap merged;
+        if (scopeType != null && !methodType.equals(scopeType)) {
+            // method is defined in a super-type, so we need an additional translation
+            ParameterizedType superType = methodType.asParameterizedType(runtime);
+            Map<NamedType, ParameterizedType> sm = genericsHelper.mapInTermsOfParametersOfSuperType(scopeType, superType);
+            merged = sm == null ? map1 : map1.merge(new TypeParameterMap(sm));
+        } else {
+            merged = map1;
+        }
+        ParameterizedType returnType = candidate.returnType();
+        Map<NamedType, ParameterizedType> map2 = merged.map();
+        // IMPROVE at some point, compare to mc.method().concreteType; redundant code?
+        return returnType.applyTranslation(runtime, map2);
+    }
+
+
+    Candidate chooseCandidateAndEvaluateCall(Context context,
+                                             String index,
+                                             String methodName,
+                                             Map<MethodTypeParameterMap, Integer> methodCandidates,
+                                             List<Object> unparsedArguments,
+                                             ParameterizedType returnType,
+                                             TypeParameterMap extra) {
+
+        Map<Integer, Expression> evaluatedExpressions = new TreeMap<>();
+        int i = 0;
+        ForwardType forward = context.erasureForwardType();
+        for (Object argument : unparsedArguments) {
+            Expression evaluated = context.resolver().parseHelper().parseExpression(context, index, forward, argument);
+            evaluatedExpressions.put(i++, evaluated);
+        }
+
+        FilterResult filterResult = filterCandidatesByParameters(methodCandidates, evaluatedExpressions, extra, false);
+
+        // now we need to ensure that there is only 1 method left, but, there can be overloads and
+        // methods with implicit type conversions, varargs, etc. etc.
+        if (methodCandidates.isEmpty()) {
+            return noCandidatesError(methodName, filterResult.evaluatedExpressions);
+        }
+
+        if (methodCandidates.size() > 1) {
+            trimMethodsWithBestScore(methodCandidates, filterResult.compatibilityScore);
+            if (methodCandidates.size() > 1) {
+                trimVarargsVsMethodsWithFewerParameters(methodCandidates);
+            }
+        }
+        List<MethodTypeParameterMap> sorted = sortRemainingCandidatesByShallowPublic(methodCandidates);
+        if (sorted.size() > 1) {
+            multipleCandidatesError(methodName, methodCandidates, filterResult.evaluatedExpressions);
+        }
+        MethodTypeParameterMap method = sorted.get(0);
+        LOGGER.debug("Found method {}", method.methodInfo());
+
+        List<Expression> newParameterExpressions = reEvaluateErasedExpression(context, index, unparsedArguments,
+                returnType, extra, methodName, filterResult.evaluatedExpressions, method);
+        Map<NamedType, ParameterizedType> mapExpansion = computeMapExpansion(method, newParameterExpressions,
+                returnType, context.enclosingType().primaryType());
+        return new Candidate(newParameterExpressions, mapExpansion, method);
+    }
+
+    private void multipleCandidatesError(String methodName,
+                                         Map<MethodTypeParameterMap, Integer> methodCandidates,
+                                         Map<Integer, Expression> evaluatedExpressions) {
+        LOGGER.error("Multiple candidates for {}", methodName);
+        methodCandidates.forEach((m, d) -> LOGGER.error(" -- {}", m.methodInfo()));
+        LOGGER.error("{} Evaluated expressions:", evaluatedExpressions.size());
+        evaluatedExpressions.forEach((i, e) -> LOGGER.error(" -- index {}: {}, {}, {}", i, e, e.getClass(),
+                e instanceof ErasedExpression ? "-" : e.parameterizedType().toString()));
+        throw new UnsupportedOperationException("Multiple candidates");
+    }
+
+    private Map<NamedType, ParameterizedType> computeMapExpansion(MethodTypeParameterMap method,
+                                                                  List<Expression> newParameterExpressions,
+                                                                  ParameterizedType forwardedReturnType,
+                                                                  TypeInfo primaryType) {
+        Map<NamedType, ParameterizedType> mapExpansion = new HashMap<>();
+        // fill in the map expansion, deal with variable arguments!
+        int i = 0;
+        List<ParameterInfo> formalParameters = method.methodInfo().parameters();
+
+        for (Expression expression : newParameterExpressions) {
+            LOGGER.debug("Examine parameter {}", i);
+            ParameterizedType concreteParameterType;
+            ParameterizedType formalParameterType;
+            ParameterInfo formalParameter = formalParameters.get(i);
+            if (formalParameters.size() - 1 == i && formalParameter.isVarArgs()) {
+                formalParameterType = formalParameter.parameterizedType().copyWithOneFewerArrays();
+                if (newParameterExpressions.size() > formalParameters.size()
+                    || formalParameterType.arrays() == expression.parameterizedType().arrays()) {
+                    concreteParameterType = expression.parameterizedType();
+                } else {
+                    concreteParameterType = expression.parameterizedType().copyWithOneFewerArrays();
+                    assert formalParameterType.isAssignableFrom(runtime, concreteParameterType);
+                }
+            } else {
+                formalParameterType = formalParameters.get(i).parameterizedType();
+                concreteParameterType = expression.parameterizedType();
+            }
+            Map<NamedType, ParameterizedType> translated = genericsHelper.translateMap(formalParameterType,
+                    concreteParameterType, true);
+            ParameterizedType concreteTypeInMethod = method.getConcreteTypeOfParameter(runtime, i);
+
+            translated.forEach((k, v) -> {
+                // we can go in two directions here.
+                // either the type parameter gets a proper value by the concreteParameterType, or the concreteParameter type should
+                // agree with the concrete types map in the method candidate. It is quite possible that concreteParameterType == ParameterizedType.NULL,
+                // and then the value in the map should prevail
+                ParameterizedType valueToAdd;
+                if (betterDefinedThan(concreteTypeInMethod, v)) {
+                    valueToAdd = concreteTypeInMethod;
+                } else {
+                    valueToAdd = v;
+                }
+                /* Example: Ecoll -> String, in case the formal parameter was Collection<E>, and the concrete Set<String>
+                Now if Ecoll is a method parameter, it needs linking to the
+
+                 */
+                if (!mapExpansion.containsKey(k)) {
+                    mapExpansion.put(k, valueToAdd);
+                }
+            });
+            i++;
+            if (i >= formalParameters.size()) break; // varargs... we have more than there are
+        }
+
+        // finally, look at the return type
+        ParameterizedType formalReturnType = method.methodInfo().returnType();
+        if (formalReturnType.isTypeParameter() && forwardedReturnType != null) {
+            mapExpansion.merge(formalReturnType.typeParameter(), forwardedReturnType,
+                    (ptOld, ptNew) -> ptOld.mostSpecific(runtime, primaryType, ptNew));
+        }
+
+        return mapExpansion;
+    }
+
+    private static boolean betterDefinedThan(ParameterizedType pt1, ParameterizedType pt2) {
+        return (pt1.typeParameter() != null || pt1.typeInfo() != null) && pt2.typeParameter() == null && pt2.typeInfo() == null;
+    }
+
+
+    private List<Expression> reEvaluateErasedExpression(Context context,
+                                                        String index,
+                                                        List<Object> expressions,
+                                                        ParameterizedType outsideContext,
+                                                        TypeParameterMap extra,
+                                                        String methodName,
+                                                        Map<Integer, Expression> evaluatedExpressions,
+                                                        MethodTypeParameterMap method) {
+        Expression[] newParameterExpressions = new Expression[evaluatedExpressions.size()];
+        TypeParameterMap cumulative = extra;
+        List<Integer> positionsToDo = new ArrayList<>(evaluatedExpressions.size());
+        List<ParameterInfo> parameters = method.methodInfo().parameters();
+
+        for (int i = 0; i < expressions.size(); i++) {
+            Expression e = evaluatedExpressions.get(i);
+            assert e != null;
+            if (!erasureTypes(e).isEmpty()) {
+                positionsToDo.add(i);
+            } else {
+                newParameterExpressions[i] = e;
+                Map<NamedType, ParameterizedType> learned = e.parameterizedType().initialTypeParameterMap(runtime);
+                ParameterizedType formal = i < parameters.size() ? parameters.get(i).parameterizedType() :
+                        parameters.get(parameters.size() - 1).parameterizedType().copyWithOneFewerArrays();
+                Map<NamedType, ParameterizedType> inMethod = formal.forwardTypeParameterMap(runtime);
+                Map<NamedType, ParameterizedType> combined = genericsHelper.combineMaps(learned, inMethod);
+                if (!combined.isEmpty()) {
+                    cumulative = cumulative.merge(new TypeParameterMap(combined));
+                }
+                if (formal.typeParameter() != null) {
+                    Map<NamedType, ParameterizedType> map = Map.of(formal.typeParameter(), e.parameterizedType().copyWithoutArrays());
+                    cumulative = cumulative.merge(new TypeParameterMap(map));
+                }
+            }
+        }
+
+        for (int i : positionsToDo) {
+            Expression e = evaluatedExpressions.get(i);
+            assert e != null;
+
+            LOGGER.debug("Reevaluating erased expression on {}, pos {}", methodName, i);
+            ForwardType newForward = determineForwardReturnTypeInfo(method, i, outsideContext, cumulative);
+
+            Expression reParsed = context.resolver().parseHelper().parseExpression(context, index, newForward,
+                    expressions.get(i));
+            assert erasureTypes(reParsed).isEmpty();
+            newParameterExpressions[i] = reParsed;
+
+            Map<NamedType, ParameterizedType> learned = reParsed.parameterizedType().initialTypeParameterMap(runtime);
+            if (!learned.isEmpty()) {
+                cumulative = cumulative.merge(new TypeParameterMap(learned));
+            }
+            ParameterInfo pi = parameters.get(Math.min(i, parameters.size() - 1));
+            if (pi.parameterizedType().hasTypeParameters()) {
+                // try to reconcile the type parameters with the ones in reParsed, see Lambda_16
+                Map<NamedType, ParameterizedType> forward = pi.parameterizedType().forwardTypeParameterMap(runtime);
+                if (!forward.isEmpty()) {
+                    cumulative = cumulative.merge(new TypeParameterMap(forward));
+                }
+            }
+        }
+        return Arrays.stream(newParameterExpressions).toList();
+    }
+
+    private Candidate noCandidatesError(String methodName, Map<Integer, Expression> evaluatedExpressions) {
+        LOGGER.error("Evaluated expressions for {}: ", methodName);
+        evaluatedExpressions.forEach((i, expr) -> LOGGER.error("  {} = {}", i, expr));
+        LOGGER.error("No candidate found for {}", methodName);
+        return null;
+    }
 
     private record FilterResult(Map<Integer, Expression> evaluatedExpressions,
                                 Map<MethodInfo, Integer> compatibilityScore) {
@@ -275,29 +610,29 @@ public class MethodResolutionImpl {
      *
      * @param methodCandidates the candidates to sort
      * @return a list of size>1 when also candidate 1 is accessible... this will result in an error?
-     *
-    private List<MethodTypeParameterMap> sortRemainingCandidatesByShallowPublic(Map<MethodTypeParameterMap, Integer> methodCandidates) {
-    if (methodCandidates.size() > 1) {
-    Comparator<MethodTypeParameterMap> comparator =
-    (m1, m2) -> {
-    boolean m1Accessible = m1.methodInfo().analysisAccessible(typeContext);
-    boolean m2Accessible = m2.methodInfo().analysisAccessible(typeContext);
-    if (m1Accessible && !m2Accessible) return -1;
-    if (m2Accessible && !m1Accessible) return 1;
-    return 0; // don't know what to prioritize
-    };
-    List<MethodTypeParameterMap> sorted = new ArrayList<>(methodCandidates.keySet());
-    sorted.sort(comparator);
-    MethodTypeParameterMap m1 = sorted.get(1);
-    if (m1.methodInfo().analysisAccessible(typeContext)) {
-    return sorted;
-    }
-    return List.of(sorted.get(0));
-    }
-    // not two accessible
-    return List.copyOf(methodCandidates.keySet());
-    }
      */
+    private List<MethodTypeParameterMap> sortRemainingCandidatesByShallowPublic(Map<MethodTypeParameterMap, Integer> methodCandidates) {
+        if (methodCandidates.size() > 1) {
+            Comparator<MethodTypeParameterMap> comparator =
+                    (m1, m2) -> {
+                        boolean m1Accessible = m1.methodInfo().hasBeenAnalyzed();
+                        boolean m2Accessible = m2.methodInfo().hasBeenAnalyzed();
+                        if (m1Accessible && !m2Accessible) return -1;
+                        if (m2Accessible && !m1Accessible) return 1;
+                        return 0; // don't know what to prioritize
+                    };
+            List<MethodTypeParameterMap> sorted = new ArrayList<>(methodCandidates.keySet());
+            sorted.sort(comparator);
+            MethodTypeParameterMap m1 = sorted.get(1);
+            if (m1.methodInfo().hasBeenAnalyzed()) {
+                return sorted;
+            }
+            return List.of(sorted.get(0));
+        }
+        // not two accessible
+        return List.copyOf(methodCandidates.keySet());
+    }
+
     /**
      * Build the correct ForwardReturnTypeInfo to properly evaluate the argument at position i
      *
@@ -476,4 +811,14 @@ public class MethodResolutionImpl {
         return Set.copyOf(set);
     }
 
+
+    @Override
+    public GenericsHelper genericsHelper() {
+        return genericsHelper;
+    }
+
+    @Override
+    public HierarchyHelper hierarchyHelper() {
+        return hierarchyHelper;
+    }
 }

@@ -20,7 +20,7 @@ import java.util.Map;
 public class ContextImpl implements Context {
     private static final Logger LOGGER = LoggerFactory.getLogger(ContextImpl.class);
 
-    private record Data(Runtime runtime, Summary summary, GenericsHelper genericsHelper) {
+    private record Data(Runtime runtime, Summary summary, MethodResolution methodResolution) {
     }
 
     private final Data data;
@@ -33,16 +33,14 @@ public class ContextImpl implements Context {
     private final ForwardType typeOfEnclosingSwitchExpression;
     private final AnonymousTypeCounters anonymousTypeCounters;
 
-    public ContextImpl(Runtime runtime,
-                       Summary summary,
-                       GenericsHelper genericsHelper,
-                       Resolver resolver,
-                       TypeContext typeContext,
-                       VariableContext variableContext,
-                       AnonymousTypeCounters anonymousTypeCounters,
-                       ForwardType typeOfEnclosingSwitchExpression) {
-        this(new Data(runtime, summary, genericsHelper), null, null, null, resolver,
-                typeContext, variableContext, anonymousTypeCounters, typeOfEnclosingSwitchExpression);
+    public static Context create(Runtime runtime,
+                                 Summary summary,
+                                 Resolver resolver,
+                                 TypeContext typeContext) {
+        MethodResolutionImpl methodResolution = new MethodResolutionImpl(runtime, null);
+        return new ContextImpl(new Data(runtime, summary, methodResolution),
+                null, null, null, resolver,
+                typeContext, new VariableContextImpl(), new AnonymousTypeCountersImpl(), null);
     }
 
     private ContextImpl(Data data, TypeInfo enclosingType,
@@ -75,6 +73,10 @@ public class ContextImpl implements Context {
         return data.runtime;
     }
 
+    @Override
+    public MethodResolution methodResolution() {
+        return data.methodResolution;
+    }
 
     @Override
     public Resolver resolver() {
@@ -230,6 +232,6 @@ public class ContextImpl implements Context {
 
     @Override
     public GenericsHelper genericsHelper() {
-        return data.genericsHelper;
+        return data.methodResolution.genericsHelper();
     }
 }

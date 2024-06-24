@@ -7,6 +7,8 @@ import org.e2immu.language.cst.api.type.ParameterizedType;
 public interface ForwardType {
     MethodTypeParameterMap computeSAM(Runtime runtime, GenericsHelper genericsHelper, TypeInfo primaryType);
 
+    TypeParameterMap extra();
+
     boolean isVoid(Runtime runtime, GenericsHelper genericsHelper);
 
     ParameterizedType type();

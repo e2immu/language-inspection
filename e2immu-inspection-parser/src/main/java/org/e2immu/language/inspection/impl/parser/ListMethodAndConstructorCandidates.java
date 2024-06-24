@@ -265,30 +265,30 @@ public class ListMethodAndConstructorCandidates {
             }
             return expression;
         }
+    }
 
-        static Scope computeScope(Runtime runtime,
-                                  ParseHelper parseHelper,
-                                  Context context,
-                                  String index,
-                                  Object unparsedScope,
-                                  TypeParameterMap extra) {
-            ForwardType forward = new ForwardTypeImpl(null, false, extra);
-            Expression scope = parseHelper.parseExpression(context, index, forward, unparsedScope);
-            // depending on the object, we'll need to find the method somewhere
-            ParameterizedType scopeType;
-            ScopeNature scopeNature;
+    public Scope computeScope(ParseHelper parseHelper,
+                              Context context,
+                              String index,
+                              Object unparsedScope,
+                              TypeParameterMap extra) {
+        ForwardType forward = new ForwardTypeImpl(null, false, extra);
+        Expression scope = unparsedScope == null ? null
+                : parseHelper.parseExpression(context, index, forward, unparsedScope);
+        // depending on the object, we'll need to find the method somewhere
+        ParameterizedType scopeType;
+        ScopeNature scopeNature;
 
-            if (scope == null) {
-                scopeType = runtime.newParameterizedType(context.enclosingType(), 0);
-                scopeNature = ScopeNature.ABSENT; // could be static, could be object instance
-            } else {
-                scopeType = scope.parameterizedType();
-                scopeNature = scope instanceof TypeExpression ? ScopeNature.STATIC : ScopeNature.INSTANCE;
-            }
-            Map<NamedType, ParameterizedType> scopeTypeMap = scopeType.initialTypeParameterMap(runtime);
-            return new Scope(scope, scopeType, scopeNature, new TypeParameterMap(scopeTypeMap));
+        if (scope == null) {
+            scopeType = runtime.newParameterizedType(context.enclosingType(), 0);
+            scopeNature = ScopeNature.ABSENT; // could be static, could be object instance
+        } else {
+            scopeType = scope.parameterizedType();
+            scopeNature = scope instanceof TypeExpression ? ScopeNature.STATIC : ScopeNature.INSTANCE;
         }
-
+        Map<NamedType, ParameterizedType> scopeTypeMap = scopeType.initialTypeParameterMap(runtime);
+        return new Scope(scope, scopeType, scopeNature, new TypeParameterMap(scopeTypeMap));
     }
 
 }
+
