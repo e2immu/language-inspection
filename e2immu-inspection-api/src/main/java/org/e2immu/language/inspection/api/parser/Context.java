@@ -49,4 +49,6 @@ public interface Context {
     Summary summary();
 
     ParseHelper parseHelper();
+
+    GenericsHelper genericsHelper();
 }

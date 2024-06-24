@@ -10,4 +10,6 @@ public interface ForwardType {
     boolean isVoid(Runtime runtime, GenericsHelper genericsHelper);
 
     ParameterizedType type();
+
+    boolean erasure();
 }

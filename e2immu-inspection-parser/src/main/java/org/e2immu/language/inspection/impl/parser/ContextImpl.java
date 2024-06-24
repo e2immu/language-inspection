@@ -17,7 +17,7 @@ import org.slf4j.LoggerFactory;
 public class ContextImpl implements Context {
     private static final Logger LOGGER = LoggerFactory.getLogger(ContextImpl.class);
 
-    private record Data(Runtime runtime, Summary summary, Resolver resolver) {
+    private record Data(Runtime runtime, Summary summary, Resolver resolver, GenericsHelper genericsHelper) {
     }
 
     private final Data data;
@@ -32,11 +32,12 @@ public class ContextImpl implements Context {
     public ContextImpl(Runtime runtime,
                        Summary summary,
                        Resolver resolver,
+                       GenericsHelper genericsHelper,
                        TypeContext typeContext,
                        VariableContext variableContext,
                        AnonymousTypeCounters anonymousTypeCounters,
                        ForwardType typeOfEnclosingSwitchExpression) {
-        this(new Data(runtime, summary, resolver), null, null, null,
+        this(new Data(runtime, summary, resolver, genericsHelper), null, null, null,
                 typeContext, variableContext, anonymousTypeCounters, typeOfEnclosingSwitchExpression);
     }
 
@@ -204,5 +205,10 @@ public class ContextImpl implements Context {
     @Override
     public ParseHelper parseHelper() {
         return resolver().parseHelper();
+    }
+
+    @Override
+    public GenericsHelper genericsHelper() {
+        return data.genericsHelper;
     }
 }
