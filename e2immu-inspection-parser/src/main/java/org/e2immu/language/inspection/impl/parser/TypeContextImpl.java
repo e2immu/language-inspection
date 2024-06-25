@@ -10,7 +10,6 @@ import org.e2immu.language.cst.api.type.NamedType;
 import org.e2immu.language.cst.api.type.ParameterizedType;
 import org.e2immu.language.cst.api.variable.FieldReference;
 import org.e2immu.language.inspection.api.parser.ImportMap;
-import org.e2immu.language.inspection.api.parser.PackagePrefix;
 import org.e2immu.language.inspection.api.parser.TypeContext;
 import org.e2immu.language.inspection.api.resource.TypeMap;
 
@@ -299,7 +298,7 @@ public class TypeContextImpl implements TypeContext {
         // not adding the type to the context!!! the subtypes will be added by the inspector
     }
 
-    public boolean isPackagePrefix(PackagePrefix packagePrefix) {
+    public boolean isPackagePrefix(List<String> packagePrefix) {
         return typeMap.isPackagePrefix(packagePrefix);
     }
 

@@ -2,7 +2,8 @@ package org.e2immu.language.inspection.api.resource;
 
 import org.e2immu.language.cst.api.info.TypeInfo;
 import org.e2immu.language.inspection.api.InspectionState;
-import org.e2immu.language.inspection.api.parser.PackagePrefix;
+
+import java.util.List;
 
 /*
 Connects to the Resources maps.
@@ -23,7 +24,7 @@ public interface TypeMap {
 
     TypeInfo get(String name, boolean complain);
 
-    boolean isPackagePrefix(PackagePrefix packagePrefix);
+    boolean isPackagePrefix(List<String> components);
 
     String pathToFqn(String interfaceName);
 
