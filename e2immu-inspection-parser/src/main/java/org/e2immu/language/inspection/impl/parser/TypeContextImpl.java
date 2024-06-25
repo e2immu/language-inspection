@@ -10,69 +10,141 @@ import org.e2immu.language.cst.api.type.NamedType;
 import org.e2immu.language.cst.api.type.ParameterizedType;
 import org.e2immu.language.cst.api.variable.FieldReference;
 import org.e2immu.language.inspection.api.parser.ImportMap;
+import org.e2immu.language.inspection.api.parser.SourceTypes;
 import org.e2immu.language.inspection.api.parser.TypeContext;
-import org.e2immu.language.inspection.api.resource.TypeMap;
+import org.e2immu.language.inspection.api.resource.CompiledTypesManager;
+import org.e2immu.language.inspection.api.resource.Resources;
+import org.e2immu.language.inspection.api.resource.SourceFile;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-
+import java.net.URI;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 public class TypeContextImpl implements TypeContext {
-    private final TypeContextImpl parentContext;
+    private static final Logger LOGGER = LoggerFactory.getLogger(TypeContextImpl.class);
 
-    public final TypeMap.Builder typeMap;
-    public final CompilationUnit compilationUnit;
-    private final ImportMap importMap;
+    private record Data(CompiledTypesManager compiledTypesManager,
+                        SourceTypes sourceTypes,
+                        ImportMap importMap,
+                        CompilationUnit compilationUnit) {
+        Data withCompilationUnit(CompilationUnit cu) {
+            return new Data(compiledTypesManager, sourceTypes, new ImportMapImpl(), cu);
+        }
+    }
+
+    private final TypeContextImpl parentContext;
+    private final Data data;
     private final Map<String, NamedType> map = new HashMap<>();
 
-    public TypeContextImpl(TypeMap.Builder typeMap) {
-        this.parentContext = null;
-        this.compilationUnit = null;
-        this.importMap = new ImportMapImpl();
-        this.typeMap = typeMap;
+    /*
+    the packageInfo should already contain all the types of the current package
+     */
+    public TypeContextImpl(CompiledTypesManager compiledTypesManager, SourceTypes sourceTypes) {
+        this(null, new Data(compiledTypesManager, sourceTypes, null, null));
     }
 
-    public TypeContextImpl(TypeMap.Builder typeMap, CompilationUnit compilationUnit, ImportMap importMap) {
-        this.typeMap = typeMap;
-        this.importMap = importMap;
-        this.compilationUnit = compilationUnit;
-        this.parentContext = null;
-    }
-
-    public TypeContextImpl(TypeContext parentContext) {
-        this.typeMap = ((TypeContextImpl) parentContext).typeMap;
-        this.importMap = parentContext.importMap();
-        this.compilationUnit = parentContext.compilationUnit();
-        this.parentContext = (TypeContextImpl) parentContext;
+    private TypeContextImpl(TypeContextImpl parentContext, Data data) {
+        this.parentContext = parentContext;
+        this.data = data;
     }
 
     @Override
     public void addToImportMap(ImportStatement importStatement) {
         String fqn = importStatement.importString();
-        if (fqn.endsWith(".*")) {
-            throw new UnsupportedOperationException("NYI");
+        boolean isAsterisk = fqn.endsWith(".*");
+        if (importStatement.isStatic()) {
+            if (isAsterisk) {
+                TypeInfo typeInfo = loadTypeDoNotImport(fqn);
+                LOGGER.debug("Add import static wildcard {}", typeInfo);
+                addImportStaticWildcard(typeInfo);
+            } else {
+                int dot = fqn.lastIndexOf('.');
+                String typeOrSubTypeName = fqn.substring(0, dot);
+                String member = fqn.substring(dot + 1);
+                TypeInfo typeInfo = loadTypeDoNotImport(typeOrSubTypeName);
+                LOGGER.debug("Add import static, type {}, member {}", typeInfo, member);
+                addImportStatic(typeInfo, member);
+            }
         } else {
-            TypeInfo typeInfo = typeMap.get(fqn);
-            importMap.putTypeMap(fqn, typeInfo, false, true);
-            addToContext(typeInfo);
+            if (isAsterisk) {
+                importAsterisk(fqn);
+            } else {
+                TypeInfo typeInfo = loadTypeDoNotImport(fqn);
+                LOGGER.debug("Import of {}", fqn);
+                addImport(typeInfo, true, true);
+            }
         }
     }
 
+    private void importAsterisk(String fullyQualified) {
+        LOGGER.debug("Need to parse package {}", fullyQualified);
+        String packageName = data.compilationUnit.packageName();
+        if (!fullyQualified.equals(packageName)) { // would be our own package; they are already there
+            // we either have a type, a subtype, or a package
+            TypeInfo inSourceTypes = data.sourceTypes.get(fullyQualified);
+            if (inSourceTypes == null) {
+                // deal with package
+                data.sourceTypes.visit(fullyQualified.split("\\."), (expansion, typeInfoList) -> {
+                    for (TypeInfo typeInfo : typeInfoList) {
+                        if (typeInfo.fullyQualifiedName().equals(fullyQualified + "." + typeInfo.simpleName())) {
+                            addImport(typeInfo, false, false);
+                        }
+                    }
+                });
+            } else {
+                // we must import all subtypes, but we will do that lazily
+                addImportWildcard(inSourceTypes);
+            }
+            data.compiledTypesManager.classPath().expandLeaves(fullyQualified, ".class", (expansion, urls) -> {
+                String leaf = expansion[expansion.length - 1];
+                if (!leaf.contains("$")) {
+                    // primary type
+                    String simpleName = Resources.stripDotClass(leaf);
+                    URI uri = urls.get(0);
+                    TypeInfo newTypeInfo = data.compiledTypesManager.load(new SourceFile(fullyQualified, uri));
+                    LOGGER.debug("Registering inspection handler for {}", newTypeInfo);
+                    addImport(newTypeInfo, false, false);
+                }
+            });
+        }
+    }
+
+
+    private TypeInfo loadTypeDoNotImport(String fqn) {
+        TypeInfo inSourceTypes = data.sourceTypes.get(fqn);
+        if (inSourceTypes != null) {
+            return inSourceTypes;
+        }
+        TypeInfo compiled = data.compiledTypesManager.get(fqn);
+        if (compiled != null) {
+            if (!compiled.hasBeenInspected()) {
+                data.compiledTypesManager.ensureInspection(compiled);
+            }
+            return compiled;
+        }
+        SourceFile path = data.compiledTypesManager.fqnToPath(fqn, ".class");
+        if (path == null) {
+            LOGGER.error("ERROR: Cannot find type '{}'", fqn);
+            throw new UnsupportedOperationException(fqn);
+        }
+        return data.compiledTypesManager.load(path);
+    }
+
     @Override
-    public TypeContext newCompilationUnit(TypeMap.Builder typeMap, CompilationUnit compilationUnit) {
-        return new TypeContextImpl(typeMap, compilationUnit, new ImportMapImpl());
+    public TypeContext newCompilationUnit(CompilationUnit compilationUnit) {
+        return new TypeContextImpl(null, data.withCompilationUnit(compilationUnit));
     }
 
     @Override
     public ImportMap importMap() {
-        return importMap;
+        return data.importMap;
     }
 
     @Override
     public CompilationUnit compilationUnit() {
-        return compilationUnit;
+        return data.compilationUnit;
     }
 
     /**
@@ -84,20 +156,20 @@ public class TypeContextImpl implements TypeContext {
     private TypeInfo getFullyQualified(String fullyQualifiedName, boolean complain) {
         TypeInfo typeInfo = internalGetFullyQualified(fullyQualifiedName, complain);
         if (typeInfo != null) {
-            typeMap.ensureInspection(typeInfo);
+            data.compiledTypesManager.ensureInspection(typeInfo);
         }
         return typeInfo;
     }
 
     private TypeInfo internalGetFullyQualified(String fullyQualifiedName, boolean complain) {
-        TypeInfo typeInfo = typeMap.get(fullyQualifiedName);
+        TypeInfo typeInfo = data.compiledTypesManager.get(fullyQualifiedName);
         if (typeInfo == null) {
             // see InspectionGaps_9: we don't have the type, but we do have an import of its enclosing type
-            TypeInfo imported = importMap.isImported(fullyQualifiedName);
+            TypeInfo imported = data.importMap.isImported(fullyQualifiedName);
             if (imported != null) {
                 return imported;
             }
-            return typeMap.getOrCreate(fullyQualifiedName, complain);
+            return data.compiledTypesManager.getOrCreate(fullyQualifiedName, complain);
         }
         return typeInfo;
     }
@@ -107,8 +179,10 @@ public class TypeContextImpl implements TypeContext {
     public NamedType get(String name, boolean complain) {
         NamedType simple = getSimpleName(name);
         if (simple != null) {
-            if (simple instanceof TypeInfo typeInfo) {
-                typeMap.ensureInspection(typeInfo);
+            if (simple instanceof TypeInfo typeInfo && !typeInfo.hasBeenInspected()) {
+                if (!data.sourceTypes.isKnown(typeInfo)) {
+                    data.compiledTypesManager.ensureInspection(typeInfo);
+                }
             }
             return simple;
         }
@@ -129,11 +203,11 @@ public class TypeContextImpl implements TypeContext {
             throw new UnsupportedOperationException("?");
         }
         // try out java.lang; has been preloaded
-        TypeInfo inJavaLang = typeMap.get("java.lang." + name);
+        TypeInfo inJavaLang = data.compiledTypesManager.get("java.lang." + name);
         if (inJavaLang != null) return inJavaLang;
 
         // go fully qualified using the package
-        String fqn = compilationUnit.packageName() + "." + name;
+        String fqn = data.compilationUnit.packageName() + "." + name;
         return getFullyQualified(fqn, complain);
     }
 
@@ -145,7 +219,7 @@ public class TypeContextImpl implements TypeContext {
         }
 
         // explicit imports
-        TypeInfo fromImport = importMap.getSimpleName(name);
+        TypeInfo fromImport = data.importMap.getSimpleName(name);
         if (fromImport != null) {
             return fromImport;
         }
@@ -162,24 +236,24 @@ public class TypeContextImpl implements TypeContext {
         On-demand: subtype from import statement (see e.g. Import_2)
         This is done on-demand to fight cyclic dependencies if we do eager inspection.
          */
-        TypeInfo parent = importMap.getStaticMemberToTypeInfo(name);
+        TypeInfo parent = data.importMap.getStaticMemberToTypeInfo(name);
         if (parent != null) {
             TypeInfo subType = parent.subTypes()
                     .stream().filter(st -> name.equals(st.simpleName())).findFirst().orElse(null);
             if (subType != null) {
-                importMap.putTypeMap(subType.fullyQualifiedName(), subType, false, false);
+                data.importMap.putTypeMap(subType.fullyQualifiedName(), subType, false, false);
                 return subType;
             }
         }
         /*
         On-demand: try to resolve the * imports registered in this type context
          */
-        for (TypeInfo wildcard : importMap.importAsterisk()) {
+        for (TypeInfo wildcard : data.importMap.importAsterisk()) {
             // the call to getTypeInspection triggers the JavaParser
             TypeInfo subType = wildcard.subTypes()
                     .stream().filter(st -> name.equals(st.simpleName())).findFirst().orElse(null);
             if (subType != null) {
-                importMap.putTypeMap(subType.fullyQualifiedName(), subType, false, false);
+                data.importMap.putTypeMap(subType.fullyQualifiedName(), subType, false, false);
                 return subType;
             }
         }
@@ -208,51 +282,21 @@ public class TypeContextImpl implements TypeContext {
 
     @Override
     public TypeContext newTypeContext() {
-        return new TypeContextImpl(this);
-    }
-
-
-    private List<TypeInfo> extractTypeInfo(Runtime runtime,
-                                           ParameterizedType typeOfObject,
-                                           Map<NamedType, ParameterizedType> typeMap) {
-        TypeInfo typeInfo;
-        if (typeOfObject.typeInfo() == null) {
-            if (typeOfObject.typeParameter() == null) {
-                throw new UnsupportedOperationException();
-            }
-            ParameterizedType pt = typeMap.get(typeOfObject.typeParameter());
-            if (pt == null) {
-                // rather than give an exception here, we replace t by the type that it extends, so that we can find those methods
-                // in the case that there is no explicit extension/super, we replace it by the implicit Object
-                List<ParameterizedType> typeBounds = typeOfObject.typeParameter().typeBounds();
-                if (!typeBounds.isEmpty()) {
-                    return typeBounds.stream().flatMap(bound -> extractTypeInfo(runtime, bound, typeMap).stream())
-                            .collect(Collectors.toList());
-                } else {
-                    typeInfo = runtime.objectTypeInfo();
-                }
-            } else {
-                typeInfo = pt.typeInfo();
-            }
-        } else {
-            typeInfo = typeOfObject.typeInfo();
-        }
-        assert typeInfo != null;
-        this.typeMap.ensureInspection(typeInfo);
-        return List.of(typeInfo);
+        return new TypeContextImpl(this, data);
     }
 
     public void addImportStaticWildcard(TypeInfo typeInfo) {
-        importMap.addStaticAsterisk(typeInfo);
+        data.importMap.addStaticAsterisk(typeInfo);
     }
 
     public void addImportStatic(TypeInfo typeInfo, String member) {
-        importMap.putStaticMemberToTypeInfo(member, typeInfo);
+        data.importMap.putStaticMemberToTypeInfo(member, typeInfo);
     }
 
+    @Override
     public Map<String, FieldReference> staticFieldImports(Runtime runtime) {
         Map<String, FieldReference> map = new HashMap<>();
-        for (Map.Entry<String, TypeInfo> entry : importMap.staticMemberToTypeInfoEntrySet()) {
+        for (Map.Entry<String, TypeInfo> entry : data.importMap.staticMemberToTypeInfoEntrySet()) {
             TypeInfo typeInfo = entry.getValue();
             String memberName = entry.getKey();
             typeInfo.fields().stream()
@@ -261,7 +305,7 @@ public class TypeContextImpl implements TypeContext {
                     .findFirst()
                     .ifPresent(fieldInfo -> map.put(memberName, runtime.newFieldReference(fieldInfo)));
         }
-        for (TypeInfo typeInfo : importMap.staticAsterisk()) {
+        for (TypeInfo typeInfo : data.importMap.staticAsterisk()) {
             typeInfo.fields().stream()
                     .filter(FieldInfo::isStatic)
                     .forEach(fieldInfo -> map.put(fieldInfo.name(), runtime.newFieldReference(fieldInfo)));
@@ -270,22 +314,24 @@ public class TypeContextImpl implements TypeContext {
     }
 
     public void addImport(TypeInfo typeInfo, boolean highPriority, boolean directImport) {
-        importMap.putTypeMap(typeInfo.fullyQualifiedName(), typeInfo, highPriority, directImport);
+        data.importMap.putTypeMap(typeInfo.fullyQualifiedName(), typeInfo, highPriority, directImport);
         if (!directImport) {
             addToContext(typeInfo, highPriority);
         }
     }
 
     public void addImportWildcard(TypeInfo typeInfo) {
-        importMap.addToSubtypeAsterisk(typeInfo);
+        data.importMap.addToSubtypeAsterisk(typeInfo);
         // not adding the type to the context!!! the subtypes will be added by the inspector
     }
 
-    public boolean isPackagePrefix(List<String> packagePrefix) {
-        return typeMap.isPackagePrefix(packagePrefix);
+    @Override
+    public TypeContext newAnonymousClassBody(TypeInfo baseType) {
+        recursivelyAddVisibleSubTypes(baseType);
+        return new TypeContextImpl(this, data);
     }
 
-    public void recursivelyAddVisibleSubTypes(TypeInfo typeInfo) {
+    private void recursivelyAddVisibleSubTypes(TypeInfo typeInfo) {
         typeInfo.subTypes()
                 .stream().filter(st -> !typeInfo.access().isPrivate())
                 .forEach(this::addToContext);

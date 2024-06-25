@@ -4,8 +4,12 @@ import org.e2immu.annotation.NotNull;
 import org.e2immu.language.cst.api.element.CompilationUnit;
 import org.e2immu.language.cst.api.element.ImportStatement;
 import org.e2immu.language.cst.api.info.TypeInfo;
+import org.e2immu.language.cst.api.runtime.Runtime;
 import org.e2immu.language.cst.api.type.NamedType;
+import org.e2immu.language.cst.api.variable.FieldReference;
 import org.e2immu.language.inspection.api.resource.TypeMap;
+
+import java.util.Map;
 
 /*
 NOT to be used by byte code inspection: exclusive to parser system!
@@ -13,8 +17,11 @@ NOT to be used by byte code inspection: exclusive to parser system!
 public interface TypeContext {
     void addToImportMap(ImportStatement importStatement);
 
-    // including new import map
-    TypeContext newCompilationUnit(TypeMap.Builder typeMap, CompilationUnit compilationUnit);
+    TypeContext newCompilationUnit(CompilationUnit compilationUnit);
+
+    Map<String, FieldReference> staticFieldImports(Runtime runtime);
+
+    TypeContext newAnonymousClassBody(TypeInfo baseType);
 
     ImportMap importMap();
 

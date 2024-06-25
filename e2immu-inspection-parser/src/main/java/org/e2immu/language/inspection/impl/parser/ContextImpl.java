@@ -38,8 +38,7 @@ public class ContextImpl implements Context {
                                  Summary summary,
                                  Resolver resolver,
                                  TypeContext typeContext) {
-        ImportMap importMap = Objects.requireNonNull(typeContext.importMap());
-        MethodResolutionImpl methodResolution = new MethodResolutionImpl(runtime, importMap);
+        MethodResolutionImpl methodResolution = new MethodResolutionImpl(runtime);
         return new ContextImpl(new Data(runtime, summary, methodResolution),
                 null, null, null, resolver,
                 typeContext, new VariableContextImpl(), new AnonymousTypeCountersImpl(), null);
@@ -134,8 +133,8 @@ public class ContextImpl implements Context {
         return typeOfEnclosingSwitchExpression;
     }
 
-    public ContextImpl newCompilationUnit(Resolver resolver, TypeMap.Builder typeMap, CompilationUnit compilationUnit) {
-        TypeContext typeContext = typeContext().newCompilationUnit(typeMap, compilationUnit);
+    public ContextImpl newCompilationUnit(CompilationUnit compilationUnit) {
+        TypeContext typeContext = typeContext().newCompilationUnit(compilationUnit);
         return new ContextImpl(data, null, null, null, resolver,
                 typeContext, variableContext.newEmpty(), anonymousTypeCounters.newEmpty(), null);
     }
@@ -213,9 +212,19 @@ public class ContextImpl implements Context {
     }
 
     @Override
-    public Context newResolver() {
-        return new ContextImpl(data, enclosingType, enclosingMethod, enclosingField, resolver.newEmpty(), typeContext,
-                variableContext, anonymousTypeCounters, typeOfEnclosingSwitchExpression);
+    public Context newAnonymousClassBody() {
+        TypeContext newTypeContext = typeContext.newAnonymousClassBody(enclosingType);
+        VariableContext newVariableContext = variableContext.newVariableContext();
+        return new ContextImpl(data, enclosingType, enclosingMethod, enclosingField, resolver.newEmpty(), newTypeContext,
+                newVariableContext, anonymousTypeCounters, typeOfEnclosingSwitchExpression);
+    }
+
+    @Override
+    public Context newTypeBody() {
+        VariableContext newVariableContext = variableContext.newEmpty();
+        typeContext.staticFieldImports(runtime()).values().forEach(newVariableContext::add);
+        return new ContextImpl(data, enclosingType, enclosingMethod, enclosingField, resolver, typeContext,
+                newVariableContext, anonymousTypeCounters, typeOfEnclosingSwitchExpression);
     }
 
     @Override

@@ -2,6 +2,7 @@ package org.e2immu.language.inspection.resource;
 
 import org.e2immu.language.inspection.api.resource.Resources;
 import org.e2immu.language.inspection.api.resource.SourceFile;
+import org.e2immu.util.internal.util.Trie;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

@@ -3,7 +3,7 @@ package org.e2immu.language.inspection.resource;
 import org.e2immu.language.cst.api.info.TypeInfo;
 import org.e2immu.language.cst.api.runtime.Runtime;
 import org.e2immu.language.inspection.api.resource.*;
-import org.e2immu.language.inspection.resource.Trie;
+import org.e2immu.util.internal.util.Trie;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

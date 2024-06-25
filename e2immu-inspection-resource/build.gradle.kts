@@ -33,6 +33,7 @@ dependencies {
     implementation("org.e2immu:e2immu-cst-api:some.version")
     implementation("org.e2immu:e2immu-inspection-api:some.version")
     implementation("org.e2immu:e2immu-external-support:some.version")
+    implementation("org.e2immu:e2immu-internal-util:some.version")
     implementation("org.slf4j:slf4j-api:2.0.7")
 
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.9.3")

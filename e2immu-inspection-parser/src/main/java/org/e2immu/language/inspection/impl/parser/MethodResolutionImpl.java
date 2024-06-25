@@ -26,14 +26,12 @@ public class MethodResolutionImpl implements MethodResolution {
     private final GenericsHelper genericsHelper;
     private final HierarchyHelper hierarchyHelper;
     private final int notAssignable;
-    private final ListMethodAndConstructorCandidates listMethodAndConstructorCandidates;
 
-    public MethodResolutionImpl(Runtime runtime, ImportMap importMap) {
+    public MethodResolutionImpl(Runtime runtime) {
         this.runtime = runtime;
         this.genericsHelper = new GenericsHelperImpl(runtime);
         this.hierarchyHelper = new HierarchyHelperImpl();
         notAssignable = runtime.isNotAssignable();
-        listMethodAndConstructorCandidates = new ListMethodAndConstructorCandidates(runtime, importMap);
     }
 
 
@@ -43,10 +41,14 @@ public class MethodResolutionImpl implements MethodResolution {
                                                String methodName,
                                                Object unparsedScope,
                                                List<Object> unparsedArguments) {
-        ListMethodAndConstructorCandidates.Scope scope = listMethodAndConstructorCandidates
+        // we must create it here, because the importMap only exists once we're parsing a compilation unit
+        ListMethodAndConstructorCandidates list = new ListMethodAndConstructorCandidates(runtime,
+                context.typeContext().importMap());
+        ListMethodAndConstructorCandidates.Scope scope = list
                 .computeScope(context.parseHelper(), context, index, unparsedScope, TypeParameterMap.EMPTY);
         int numArguments = unparsedArguments.size();
-        Map<MethodTypeParameterMap, Integer> methodCandidates = initialMethodCandidates(scope, numArguments, methodName);
+        Map<MethodTypeParameterMap, Integer> methodCandidates = initialMethodCandidates(list, scope, numArguments,
+                methodName);
 
         FilterResult filterResult = filterMethodCandidatesInErasureMode(context, methodCandidates, unparsedArguments);
         if (methodCandidates.size() > 1) {
@@ -80,12 +82,22 @@ public class MethodResolutionImpl implements MethodResolution {
     }
 
     @Override
-    public Expression resolveMethod(Context context, List<Comment> comments, Source source, String index, ForwardType forwardType,
-                                    String methodName, Object unparsedScope, List<Object> unparsedArguments) {
-        ListMethodAndConstructorCandidates.Scope scope = listMethodAndConstructorCandidates
+    public Expression resolveMethod(Context context,
+                                    List<Comment> comments,
+                                    Source source,
+                                    String index,
+                                    ForwardType forwardType,
+                                    String methodName,
+                                    Object unparsedScope,
+                                    List<Object> unparsedArguments) {
+        // we must create it here, because the importMap only exists once we're parsing a compilation unit
+        ListMethodAndConstructorCandidates list = new ListMethodAndConstructorCandidates(runtime,
+                context.typeContext().importMap());
+        ListMethodAndConstructorCandidates.Scope scope = list
                 .computeScope(context.parseHelper(), context, index, unparsedScope, TypeParameterMap.EMPTY);
         int numArguments = unparsedArguments.size();
-        Map<MethodTypeParameterMap, Integer> methodCandidates = initialMethodCandidates(scope, numArguments, methodName);
+        Map<MethodTypeParameterMap, Integer> methodCandidates = initialMethodCandidates(list, scope, numArguments,
+                methodName);
         if (methodCandidates.isEmpty()) {
             throw new Summary.ParseException(context.info(), "No method candidates for " + methodName
                                                              + ", " + numArguments + " arg(s)");
@@ -130,11 +142,12 @@ public class MethodResolutionImpl implements MethodResolution {
         }
     }
 
-    private Map<MethodTypeParameterMap, Integer> initialMethodCandidates(ListMethodAndConstructorCandidates.Scope scope,
+    private Map<MethodTypeParameterMap, Integer> initialMethodCandidates(ListMethodAndConstructorCandidates list,
+                                                                         ListMethodAndConstructorCandidates.Scope scope,
                                                                          int numArguments,
                                                                          String methodName) {
         Map<MethodTypeParameterMap, Integer> methodCandidates = new HashMap<>();
-        listMethodAndConstructorCandidates.recursivelyResolveOverloadedMethods(scope.type(), methodName,
+        list.recursivelyResolveOverloadedMethods(scope.type(), methodName,
                 numArguments, false, scope.typeParameterMap().map(), methodCandidates,
                 scope.nature());
         if (methodCandidates.isEmpty()) {

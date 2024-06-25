@@ -8,7 +8,6 @@ import org.e2immu.language.cst.api.info.TypeInfo;
 import org.e2immu.language.cst.api.runtime.Runtime;
 import org.e2immu.language.cst.api.type.NamedType;
 import org.e2immu.language.cst.api.type.ParameterizedType;
-import org.e2immu.language.inspection.api.resource.TypeMap;
 
 import java.util.Map;
 
@@ -31,7 +30,7 @@ public interface Context {
 
     MethodResolution methodResolution();
 
-    Context newCompilationUnit(Resolver resolver, TypeMap.Builder typeMap, CompilationUnit compilationUnit);
+    Context newCompilationUnit(CompilationUnit compilationUnit);
 
     Context newLambdaContext(MethodInfo sam);
 
@@ -41,9 +40,11 @@ public interface Context {
                                boolean erasure, Map<NamedType,
             ParameterizedType> typeParameterMap);
 
-    Context newResolver();
+    Context newAnonymousClassBody();
 
     Context newSubType(TypeInfo typeInfo);
+
+    Context newTypeBody();
 
     Context newVariableContext(String reason, VariableContext variableContext);
 
