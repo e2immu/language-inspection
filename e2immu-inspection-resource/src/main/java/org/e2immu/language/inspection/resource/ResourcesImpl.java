@@ -1,5 +1,6 @@
 package org.e2immu.language.inspection.resource;
 
+import org.e2immu.language.cst.api.info.TypeInfo;
 import org.e2immu.language.inspection.api.resource.Resources;
 import org.e2immu.language.inspection.api.resource.SourceFile;
 import org.e2immu.util.internal.util.Trie;
@@ -193,6 +194,12 @@ public class ResourcesImpl implements Resources {
     }
 
     @Override
+    public SourceFile sourceFileOfSubType(TypeInfo subType, String suffix) {
+        // TODO can be made much more efficient
+        return fqnToPath(subType.fullyQualifiedName(), suffix);
+    }
+
+    @Override
     public SourceFile fqnToPath(String fqn, String extension) {
         String[] splitDot = fqn.split("\\.");
         for (int i = 1; i < splitDot.length; i++) {
@@ -212,7 +219,9 @@ public class ResourcesImpl implements Resources {
         return null;
     }
 
-    public static String pathToFqn(String path) {
+    // could have been static, but allows for overrides
+    @Override
+    public String pathToFqn(String path) {
         String stripDotClass = Resources.stripDotClass(path);
         if (stripDotClass.endsWith("$")) {
             // scala

@@ -1,12 +1,16 @@
 package org.e2immu.language.inspection.resource;
 
 import org.e2immu.language.cst.api.info.TypeInfo;
+import org.e2immu.language.cst.api.runtime.Runtime;
 import org.e2immu.language.inspection.api.resource.ByteCodeInspector;
 import org.e2immu.language.inspection.api.resource.CompiledTypesManager;
 import org.e2immu.language.inspection.api.resource.Resources;
 import org.e2immu.language.inspection.api.resource.SourceFile;
 
 public class CompiledTypesManagerImpl implements CompiledTypesManager {
+    public CompiledTypesManagerImpl(Runtime runtime, Resources classPath) {
+    }
+
     @Override
     public ByteCodeInspector byteCodeInspector() {
         return null;
@@ -45,6 +49,9 @@ public class CompiledTypesManagerImpl implements CompiledTypesManager {
     @Override
     public TypeInfo load(SourceFile path) {
         return null;
+    }
+
+    public void setByteCodeInspector(ByteCodeInspector byteCodeInspector) {
     }
 
     @Override

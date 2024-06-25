@@ -1,5 +1,7 @@
 package org.e2immu.language.inspection.api.resource;
 
+import org.e2immu.language.cst.api.info.TypeInfo;
+
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
@@ -16,6 +18,10 @@ public interface Resources {
     }
 
     void addDirectoryFromFileSystem(File base);
+
+    String pathToFqn(String name);
+
+    SourceFile sourceFileOfSubType(TypeInfo subType, String s);
 
     record JarSize(int entries, int bytes) {
     }

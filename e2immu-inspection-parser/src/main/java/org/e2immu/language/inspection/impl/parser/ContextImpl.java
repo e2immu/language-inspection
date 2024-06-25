@@ -10,12 +10,10 @@ import org.e2immu.language.cst.api.type.NamedType;
 import org.e2immu.language.cst.api.type.ParameterizedType;
 
 import org.e2immu.language.inspection.api.parser.*;
-import org.e2immu.language.inspection.api.resource.TypeMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Map;
-import java.util.Objects;
 
 
 public class ContextImpl implements Context {

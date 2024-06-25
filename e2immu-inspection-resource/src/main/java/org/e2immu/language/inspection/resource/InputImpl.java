@@ -30,7 +30,7 @@ public record InputImpl(InputConfiguration inputConfiguration,
                         Resources classPath,
                         Map<TypeInfo, URI> sourceTypeMap,
                         Trie<TypeInfo> sourceTypeTrie,
-                        TypeMap typeMap) implements Input {
+                        CompiledTypesManager compiledTypesManager) implements Input {
 
 
     private static final Logger LOGGER = LoggerFactory.getLogger(Input.class);
@@ -78,7 +78,7 @@ public record InputImpl(InputConfiguration inputConfiguration,
 
     public static Input createNext(InputConfiguration configuration,
                                    Resources classPath,
-                                   TypeMap typeMap,
+                                   CompiledTypesManager compiledTypesManager,
                                    ByteCodeInspector byteCodeInspector) throws IOException {
         Resources sourcePath = assemblePath(configuration, false, "Source path",
                 configuration.sources());
@@ -109,7 +109,7 @@ public record InputImpl(InputConfiguration inputConfiguration,
 
     private static Map<TypeInfo, URI> computeSourceURLs(Runtime runtime,
                                                         Resources sourcePath,
-                                                        TypeMap typeMap,
+                                                        CompiledTypesManager compiledTypesManager,
                                                         List<String> restrictions,
                                                         Trie<TypeInfo> trie,
                                                         String what) {
@@ -156,7 +156,7 @@ public record InputImpl(InputConfiguration inputConfiguration,
      * if not, the method will have little effect and no classes beyond the ones from
      * <code>initializeClassPath</code> will be present
      */
-    public static void preload(TypeMap typeMap,
+    public static void preload(CompiledTypesManager compiledTypesManager,
                                Resources classPath,
                                String thePackage) {
         LOGGER.info("Start pre-loading {}", thePackage);
