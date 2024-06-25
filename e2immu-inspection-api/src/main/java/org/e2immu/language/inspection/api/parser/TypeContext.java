@@ -7,25 +7,21 @@ import org.e2immu.language.cst.api.info.TypeInfo;
 import org.e2immu.language.cst.api.type.NamedType;
 import org.e2immu.language.inspection.api.resource.TypeMap;
 
+/*
+NOT to be used by byte code inspection: exclusive to parser system!
+ */
 public interface TypeContext {
     void addToImportMap(ImportStatement importStatement);
 
     // including new import map
     TypeContext newCompilationUnit(TypeMap.Builder typeMap, CompilationUnit compilationUnit);
 
-    TypeMap.Builder typeMap();
-
     ImportMap importMap();
 
     CompilationUnit compilationUnit();
 
-    TypeInfo getFullyQualified(Class<?> clazz);
-
-    TypeInfo getFullyQualified(String fullyQualifiedName, boolean complain);
-
+    // name can be fully qualified
     NamedType get(String name, boolean complain);
-
-    boolean isKnown(String fullyQualified);
 
     void addToContext(@NotNull NamedType namedType);
 

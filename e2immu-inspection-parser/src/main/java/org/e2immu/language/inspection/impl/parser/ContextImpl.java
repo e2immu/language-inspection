@@ -15,6 +15,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Map;
+import java.util.Objects;
 
 
 public class ContextImpl implements Context {
@@ -37,7 +38,8 @@ public class ContextImpl implements Context {
                                  Summary summary,
                                  Resolver resolver,
                                  TypeContext typeContext) {
-        MethodResolutionImpl methodResolution = new MethodResolutionImpl(runtime, null);
+        ImportMap importMap = Objects.requireNonNull(typeContext.importMap());
+        MethodResolutionImpl methodResolution = new MethodResolutionImpl(runtime, importMap);
         return new ContextImpl(new Data(runtime, summary, methodResolution),
                 null, null, null, resolver,
                 typeContext, new VariableContextImpl(), new AnonymousTypeCountersImpl(), null);

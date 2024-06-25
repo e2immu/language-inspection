@@ -17,6 +17,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 public class MethodResolutionImpl implements MethodResolution {
@@ -306,7 +307,7 @@ public class MethodResolutionImpl implements MethodResolution {
         for (int i = 0; i < expressions.size(); i++) {
             Expression e = evaluatedExpressions.get(i);
             assert e != null;
-            if (!erasureTypes(e).isEmpty()) {
+            if (containsErasedExpressions(e)) {
                 positionsToDo.add(i);
             } else {
                 newParameterExpressions[i] = e;
@@ -334,7 +335,7 @@ public class MethodResolutionImpl implements MethodResolution {
 
             Expression reParsed = context.resolver().parseHelper().parseExpression(context, index, newForward,
                     expressions.get(i));
-            assert erasureTypes(reParsed).isEmpty();
+            assert !containsErasedExpressions(reParsed);
             newParameterExpressions[i] = reParsed;
 
             Map<NamedType, ParameterizedType> learned = reParsed.parameterizedType().initialTypeParameterMap(runtime);
@@ -800,11 +801,24 @@ public class MethodResolutionImpl implements MethodResolution {
         return value;
     }
 
+    private static boolean containsErasedExpressions(Expression start) {
+        AtomicBoolean found = new AtomicBoolean();
+        start.visit(e -> {
+            if (e instanceof ErasedExpression) {
+                found.set(true);
+            }
+            return !found.get();
+        });
+        return found.get();
+    }
+
     private static Set<ParameterizedType> erasureTypes(Expression start) {
         Set<ParameterizedType> set = new HashSet<>();
         start.visit(e -> {
             if (e instanceof ErasedExpression erasedExpression) {
                 set.addAll(erasedExpression.erasureTypes());
+            } else if (e instanceof Expression expr) {
+                set.add(expr.parameterizedType());
             }
             return true;
         });

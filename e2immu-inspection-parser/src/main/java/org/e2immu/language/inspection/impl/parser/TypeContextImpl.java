@@ -30,7 +30,7 @@ public class TypeContextImpl implements TypeContext {
     public TypeContextImpl(TypeMap.Builder typeMap) {
         this.parentContext = null;
         this.compilationUnit = null;
-        this.importMap = null;
+        this.importMap = new ImportMapImpl();
         this.typeMap = typeMap;
     }
 
@@ -42,7 +42,7 @@ public class TypeContextImpl implements TypeContext {
     }
 
     public TypeContextImpl(TypeContext parentContext) {
-        this.typeMap = parentContext.typeMap();
+        this.typeMap = ((TypeContextImpl) parentContext).typeMap;
         this.importMap = parentContext.importMap();
         this.compilationUnit = parentContext.compilationUnit();
         this.parentContext = (TypeContextImpl) parentContext;
@@ -54,7 +54,7 @@ public class TypeContextImpl implements TypeContext {
         if (fqn.endsWith(".*")) {
             throw new UnsupportedOperationException("NYI");
         } else {
-            TypeInfo typeInfo = typeMap().get(fqn);
+            TypeInfo typeInfo = typeMap.get(fqn);
             importMap.putTypeMap(fqn, typeInfo, false, true);
             addToContext(typeInfo);
         }
@@ -63,11 +63,6 @@ public class TypeContextImpl implements TypeContext {
     @Override
     public TypeContext newCompilationUnit(TypeMap.Builder typeMap, CompilationUnit compilationUnit) {
         return new TypeContextImpl(typeMap, compilationUnit, new ImportMapImpl());
-    }
-
-    @Override
-    public TypeMap.Builder typeMap() {
-        return typeMap;
     }
 
     @Override
@@ -80,20 +75,13 @@ public class TypeContextImpl implements TypeContext {
         return compilationUnit;
     }
 
-
-    @Override
-    public TypeInfo getFullyQualified(Class<?> clazz) {
-        return getFullyQualified(clazz.getCanonicalName(), true);
-    }
-
     /**
      * Look up a type by FQN. Ensure that the type has been inspected.
      *
      * @param fullyQualifiedName the fully qualified name, such as java.lang.String
      * @return the type
      */
-    @Override
-    public TypeInfo getFullyQualified(String fullyQualifiedName, boolean complain) {
+    private TypeInfo getFullyQualified(String fullyQualifiedName, boolean complain) {
         TypeInfo typeInfo = internalGetFullyQualified(fullyQualifiedName, complain);
         if (typeInfo != null) {
             typeMap.ensureInspection(typeInfo);
@@ -196,11 +184,6 @@ public class TypeContextImpl implements TypeContext {
             }
         }
         return null;
-    }
-
-    @Override
-    public boolean isKnown(String fullyQualified) {
-        return typeMap.get(fullyQualified) != null;
     }
 
     @Override
