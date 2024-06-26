@@ -103,7 +103,8 @@ public class TypeContextImpl implements TypeContext {
                     // primary type
                     String simpleName = Resources.stripDotClass(leaf);
                     URI uri = urls.get(0);
-                    TypeInfo newTypeInfo = data.compiledTypesManager.load(new SourceFile(fullyQualified, uri));
+                    TypeInfo newTypeInfo = data.compiledTypesManager.load(new SourceFile(fullyQualified, uri))
+                            .stream().filter(t -> fullyQualified.equals(t.fullyQualifiedName())).findFirst().orElseThrow();
                     LOGGER.debug("Registering inspection handler for {}", newTypeInfo);
                     addImport(newTypeInfo, false, false);
                 }
@@ -129,7 +130,8 @@ public class TypeContextImpl implements TypeContext {
             LOGGER.error("ERROR: Cannot find type '{}'", fqn);
             throw new UnsupportedOperationException(fqn);
         }
-        return data.compiledTypesManager.load(path);
+        return data.compiledTypesManager.load(path)
+                .stream().filter(t -> fqn.equals(t.fullyQualifiedName())).findFirst().orElseThrow();
     }
 
     @Override
@@ -169,7 +171,11 @@ public class TypeContextImpl implements TypeContext {
             if (imported != null) {
                 return imported;
             }
-            return data.compiledTypesManager.getOrCreate(fullyQualifiedName, complain);
+            TypeInfo ti = data.compiledTypesManager.getOrLoad(fullyQualifiedName);
+            if (complain && ti == null) {
+                throw new UnsupportedOperationException("Cannot find " + fullyQualifiedName);
+            }
+            return ti;
         }
         return typeInfo;
     }

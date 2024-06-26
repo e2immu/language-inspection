@@ -2,7 +2,7 @@ package org.e2immu.language.inspection.api.resource;
 
 import org.e2immu.language.cst.api.info.TypeInfo;
 
-import java.net.URI;
+import java.util.List;
 
 /**
  * manages all types that come in byte-code form.
@@ -42,15 +42,19 @@ public interface CompiledTypesManager {
 
     TypeInfo get(String fullyQualifiedName);
 
-    default TypeInfo getOrCreate(String fullyQualifiedName, boolean complain) {
+    default TypeInfo getOrLoad(String fullyQualifiedName) {
         return get(fullyQualifiedName);
+    }
+
+    default TypeInfo getOrLoad(Class<?> clazz) {
+        return getOrLoad(clazz.getCanonicalName());
     }
 
     default void ensureInspection(TypeInfo typeInfo) {
         // do nothing
     }
 
-    default TypeInfo load(SourceFile path) {
+    default List<TypeInfo> load(SourceFile path) {
         throw new UnsupportedOperationException();
     }
 

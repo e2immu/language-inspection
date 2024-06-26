@@ -49,7 +49,7 @@ public class CompiledTypesManagerImpl implements CompiledTypesManager {
 
     @Override
     public SourceFile fqnToPath(String fqn, String suffix) {
-        return null;
+        return classPath.fqnToPath(fqn, suffix);
     }
 
     @Override
@@ -58,18 +58,13 @@ public class CompiledTypesManagerImpl implements CompiledTypesManager {
     }
 
     @Override
-    public TypeInfo getOrCreate(String fullyQualifiedName, boolean complain) {
+    public TypeInfo getOrLoad(String fullyQualifiedName) {
         TypeInfo typeInfo = typeMap.get(fullyQualifiedName);
         if (typeInfo != null) return typeInfo;
-        if (complain) {
-            // first, try to load
-            TypeInfo loaded = load(fqnToPath(fullyQualifiedName, ".class"));
-            if (loaded != null) {
-                return loaded;
-            }
-            throw new UnsupportedOperationException("Cannot find " + fullyQualifiedName);
-        }
-        return null;
+        SourceFile path = fqnToPath(fullyQualifiedName, ".class");
+        if (path == null) return null;
+        List<TypeInfo> types = byteCodeInspector.get().load(path);
+        return types.stream().filter(t -> fullyQualifiedName.equals(t.fullyQualifiedName())).findFirst().orElseThrow();
     }
 
     @Override
@@ -78,10 +73,8 @@ public class CompiledTypesManagerImpl implements CompiledTypesManager {
     }
 
     @Override
-    public TypeInfo load(SourceFile path) {
-        List<TypeInfo> types = byteCodeInspector.get().load(path);
-        if (types.isEmpty()) return null;
-        return types.get(0);
+    public List<TypeInfo> load(SourceFile path) {
+        return byteCodeInspector.get().load(path);
     }
 
     public void setByteCodeInspector(ByteCodeInspector byteCodeInspector) {
