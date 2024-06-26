@@ -194,9 +194,15 @@ public class ResourcesImpl implements Resources {
     }
 
     @Override
-    public SourceFile sourceFileOfSubType(TypeInfo subType, String suffix) {
-        // TODO can be made much more efficient
-        return fqnToPath(subType.fullyQualifiedName(), suffix);
+    public SourceFile sourceFileOfType(TypeInfo subType, String suffix) {
+        if (subType.compilationUnitOrEnclosingType().isLeft()) {
+            String path = subType.fullyQualifiedName().replace(".", "/") + suffix;
+            return new SourceFile(path, subType.compilationUnit().uri());
+        }
+        SourceFile parentSourceFile = sourceFileOfType(subType.compilationUnitOrEnclosingType().getRight(), suffix);
+        String p = parentSourceFile.path();
+        String newPath = p.substring(0, p.length() - suffix.length()) + "$" + subType.simpleName() + suffix;
+        return new SourceFile(newPath, parentSourceFile.uri());
     }
 
     @Override

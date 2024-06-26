@@ -21,7 +21,7 @@ public interface Resources {
 
     String pathToFqn(String name);
 
-    SourceFile sourceFileOfSubType(TypeInfo subType, String s);
+    SourceFile sourceFileOfType(TypeInfo subType, String s);
 
     record JarSize(int entries, int bytes) {
     }
