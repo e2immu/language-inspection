@@ -12,6 +12,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class CompiledTypesManagerImpl implements CompiledTypesManager {
     private final Logger LOGGER = LoggerFactory.getLogger(CompiledTypesManagerImpl.class);
@@ -19,6 +20,7 @@ public class CompiledTypesManagerImpl implements CompiledTypesManager {
     private final Resources classPath;
     private final SetOnce<ByteCodeInspector> byteCodeInspector = new SetOnce<>();
     private final Map<String, TypeInfo> typeMap = new HashMap<>();
+    //private final ReentrantReadWriteLock typeMapLock = new ReentrantReadWriteLock(); TODO add locking
     private final Trie<TypeInfo> typeTrie = new Trie<>();
     private final Set<TypeInfo> inspectionQueue = new HashSet<>();
 
@@ -33,7 +35,9 @@ public class CompiledTypesManagerImpl implements CompiledTypesManager {
 
     @Override
     public void addToQueue(TypeInfo typeInfo) {
-        inspectionQueue.add(typeInfo);
+        synchronized (inspectionQueue) {
+            inspectionQueue.add(typeInfo);
+        }
     }
 
     @Override
@@ -48,7 +52,8 @@ public class CompiledTypesManagerImpl implements CompiledTypesManager {
 
     @Override
     public void add(TypeInfo typeInfo) {
-        typeMap.put(typeInfo.fullyQualifiedName(), typeInfo);
+        TypeInfo previous = typeMap.put(typeInfo.fullyQualifiedName(), typeInfo);
+        assert previous == null;
         String[] parts = typeInfo.fullyQualifiedName().split("\\.");
         typeTrie.add(parts, typeInfo);
     }
@@ -69,19 +74,21 @@ public class CompiledTypesManagerImpl implements CompiledTypesManager {
         if (typeInfo != null) return typeInfo;
         SourceFile path = fqnToPath(fullyQualifiedName, ".class");
         if (path == null) return null;
-        List<TypeInfo> types = byteCodeInspector.get().load(path);
-        return types.stream().filter(t -> fullyQualifiedName.equals(t.fullyQualifiedName())).findFirst().orElseThrow();
+        return byteCodeInspector.get().load(path);
     }
 
     @Override
     public void ensureInspection(TypeInfo typeInfo) {
-        SourceFile sourceFile = fqnToPath(typeInfo.fullyQualifiedName(), ".class");
-        if (sourceFile == null) throw new UnsupportedOperationException("Cannot find .class file for " + typeInfo);
-        byteCodeInspector.get().load(sourceFile);
+        if (!typeInfo.hasBeenInspected()) {
+            SourceFile sourceFile = fqnToPath(typeInfo.fullyQualifiedName(), ".class");
+            if (sourceFile == null) throw new UnsupportedOperationException("Cannot find .class file for " + typeInfo);
+            byteCodeInspector.get().load(typeInfo);
+        }
     }
 
     @Override
-    public List<TypeInfo> load(SourceFile path) {
+    public TypeInfo load(SourceFile path) {
+        // only to be used when the type does not yet exist!
         return byteCodeInspector.get().load(path);
     }
 
@@ -109,8 +116,8 @@ public class CompiledTypesManagerImpl implements CompiledTypesManager {
                 if (typeInfo == null) {
                     SourceFile path = fqnToPath(fqn, ".class");
                     if (path != null) {
-                        List<TypeInfo> types = byteCodeInspector.get().load(path);
-                        inspected.addAndGet(types.size());
+                        byteCodeInspector.get().load(path);
+                        inspected.incrementAndGet();
                     }
                 }
             }

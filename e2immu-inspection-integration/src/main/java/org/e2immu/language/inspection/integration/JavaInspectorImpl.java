@@ -64,8 +64,6 @@ public class JavaInspectorImpl implements JavaInspector {
         Resources classPath = assemblePath(inputConfiguration, true, "Classpath", classPathAsList);
         CompiledTypesManagerImpl ctm = new CompiledTypesManagerImpl(classPath);
         runtime = new RuntimeWithCompiledTypesManager(ctm);
-        ctm.add(runtime.stringTypeInfo());
-        ctm.add(runtime.objectTypeInfo());
         ByteCodeInspector byteCodeInspector = new ByteCodeInspectorImpl(runtime, ctm);
         ctm.setByteCodeInspector(byteCodeInspector);
         this.compiledTypesManager = ctm;

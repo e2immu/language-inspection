@@ -54,7 +54,7 @@ public interface CompiledTypesManager {
         // do nothing
     }
 
-    default List<TypeInfo> load(SourceFile path) {
+    default TypeInfo load(SourceFile path) {
         throw new UnsupportedOperationException();
     }
 
