@@ -75,7 +75,9 @@ public class CompiledTypesManagerImpl implements CompiledTypesManager {
 
     @Override
     public void ensureInspection(TypeInfo typeInfo) {
-        byteCodeInspector.get().load(fqnToPath(typeInfo.fullyQualifiedName(), ".class"));
+        SourceFile sourceFile = fqnToPath(typeInfo.fullyQualifiedName(), ".class");
+        if (sourceFile == null) throw new UnsupportedOperationException("Cannot find .class file for " + typeInfo);
+        byteCodeInspector.get().load(sourceFile);
     }
 
     @Override

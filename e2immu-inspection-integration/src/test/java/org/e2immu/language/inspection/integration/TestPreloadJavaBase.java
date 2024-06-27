@@ -1,5 +1,7 @@
 package org.e2immu.language.inspection.integration;
 
+import org.e2immu.language.cst.api.info.MethodInfo;
+import org.e2immu.language.cst.api.info.ParameterInfo;
 import org.e2immu.language.cst.api.info.TypeInfo;
 import org.e2immu.language.inspection.api.integration.JavaInspector;
 import org.e2immu.language.inspection.api.resource.InputConfiguration;
@@ -9,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import java.io.IOException;
 import java.util.List;
 import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -24,6 +27,20 @@ public class TestPreloadJavaBase {
         javaInspector.loadByteCodeQueue();
 
         // NOTE: this may be very dependent on the current JDK and pre-loading settings.
+
+        TypeInfo consumer = javaInspector.compiledTypesManager().get(Consumer.class);
+        assertNotNull(consumer);
+        assertTrue(consumer.hasBeenInspected());
+
+        TypeInfo iterable = javaInspector.compiledTypesManager().get(Iterable.class);
+        assertNotNull(iterable);
+        assertTrue(iterable.hasBeenInspected());
+        MethodInfo iterator = iterable.singleAbstractMethod();
+        assertEquals("java.lang.Iterable.iterator()", iterator.fullyQualifiedName());
+        MethodInfo forEach = iterable.findUniqueMethod("forEach", 1);
+        ParameterInfo forEach0 = forEach.parameters().get(0);
+        assertSame(consumer, forEach0.parameterizedType().typeInfo());
+
         TypeInfo biConsumer = javaInspector.compiledTypesManager().get(BiConsumer.class);
         assertNotNull(biConsumer);
         assertTrue(biConsumer.hasBeenInspected());

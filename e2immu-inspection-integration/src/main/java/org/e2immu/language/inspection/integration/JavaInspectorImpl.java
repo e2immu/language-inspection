@@ -39,7 +39,7 @@ to classpath + sourceTypeMap/Trie
 to typeMap
  */
 public class JavaInspectorImpl implements JavaInspector {
-    private final Runtime runtime = new RuntimeImpl();
+    private Runtime runtime;
     private final SourceTypes sourceTypes = new SourceTypesImpl();
     private CompiledTypesManager compiledTypesManager;
 
@@ -63,6 +63,7 @@ public class JavaInspectorImpl implements JavaInspector {
         LOGGER.info("Combined classpath and test classpath has {} entries", classPathAsList.size());
         Resources classPath = assemblePath(inputConfiguration, true, "Classpath", classPathAsList);
         CompiledTypesManagerImpl ctm = new CompiledTypesManagerImpl(classPath);
+        runtime = new RuntimeWithCompiledTypesManager(ctm);
         ctm.add(runtime.stringTypeInfo());
         ctm.add(runtime.objectTypeInfo());
         ByteCodeInspector byteCodeInspector = new ByteCodeInspectorImpl(runtime, ctm);

@@ -185,11 +185,11 @@ public class TypeContextImpl implements TypeContext {
     public NamedType get(String name, boolean complain) {
         NamedType simple = getSimpleName(name);
         if (simple != null) {
-            if (simple instanceof TypeInfo typeInfo && !typeInfo.hasBeenInspected()) {
-                if (!data.sourceTypes.isKnown(typeInfo)) {
-                    data.compiledTypesManager.ensureInspection(typeInfo);
-                }
-            }
+           // if (simple instanceof TypeInfo typeInfo && !typeInfo.hasBeenInspected()) {
+          //      if (!data.sourceTypes.isKnown(typeInfo.primaryType())) {
+           //         data.compiledTypesManager.ensureInspection(typeInfo);
+          //      }
+          //  }
             return simple;
         }
 
