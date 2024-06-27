@@ -250,19 +250,52 @@ public class TestMethodCall1_Basics extends CommonTest {
 
     @Test
     public void test6() {
-        TypeInfo typeInfo = javaInspector.parse(INPUT6);
-
+        javaInspector.parse(INPUT6);
     }
 
     @Language("java")
     private static final String INPUT7 = """
+            package org.e2immu.analyser.resolver.testexample;
+
+            import java.util.Collection;
+            import java.util.List;
+            import java.util.Set;
+
+            public class MethodCall_5 {
+
+                interface Get {
+                    String get();
+                }
+
+                record GetOnly(String s) implements Get {
+
+                    @Override
+                    public String get() {
+                        return s;
+                    }
+                }
+
+                public void accept(List<Get> list) {
+                    list.forEach(get -> System.out.println(get.get()));
+                }
+
+                public void accept(Set<Get> set) {
+                    set.forEach(get -> System.out.println(get.get()));
+                }
+
+                public void accept(Collection<Get> set) {
+                    set.forEach(get -> System.out.println(get.get()));
+                }
+
+                public void test() {
+                    // here, List.of(...) becomes a List<Get> because of the context of 'accept(...)'
+                    accept(List.of(new GetOnly("hello")));
+                }
+            }
             """;
 
     @Test
     public void test7() {
-        TypeInfo typeInfo = javaInspector.parse(INPUT4);
-
+        javaInspector.parse(INPUT7);
     }
-
-
 }
