@@ -13,7 +13,8 @@ public class SourceTypesImpl implements SourceTypes {
 
     @Override
     public TypeInfo get(String fqn) {
-        return null;
+        List<TypeInfo> types = trie.get(fqn.split("\\."));
+        return types == null ? null : types.get(0);
     }
 
     @Override
@@ -23,6 +24,16 @@ public class SourceTypesImpl implements SourceTypes {
 
     @Override
     public void visit(String[] split, BiConsumer<String[], List<TypeInfo>> biConsumer) {
+        trie.visit(split, biConsumer);
+    }
 
+    @Override
+    public void add(String[] parts, TypeInfo typeInfo) {
+        trie.add(parts, typeInfo);
+    }
+
+    @Override
+    public void freeze() {
+        trie.freeze();
     }
 }

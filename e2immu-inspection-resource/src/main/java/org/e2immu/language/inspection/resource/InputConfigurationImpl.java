@@ -27,9 +27,6 @@ public record InputConfigurationImpl(List<String> sources,
 
     public static final String[] DEFAULT_CLASSPATH = {"build/classes/java/main", "jmods/java.base.jmod",
             "jmods/java.xml.jmod", "jmods/java.net.http.jmod"};
-    public static final String[] CLASSPATH_WITHOUT_ANNOTATED_APIS = {"build/classes/java/main",
-            "jmods/java.base.jmod", "jmods/java.xml.jmod", "jmods/java.net.http.jmod",
-            "src/main/resources/annotations/minimal"};
 
     static final String NL_TAB = "\n    ";
 

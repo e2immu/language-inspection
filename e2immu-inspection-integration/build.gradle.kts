@@ -31,6 +31,7 @@ java {
 
 dependencies {
     implementation("org.e2immu:e2immu-external-support:some.version")
+    implementation("org.e2immu:e2immu-internal-util:some.version")
     implementation("org.e2immu:e2immu-internal-graph:some.version")
     implementation("org.e2immu:e2immu-cst-api:some.version")
     implementation("org.e2immu:e2immu-cst-impl:some.version")
@@ -39,6 +40,8 @@ dependencies {
     implementation("org.e2immu:e2immu-inspection-api:some.version")
     implementation("org.e2immu:e2immu-inspection-parser:some.version")
     implementation("org.e2immu:e2immu-inspection-resource:some.version")
+    implementation("org.e2immu:e2immu-java-parser:some.version")
+    implementation("org.e2immu:e2immu-java-bytecode:some.version")
 
     implementation("org.slf4j:slf4j-api:2.0.7")
 

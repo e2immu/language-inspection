@@ -1,9 +1,16 @@
-package org.e2immu.language.inspection.resource;
+package org.e2immu.language.inspection.integration;
 
+import org.e2immu.bytecode.java.asm.ByteCodeInspectorImpl;
+import org.e2immu.language.cst.api.element.CompilationUnit;
 import org.e2immu.language.cst.api.info.TypeInfo;
 import org.e2immu.language.cst.api.runtime.Runtime;
+import org.e2immu.language.cst.impl.runtime.RuntimeImpl;
+import org.e2immu.language.inspection.api.integration.JavaInspector;
+import org.e2immu.language.inspection.api.parser.SourceTypes;
 import org.e2immu.language.inspection.api.resource.*;
-import org.e2immu.util.internal.util.Trie;
+import org.e2immu.language.inspection.impl.parser.SourceTypesImpl;
+import org.e2immu.language.inspection.resource.CompiledTypesManagerImpl;
+import org.e2immu.language.inspection.resource.ResourcesImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,16 +31,12 @@ from input configuration
 to classpath + sourceTypeMap/Trie
 to typeMap
  */
-public record InputImpl(InputConfiguration inputConfiguration,
-                        Runtime runtime,
-                        ByteCodeInspector byteCodeInspector,
-                        Resources classPath,
-                        Map<TypeInfo, URI> sourceTypeMap,
-                        Trie<TypeInfo> sourceTypeTrie,
-                        CompiledTypesManager compiledTypesManager) implements Input {
+public class JavaInspectorImpl implements JavaInspector {
+    private final Runtime runtime = new RuntimeImpl();
+    private final SourceTypes sourceTypes = new SourceTypesImpl();
+    private CompiledTypesManager compiledTypesManager;
 
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(Input.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(JavaInspector.class);
 
     /**
      * Use of this prefix in parts of the input classpath allows for adding jars
@@ -47,26 +50,36 @@ public record InputImpl(InputConfiguration inputConfiguration,
      */
     public static final String JAR_WITH_PATH_PREFIX = "jar-on-classpath:";
 
-    public static Input create(InputConfiguration configuration) throws IOException {
-        List<String> classPathAsList = classPathAsList(configuration);
+    @Override
+    public void initialize(InputConfiguration inputConfiguration) throws IOException {
+        List<String> classPathAsList = classPathAsList(inputConfiguration);
         LOGGER.info("Combined classpath and test classpath has {} entries", classPathAsList.size());
-        Resources classPath = assemblePath(configuration, true, "Classpath", classPathAsList);
-    /*
-        TypeMap typeMap = new TypeMapImpl.Builder();
-        ByteCodeInspector byteCodeInspector = new ByteCodeInspectorImpl(classPath, annotationStore, globalTypeContext);
-        globalTypeContext.typeMap.setByteCodeInspector(byteCodeInspector);
-        globalTypeContext.loadPrimitives();
+        Resources classPath = assemblePath(inputConfiguration, true, "Classpath", classPathAsList);
+        CompiledTypesManagerImpl ctm = new CompiledTypesManagerImpl(classPath);
+        ctm.add(runtime.stringTypeInfo());
+        ctm.add(runtime.objectTypeInfo());
+        ByteCodeInspector byteCodeInspector = new ByteCodeInspectorImpl(runtime, ctm);
+        ctm.setByteCodeInspector(byteCodeInspector);
+        this.compiledTypesManager = ctm;
+
         for (String packageName : new String[]{"org.e2immu.annotation", "java.lang", "java.util.function"}) {
-            preload(globalTypeContext, classPath, packageName); // needed for our own stuff
+            preload(packageName);
         }
 
-        return createNext(configuration, classPath, globalTypeContext, byteCodeInspector);*/
-        throw new UnsupportedOperationException();
+        Resources sourcePath = assemblePath(inputConfiguration, false, "Source path",
+                inputConfiguration.sources());
+        Resources testSourcePath = assemblePath(inputConfiguration, false, "Test source path",
+                inputConfiguration.testSources());
+
+        Map<TypeInfo, URI> sourceURLs = computeSourceURLs(sourcePath,
+                inputConfiguration.restrictSourceToPackages(), "source path");
+        Map<TypeInfo, URI> testSourceURLs = computeSourceURLs(testSourcePath,
+                inputConfiguration.restrictTestSourceToPackages(), "test source path");
+        sourceURLs.putAll(testSourceURLs);
+        sourceTypes.freeze();
     }
 
-    /*
-  TODO at some point, we may want to parameterize this: which types do we present to the analyser?
-   */
+
     private static List<String> classPathAsList(InputConfiguration inputConfiguration) {
         Stream<String> compileCp = inputConfiguration.classPathParts().stream();
         Stream<String> runtimeCp = inputConfiguration.runtimeClassPathParts().stream();
@@ -76,43 +89,7 @@ public record InputImpl(InputConfiguration inputConfiguration,
                 .distinct().toList();
     }
 
-    public static Input createNext(InputConfiguration configuration,
-                                   Resources classPath,
-                                   CompiledTypesManager compiledTypesManager,
-                                   ByteCodeInspector byteCodeInspector) throws IOException {
-        Resources sourcePath = assemblePath(configuration, false, "Source path",
-                configuration.sources());
-        Resources testSourcePath = assemblePath(configuration, false, "Test source path",
-                configuration.testSources());
-        Trie<TypeInfo> sourceTypes = new Trie<>();
- /*       Map<TypeInfo, URI> sourceURLs = computeSourceURLs(sourcePath, globalTypeContext,
-                configuration.restrictSourceToPackages(), sourceTypes, "source path");
-        Map<TypeInfo, URI> testSourceURLs = computeSourceURLs(testSourcePath, globalTypeContext,
-                configuration.restrictTestSourceToPackages(), sourceTypes, "test source path");
-        sourceURLs.putAll(testSourceURLs);
-        sourceTypes.freeze();
-
-        Resources annotatedAPIsPath = assemblePath(configuration, false, "Annotated APIs path",
-                configuration.annotatedAPIConfiguration().annotatedAPISourceDirs());
-        Trie<TypeInfo> annotatedAPITypes = new Trie<>();
-        Map<TypeInfo, URI> annotatedAPIs = computeSourceURLs(annotatedAPIsPath, globalTypeContext,
-                configuration.annotatedAPIConfiguration().readAnnotatedAPIPackages(),
-                annotatedAPITypes, "annotated API path");
-        annotatedAPITypes.freeze();
-
-        return new Input(configuration, globalTypeContext, byteCodeInspector, Map.copyOf(annotatedAPIs),
-                Map.copyOf(sourceURLs), sourceTypes, annotatedAPITypes, classPath);*
-                t
-  */ throw new UnsupportedOperationException();
-    }
-
-
-    private static Map<TypeInfo, URI> computeSourceURLs(Runtime runtime,
-                                                        Resources sourcePath,
-                                                        CompiledTypesManager compiledTypesManager,
-                                                        List<String> restrictions,
-                                                        Trie<TypeInfo> trie,
-                                                        String what) {
+    private Map<TypeInfo, URI> computeSourceURLs(Resources sourcePath, List<String> restrictions, String what) {
         Map<TypeInfo, URI> sourceURLs = new HashMap<>();
         AtomicInteger ignored = new AtomicInteger();
         sourcePath.visit(new String[0], (parts, list) -> {
@@ -123,12 +100,13 @@ public record InputImpl(InputConfiguration inputConfiguration,
                     String typeName = name.substring(0, name.length() - 5);
                     String packageName = Arrays.stream(parts).limit(n).collect(Collectors.joining("."));
                     if (acceptSource(packageName, typeName, restrictions)) {
-                        URI uri = list.get(0); // FIXME must add URI in Source
-                   //     TypeInfo typeInfo = runtime.newTypeInfo(Identifier.from(uri), packageName, typeName);
-                   //     globalTypeContext.typeMap.add(typeInfo, INIT_JAVA_PARSER);
-                    //    sourceURLs.put(typeInfo, uri);
-                    //    parts[n] = typeName;
-                   //     trie.add(parts, typeInfo);
+                        URI uri = list.get(0);
+                        CompilationUnit cu = runtime.newCompilationUnitBuilder().setPackageName(packageName)
+                                .setURI(uri).build();
+                        TypeInfo typeInfo = runtime.newTypeInfo(cu, typeName);
+                        sourceURLs.put(typeInfo, uri);
+                        parts[n] = typeName;
+                        sourceTypes.add(parts, typeInfo);
                     } else {
                         ignored.incrementAndGet();
                     }
@@ -156,25 +134,14 @@ public record InputImpl(InputConfiguration inputConfiguration,
      * if not, the method will have little effect and no classes beyond the ones from
      * <code>initializeClassPath</code> will be present
      */
-    public static void preload(CompiledTypesManager compiledTypesManager,
-                               Resources classPath,
-                               String thePackage) {
-        LOGGER.info("Start pre-loading {}", thePackage);
-        AtomicInteger inspected = new AtomicInteger();
-        classPath.expandLeaves(thePackage, ".class", (expansion, list) -> {
-            // we'll loop over the primary types only
-            if (!expansion[expansion.length - 1].contains("$")) {
-                String fqn = fqnOfClassFile(thePackage, expansion);
-                assert Input.acceptFQN(fqn);
-                // test against hard-coded types FIXME
-                //TypeInfo typeInfo = globalTypeContext.getFullyQualified(fqn, true);
-                //if (!typeInfo.typeInspection.isSet()) {
-                 //   globalTypeContext.typeMap.getTypeInspection(typeInfo);
-                //    inspected.incrementAndGet();
-                //}
-            }
-        });
-        LOGGER.info("... inspected {} paths", inspected);
+    @Override
+    public void preload(String thePackage) {
+        compiledTypesManager.preload(thePackage);
+    }
+
+    @Override
+    public void loadByteCodeQueue() {
+        compiledTypesManager.loadByteCodeQueue();
     }
 
     public static String fqnOfClassFile(String prefix, String[] suffixes) {
@@ -193,7 +160,7 @@ public record InputImpl(InputConfiguration inputConfiguration,
         if (isClassPath) {
             Map<String, Integer> entriesAdded = resources.addJarFromClassPath("org/e2immu/annotation");
             if (entriesAdded.size() != 1 || entriesAdded.values().stream().findFirst().orElseThrow() < 10) {
-                throw new RuntimeException("? expected 1 jar, at least 10 entries");
+                throw new RuntimeException("? expected 1 jar, at least 10 entries; got " + entriesAdded.size());
             }
         }
         for (String part : parts) {
@@ -229,6 +196,21 @@ public record InputImpl(InputConfiguration inputConfiguration,
             }
         }
         return resources;
+    }
+
+    @Override
+    public Runtime runtime() {
+        return runtime;
+    }
+
+    @Override
+    public CompiledTypesManager compiledTypesManager() {
+        return compiledTypesManager;
+    }
+
+    @Override
+    public SourceTypes sourceTypes() {
+        return sourceTypes;
     }
 }
 

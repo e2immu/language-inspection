@@ -58,6 +58,14 @@ public interface CompiledTypesManager {
         throw new UnsupportedOperationException();
     }
 
+    default void loadByteCodeQueue() {
+        throw new UnsupportedOperationException();
+    }
+
+    default void preload(String thePackage) {
+        throw new UnsupportedOperationException();
+    }
+
     default void setLazyInspection(TypeInfo typeInfo) {
         // do nothing
     }

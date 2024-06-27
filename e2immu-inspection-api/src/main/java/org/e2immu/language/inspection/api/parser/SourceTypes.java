@@ -11,6 +11,10 @@ Information about the .java files in the different packages, stored in a Trie.
 Lives next to the ImportMap in a TypeContext. Is not exposed to the actual parsing process.
  */
 public interface SourceTypes {
+    void add(String[] parts, TypeInfo typeInfo);
+
+    void freeze();
+
     TypeInfo get(String fqn);
 
     boolean isKnown(TypeInfo typeInfo);
