@@ -6,17 +6,24 @@ import org.e2immu.language.cst.api.info.TypeInfo;
 import org.e2immu.language.cst.api.runtime.Runtime;
 import org.e2immu.language.cst.impl.runtime.RuntimeImpl;
 import org.e2immu.language.inspection.api.integration.JavaInspector;
+import org.e2immu.language.inspection.api.parser.Context;
+import org.e2immu.language.inspection.api.parser.Resolver;
 import org.e2immu.language.inspection.api.parser.SourceTypes;
+import org.e2immu.language.inspection.api.parser.Summary;
 import org.e2immu.language.inspection.api.resource.*;
-import org.e2immu.language.inspection.impl.parser.SourceTypesImpl;
+import org.e2immu.language.inspection.impl.parser.*;
 import org.e2immu.language.inspection.resource.CompiledTypesManagerImpl;
 import org.e2immu.language.inspection.resource.ResourcesImpl;
+import org.e2immu.parser.java.ParseCompilationUnit;
+import org.e2immu.parser.java.ParseHelperImpl;
+import org.parsers.java.JavaParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -196,6 +203,30 @@ public class JavaInspectorImpl implements JavaInspector {
             }
         }
         return resources;
+    }
+
+    // used for testing
+    @Override
+    public TypeInfo parse(String input) {
+        return parseReturnAll(input).get(0);
+    }
+
+    @Override
+    public List<TypeInfo> parseReturnAll(String input) {
+        Summary failFastSummary = new SummaryImpl(true);
+        JavaParser parser = new JavaParser(input);
+        parser.setParserTolerant(false);
+        Resolver resolver = new ResolverImpl(new ParseHelperImpl(runtime));
+        TypeContextImpl typeContext = new TypeContextImpl(compiledTypesManager, sourceTypes);
+        Context rootContext = ContextImpl.create(runtime, failFastSummary, resolver, typeContext);
+        ParseCompilationUnit parseCompilationUnit = new ParseCompilationUnit(rootContext);
+        try {
+            List<TypeInfo> types = parseCompilationUnit.parse(new URI("input"), parser.CompilationUnit());
+            resolver.resolve();
+            return types;
+        } catch (URISyntaxException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Override

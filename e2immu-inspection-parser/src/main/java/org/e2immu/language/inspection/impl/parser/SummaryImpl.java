@@ -34,6 +34,7 @@ public class SummaryImpl implements Summary {
 
     @Override
     public void addParserError(Throwable parserError) {
+        parserError.printStackTrace();
         LOGGER.error("Register parser error: {}", parserError.getMessage());
         this.parserErrors.add(parserError);
         if (failFast) {
