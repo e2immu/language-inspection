@@ -8,6 +8,7 @@ import org.e2immu.language.cst.api.info.MethodInfo;
 import org.e2immu.language.cst.api.info.ParameterInfo;
 import org.e2immu.language.cst.api.info.TypeInfo;
 import org.e2immu.language.cst.api.runtime.Runtime;
+import org.e2immu.language.cst.api.type.Diamond;
 import org.e2immu.language.cst.api.type.NamedType;
 import org.e2immu.language.cst.api.type.ParameterizedType;
 import org.e2immu.language.cst.api.type.TypeParameter;
@@ -79,6 +80,103 @@ public class MethodResolutionImpl implements MethodResolution {
                     .collect(Collectors.toUnmodifiableSet());
         }
         return types;
+    }
+
+    @Override
+    public Expression resolveConstructor(Context context,
+                                         List<Comment> comments,
+                                         Source source,
+                                         String index,
+                                         ParameterizedType formalType,
+                                         ParameterizedType expectedConcreteType,
+                                         Diamond diamond,
+                                         List<Object> unparsedArguments) {
+        ListMethodAndConstructorCandidates list = new ListMethodAndConstructorCandidates(runtime,
+                context.typeContext().importMap());
+        Map<NamedType, ParameterizedType> typeMap = expectedConcreteType == null ? null :
+                expectedConcreteType.initialTypeParameterMap(runtime);
+        Map<MethodTypeParameterMap, Integer> candidates = list.resolveConstructor(formalType, expectedConcreteType,
+                unparsedArguments.size(), typeMap);
+        ParameterizedType forward = expectedConcreteType == null ? runtime.voidParameterizedType() : expectedConcreteType;
+        Candidate candidate = chooseCandidateAndEvaluateCall(context, index, "<init>", candidates,
+                unparsedArguments, formalType,
+                new TypeParameterMap(Map.of())); // TODO replace when we also compute scope
+        if (candidate == null) {
+            throw new UnsupportedOperationException("No candidate for constructor");
+        }
+
+
+        ParameterizedType finalParameterizedType;
+        if (expectedConcreteType == null) {
+            // there's only one method left, so we can derive the parameterized type from the parameters
+            Set<ParameterizedType> typeParametersResolved = new HashSet<>(formalType.parameters());
+            finalParameterizedType = tryToResolveTypeParameters(formalType, candidate.method(),
+                    typeParametersResolved, candidate.newParameterExpressions());
+            if (finalParameterizedType == null) {
+                return null;
+            }
+        } else {
+            finalParameterizedType = expectedConcreteType;
+        }
+        // IMPORTANT: every newly created object is different from each other, UNLESS we're a record, then
+        // we can check the constructors... See EqualityMode
+        return runtime.newConstructorCallBuilder()
+                .setConstructor(candidate.method.methodInfo())
+                .setDiamond(diamond)
+                .setConcreteReturnType(finalParameterizedType)
+                .setParameterExpressions(candidate.newParameterExpressions)
+                .setSource(source)
+                .addComments(comments)
+                .build();
+    }
+
+    private ParameterizedType tryToResolveTypeParameters(ParameterizedType formalType,
+                                                         MethodTypeParameterMap method,
+                                                         Set<ParameterizedType> typeParametersResolved,
+                                                         List<Expression> newParameterExpressions) {
+        int i = 0;
+        Map<NamedType, ParameterizedType> map = new HashMap<>();
+        for (Expression parameterExpression : newParameterExpressions) {
+            ParameterizedType formalParameterType = method.methodInfo().typeOfParameterHandleVarargs(i++);
+            ParameterizedType concreteArgumentType = parameterExpression.parameterizedType();
+            tryToResolveTypeParametersBasedOnOneParameter(formalParameterType, concreteArgumentType, map);
+            typeParametersResolved.removeIf(pt -> map.containsKey(pt.typeParameter()));
+            if (typeParametersResolved.isEmpty()) {
+                List<ParameterizedType> concreteParameters = formalType.parameters().stream()
+                        .map(pt -> map.getOrDefault(pt.typeParameter(), pt))
+                        .map(pt -> pt.ensureBoxed(runtime))
+                        .toList();
+                return runtime.newParameterizedType(formalType.typeInfo(), concreteParameters);
+            }
+        }
+        return null;
+    }
+
+// concreteType Collection<X>, formalType Collection<E>, with E being the parameter in HashSet<E> which implements Collection<E>
+// add E -> X to the map
+// we need the intermediate step to original because the result of translateMap contains E=#0 in Collection
+
+    private void tryToResolveTypeParametersBasedOnOneParameter(ParameterizedType formalType,
+                                                               ParameterizedType concreteType,
+                                                               Map<NamedType, ParameterizedType> mapAll) {
+        if (formalType.typeParameter() != null) {
+            mapAll.put(formalType.typeParameter(), concreteType);
+            return;
+        }
+        if (formalType.typeInfo() != null) {
+            Map<NamedType, ParameterizedType> map = genericsHelper.translateMap(formalType, concreteType,
+                    true);
+            map.forEach((namedType, pt) -> {
+                if (namedType instanceof TypeParameter tp) {
+                    ParameterizedType original = formalType.parameters().get(tp.getIndex());
+                    if (original.typeParameter() != null) {
+                        mapAll.put(original.typeParameter(), pt);
+                    }
+                }
+            });
+            return;
+        }
+        throw new UnsupportedOperationException("?");
     }
 
     @Override
@@ -842,10 +940,5 @@ public class MethodResolutionImpl implements MethodResolution {
     @Override
     public GenericsHelper genericsHelper() {
         return genericsHelper;
-    }
-
-    @Override
-    public HierarchyHelper hierarchyHelper() {
-        return hierarchyHelper;
     }
 }
