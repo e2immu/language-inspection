@@ -59,6 +59,22 @@ public class JavaLang {
 
         @NotNull
         String toString();
+
+        // does not exist, causes warning
+        class SubInObject {
+
+        }
     }
 
+    // does not exist, causes warning
+    interface Strings$ {
+
+    }
+
+    class String$ {
+
+        @Independent
+        String$(char[] chars) {
+        }
+    }
 }
