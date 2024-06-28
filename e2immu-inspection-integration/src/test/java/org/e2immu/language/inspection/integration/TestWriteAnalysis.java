@@ -48,7 +48,7 @@ public class TestWriteAnalysis {
         wa.write(dir.getAbsolutePath(), trie);
         String s = Files.readString(targetFile.toPath());
         assertEquals("""
-                [{"fqn": "Torg.e2immu.C", "data":{"immutableType":3,"commutableMethods":["p1","p2,p3","p4"],"shallowAnalyzer":true}},
+                [{"fqn": "Torg.e2immu.C", "data":{"commutableMethods":["p1","p2,p3","p4"],"immutableType":3,"shallowAnalyzer":true}},
                 {"fqn": "M?.?.m1", "data":{"shallowAnalyzer":false}}]\
                 """, s);
     }
