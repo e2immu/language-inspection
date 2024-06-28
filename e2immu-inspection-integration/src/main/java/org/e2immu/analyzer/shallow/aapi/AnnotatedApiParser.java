@@ -1,6 +1,8 @@
 package org.e2immu.analyzer.shallow.aapi;
 
 import org.e2immu.language.cst.api.expression.AnnotationExpression;
+import org.e2immu.language.cst.api.expression.StringConstant;
+import org.e2immu.language.cst.api.info.FieldInfo;
 import org.e2immu.language.cst.api.info.Info;
 import org.e2immu.language.cst.api.info.TypeInfo;
 import org.e2immu.language.inspection.api.integration.JavaInspector;
@@ -16,6 +18,8 @@ import java.net.URI;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import static org.e2immu.language.inspection.integration.JavaInspectorImpl.JAR_WITH_PATH_PREFIX;
 
 public class AnnotatedApiParser implements AnnotationProvider {
     private static final Logger LOGGER = LoggerFactory.getLogger(AnnotatedApiParser.class);
@@ -44,6 +48,19 @@ public class AnnotatedApiParser implements AnnotationProvider {
 
     private void load(TypeInfo typeInfo) {
         javaInspector.parse(typeInfo);
+        FieldInfo packageName = typeInfo.getFieldByName("PACKAGE_NAME", false);
+        if (packageName == null) {
+            LOGGER.info("Ignoring class {}, has no PACKAGE_NAME field", typeInfo);
+            return;
+        }
+        String apiPackage;
+        if (packageName.initializer() instanceof StringConstant sc) {
+            apiPackage = sc.constant();
+        } else {
+            LOGGER.info("Ignoring class {}, PACKAGE_NAME field has not been assigned a String literal", typeInfo);
+            return;
+        }
+        LOGGER.debug("Starting AAPI inspection of {}, in API package {}", typeInfo, apiPackage);
     }
 
     // for testing

@@ -225,7 +225,7 @@ public class JavaInspectorImpl implements JavaInspector {
 
     @Override
     public Summary parse(TypeInfo typeInfo) {
-        Summary summary = new SummaryImpl(false);
+        Summary summary = new SummaryImpl(true); // once stable, change to false
         URI uri = typeInfo.compilationUnit().uri();
 
         try (InputStreamReader isr = new InputStreamReader(uri.toURL().openStream(), StandardCharsets.UTF_8);

@@ -52,8 +52,9 @@ public class TypeContextImpl implements TypeContext {
 
     @Override
     public void addToImportMap(ImportStatement importStatement) {
-        String fqn = importStatement.importString();
-        boolean isAsterisk = fqn.endsWith(".*");
+        String fqnWithAsterisk = importStatement.importString();
+        boolean isAsterisk = fqnWithAsterisk.endsWith(".*");
+        String fqn = isAsterisk ? fqnWithAsterisk.substring(0, fqnWithAsterisk.length() - 2) : fqnWithAsterisk;
         if (importStatement.isStatic()) {
             if (isAsterisk) {
                 TypeInfo typeInfo = loadTypeDoNotImport(fqn);
@@ -97,15 +98,21 @@ public class TypeContextImpl implements TypeContext {
                 // we must import all subtypes, but we will do that lazily
                 addImportWildcard(inSourceTypes);
             }
+            // TODO this should be java-specific (call to data.compiledTypesManager.XXX)
             data.compiledTypesManager.classPath().expandLeaves(fullyQualified, ".class", (expansion, urls) -> {
                 String leaf = expansion[expansion.length - 1];
                 if (!leaf.contains("$")) {
                     // primary type
                     String simpleName = Resources.stripDotClass(leaf);
                     URI uri = urls.get(0);
-                    TypeInfo newTypeInfo = data.compiledTypesManager.load(new SourceFile(fullyQualified, uri));
-                    LOGGER.debug("Registering inspection handler for {}", newTypeInfo);
-                    addImport(newTypeInfo, false, false);
+                    String path = fullyQualified.replace(".", "/") + "/" + simpleName + ".class";
+                    TypeInfo newTypeInfo = data.compiledTypesManager.load(new SourceFile(path, uri));
+                    if (newTypeInfo != null) {
+                        LOGGER.debug("Registering inspection handler for {}", newTypeInfo);
+                        addImport(newTypeInfo, false, false);
+                    } else {
+                        LOGGER.error("Could not load {}, URI {}", path, uri);
+                    }
                 }
             });
         }
@@ -183,11 +190,11 @@ public class TypeContextImpl implements TypeContext {
     public NamedType get(String name, boolean complain) {
         NamedType simple = getSimpleName(name);
         if (simple != null) {
-           // if (simple instanceof TypeInfo typeInfo && !typeInfo.hasBeenInspected()) {
-          //      if (!data.sourceTypes.isKnown(typeInfo.primaryType())) {
-           //         data.compiledTypesManager.ensureInspection(typeInfo);
-          //      }
-          //  }
+            // if (simple instanceof TypeInfo typeInfo && !typeInfo.hasBeenInspected()) {
+            //      if (!data.sourceTypes.isKnown(typeInfo.primaryType())) {
+            //         data.compiledTypesManager.ensureInspection(typeInfo);
+            //      }
+            //  }
             return simple;
         }
 
