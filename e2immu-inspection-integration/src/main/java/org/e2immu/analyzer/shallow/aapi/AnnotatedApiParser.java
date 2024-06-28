@@ -1,10 +1,12 @@
 package org.e2immu.analyzer.shallow.aapi;
 
+import org.e2immu.language.cst.api.analysis.Codec;
 import org.e2immu.language.cst.api.expression.AnnotationExpression;
 import org.e2immu.language.cst.api.expression.StringConstant;
 import org.e2immu.language.cst.api.info.*;
 import org.e2immu.language.cst.api.runtime.Runtime;
 import org.e2immu.language.cst.api.type.ParameterizedType;
+import org.e2immu.language.cst.io.CodecImpl;
 import org.e2immu.language.inspection.api.integration.JavaInspector;
 import org.e2immu.language.inspection.api.parser.SourceTypes;
 import org.e2immu.language.inspection.api.resource.InputConfiguration;
@@ -13,8 +15,10 @@ import org.e2immu.language.inspection.resource.InputConfigurationImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.*;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class AnnotatedApiParser implements AnnotationProvider {
@@ -41,9 +45,7 @@ public class AnnotatedApiParser implements AnnotationProvider {
         addToClasspath.forEach(builder::addClassPath);
         InputConfiguration inputConfiguration = builder.build();
         javaInspector.initialize(inputConfiguration);
-        javaInspector.sourceTypes().visit(new String[]{}, (parts, list) -> {
-            list.forEach(this::load);
-        });
+        javaInspector.sourceTypes().visit(new String[]{}, (parts, list) -> list.forEach(this::load));
         LOGGER.info("Finished parsing, annotated {} types, counted {} annotations, issued {} warning(s)",
                 annotatedTypes, annotations, warnings);
     }
@@ -167,6 +169,7 @@ public class AnnotatedApiParser implements AnnotationProvider {
     public SourceTypes sourceTypes() {
         return javaInspector.sourceTypes();
     }
+
     // for testing
     public Runtime runtime() {
         return javaInspector.runtime();
