@@ -293,15 +293,9 @@ public class ResourcesImpl implements Resources {
                                         .split("/");
                 for (File file : files) {
                     String name = file.getName();
-                    if (packageParts.length == 0 && name.endsWith(".annotated_api")) {
-                        String[] partsFromFile = name.split("\\.");
-                        LOGGER.debug("File {} in path from file {}", name, String.join("/", partsFromFile));
-                        data.add(partsFromFile, file.toURI());
-                    } else {
-                        LOGGER.debug("File {} in path {}", name, String.join("/", packageParts));
-                        data.add(Stream.concat(Arrays.stream(packageParts), Stream.of(name)).toArray(String[]::new),
-                                file.toURI());
-                    }
+                    LOGGER.debug("File {} in path {}", name, String.join("/", packageParts));
+                    data.add(Stream.concat(Arrays.stream(packageParts), Stream.of(name)).toArray(String[]::new),
+                            file.toURI());
                 }
             }
         }

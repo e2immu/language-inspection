@@ -22,9 +22,12 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.StringWriter;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -150,14 +153,6 @@ public class JavaInspectorImpl implements JavaInspector {
         compiledTypesManager.loadByteCodeQueue();
     }
 
-    public static String fqnOfClassFile(String prefix, String[] suffixes) {
-        String combined = prefix + "." + String.join(".", suffixes).replaceAll("\\$", ".");
-        if (combined.endsWith(".class")) {
-            return combined.substring(0, combined.length() - 6);
-        }
-        throw new UnsupportedOperationException("Expected .class or .java file, but got " + combined);
-    }
-
     private static Resources assemblePath(InputConfiguration configuration,
                                           boolean isClassPath,
                                           String msg,
@@ -226,6 +221,33 @@ public class JavaInspectorImpl implements JavaInspector {
         } catch (URISyntaxException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    @Override
+    public Summary parse(TypeInfo typeInfo) {
+        Summary summary = new SummaryImpl(false);
+        URI uri = typeInfo.compilationUnit().uri();
+
+        try (InputStreamReader isr = new InputStreamReader(uri.toURL().openStream(), StandardCharsets.UTF_8);
+             StringWriter sw = new StringWriter()) {
+            isr.transferTo(sw);
+            String sourceCode = sw.toString();
+            JavaParser parser = new JavaParser(sourceCode);
+
+            parser.setParserTolerant(false);
+            Resolver resolver = new ResolverImpl(new ParseHelperImpl(runtime));
+            TypeContextImpl typeContext = new TypeContextImpl(compiledTypesManager, sourceTypes);
+            Context rootContext = ContextImpl.create(runtime, summary, resolver, typeContext);
+            ParseCompilationUnit parseCompilationUnit = new ParseCompilationUnit(rootContext);
+            List<TypeInfo> types = parseCompilationUnit.parse(typeInfo, parser.CompilationUnit());
+            resolver.resolve();
+            assert types.stream().anyMatch(ti -> ti == typeInfo);
+        } catch (IOException io) {
+            LOGGER.error("Caught IO exception", io);
+
+            summary.addParserError(io);
+        }
+        return summary;
     }
 
     @Override
