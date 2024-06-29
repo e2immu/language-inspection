@@ -46,6 +46,8 @@ public interface Context {
 
     Context newTypeBody();
 
+    Context newTypeContext();
+
     Context newVariableContext(String reason, VariableContext variableContext);
 
     Context newVariableContext(String lambda);

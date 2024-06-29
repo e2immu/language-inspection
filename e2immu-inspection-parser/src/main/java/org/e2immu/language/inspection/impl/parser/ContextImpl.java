@@ -226,6 +226,13 @@ public class ContextImpl implements Context {
     }
 
     @Override
+    public Context newTypeContext() {
+        TypeContext newTypeContext = typeContext.newTypeContext();
+        return new ContextImpl(data, enclosingType, enclosingMethod, enclosingField, resolver, newTypeContext,
+                variableContext, anonymousTypeCounters, typeOfEnclosingSwitchExpression);
+    }
+
+    @Override
     public ForwardType erasureForwardType() {
         return new ForwardTypeImpl(null, true, TypeParameterMap.EMPTY);
     }
