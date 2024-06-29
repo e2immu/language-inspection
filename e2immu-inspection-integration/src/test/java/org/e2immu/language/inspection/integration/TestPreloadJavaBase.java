@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
@@ -53,5 +54,22 @@ public class TestPreloadJavaBase {
         TypeInfo list2 = javaInspector.compiledTypesManager().getOrLoad(List.class);
         assertNotNull(list2);
         assertTrue(list2.hasBeenInspected());
+
+        TypeInfo map = javaInspector.compiledTypesManager().get(Map.class);
+        assertNotNull(map);
+        TypeInfo entry = map.findSubType("Entry");
+        assertTrue(entry.hasBeenInspected());
+        assertFalse(entry.haveOnDemandInspection());
+    }
+
+    @Test
+    public void testPreloadJavaUtilStream() throws IOException {
+        InputConfiguration inputConfiguration = new InputConfigurationImpl.Builder()
+                .addClassPath(InputConfigurationImpl.DEFAULT_CLASSPATH)
+                .build();
+        JavaInspector javaInspector = new JavaInspectorImpl();
+        javaInspector.initialize(inputConfiguration);
+        javaInspector.preload("java.util.stream");
+        javaInspector.loadByteCodeQueue();
     }
 }
