@@ -3,6 +3,7 @@ package org.e2immu.language.inspection.integration;
 import org.e2immu.language.cst.api.info.MethodInfo;
 import org.e2immu.language.cst.api.info.ParameterInfo;
 import org.e2immu.language.cst.api.info.TypeInfo;
+import org.e2immu.language.cst.api.type.TypeParameter;
 import org.e2immu.language.inspection.api.integration.JavaInspector;
 import org.e2immu.language.inspection.api.resource.InputConfiguration;
 import org.e2immu.language.inspection.resource.InputConfigurationImpl;
@@ -71,5 +72,18 @@ public class TestPreloadJavaBase {
         javaInspector.initialize(inputConfiguration);
         javaInspector.preload("java.util.stream");
         javaInspector.loadByteCodeQueue();
+
+        TypeInfo spinedBuffer = javaInspector.compiledTypesManager().get("java.util.stream.SpinedBuffer");
+        assertNotNull(spinedBuffer);
+        assertFalse(spinedBuffer.isPublic());
+        TypeInfo ofPrimitive = spinedBuffer.findSubType("OfPrimitive");
+        TypeParameter ofPrimitive0 = ofPrimitive.typeParameters().get(0);
+        TypeInfo baseSpliterator = ofPrimitive.findSubType("BaseSpliterator");
+        TypeParameter tp0 = baseSpliterator.typeParameters().get(0);
+        assertEquals("T_SPLITR=TP#0 in BaseSpliterator", tp0.toString());
+        assertEquals("Type java.util.Spliterator.OfPrimitive<E,T_CONS,T_SPLITR extends java.util.Spliterator.OfPrimitive<E,T_CONS,T_SPLITR>>",
+                tp0.typeBounds().get(0).toString());
+        // check that the E in the type bound is indeed the E of OfPrimitive
+        assertEquals(ofPrimitive0, tp0.typeBounds().get(0).parameters().get(0).typeParameter());
     }
 }
