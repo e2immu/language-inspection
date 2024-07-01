@@ -61,6 +61,9 @@ public class TestPreloadJavaBase {
         TypeInfo entry = map.findSubType("Entry");
         assertTrue(entry.hasBeenInspected());
         assertFalse(entry.haveOnDemandInspection());
+
+        TypeInfo string = javaInspector.compiledTypesManager().get(String.class);
+        assertTrue(string.isSealedOrFinal());
     }
 
     @Test
