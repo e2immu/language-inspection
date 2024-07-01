@@ -86,4 +86,17 @@ public class TestPreloadJavaBase {
         // check that the E in the type bound is indeed the E of OfPrimitive
         assertEquals(ofPrimitive0, tp0.typeBounds().get(0).parameters().get(0).typeParameter());
     }
+
+    @Test
+    public void testPreloadJavaNet() throws IOException {
+        InputConfiguration inputConfiguration = new InputConfigurationImpl.Builder()
+                .addClassPath(InputConfigurationImpl.DEFAULT_CLASSPATH)
+                .build();
+        JavaInspector javaInspector = new JavaInspectorImpl();
+        javaInspector.initialize(inputConfiguration);
+        javaInspector.preload("java.net.http");
+        javaInspector.loadByteCodeQueue();
+        TypeInfo bodyHandler = javaInspector.compiledTypesManager().get("java.net.http.HttpResponse.BodyHandler");
+        assertNotNull(bodyHandler);
+    }
 }
