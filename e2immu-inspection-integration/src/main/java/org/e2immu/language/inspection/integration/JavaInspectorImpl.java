@@ -210,7 +210,7 @@ public class JavaInspectorImpl implements JavaInspector {
         Summary failFastSummary = new SummaryImpl(true);
         JavaParser parser = new JavaParser(input);
         parser.setParserTolerant(false);
-        Resolver resolver = new ResolverImpl(new ParseHelperImpl(runtime));
+        Resolver resolver = new ResolverImpl(runtime.computeMethodOverrides(), new ParseHelperImpl(runtime));
         TypeContextImpl typeContext = new TypeContextImpl(compiledTypesManager, sourceTypes);
         Context rootContext = ContextImpl.create(runtime, failFastSummary, resolver, typeContext);
         ParseCompilationUnit parseCompilationUnit = new ParseCompilationUnit(rootContext);
@@ -235,7 +235,7 @@ public class JavaInspectorImpl implements JavaInspector {
             JavaParser parser = new JavaParser(sourceCode);
 
             parser.setParserTolerant(false);
-            Resolver resolver = new ResolverImpl(new ParseHelperImpl(runtime));
+            Resolver resolver = new ResolverImpl(runtime.computeMethodOverrides(), new ParseHelperImpl(runtime));
             TypeContextImpl typeContext = new TypeContextImpl(compiledTypesManager, sourceTypes);
             Context rootContext = ContextImpl.create(runtime, summary, resolver, typeContext);
             ParseCompilationUnit parseCompilationUnit = new ParseCompilationUnit(rootContext);

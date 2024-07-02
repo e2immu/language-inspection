@@ -2,43 +2,44 @@ package org.e2immu.language.inspection.impl.parser;
 
 
 import org.e2immu.language.cst.api.expression.Expression;
-import org.e2immu.language.cst.api.info.FieldInfo;
-import org.e2immu.language.cst.api.info.Info;
-import org.e2immu.language.cst.api.info.MethodInfo;
-import org.e2immu.language.cst.api.info.TypeInfo;
-import org.e2immu.language.inspection.api.parser.Context;
-import org.e2immu.language.inspection.api.parser.ForwardType;
-import org.e2immu.language.inspection.api.parser.ParseHelper;
-import org.e2immu.language.inspection.api.parser.Resolver;
+import org.e2immu.language.cst.api.info.*;
+import org.e2immu.language.inspection.api.parser.*;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.LinkedList;
-import java.util.List;
+import java.util.*;
 
 public class ResolverImpl implements Resolver {
     private static final Logger LOGGER = LoggerFactory.getLogger(Resolver.class);
 
     private final ParseHelper parseHelper;
+    private final ComputeMethodOverrides computeMethodOverrides;
 
-    public ResolverImpl(ParseHelper parseHelper) {
+    public ResolverImpl(ComputeMethodOverrides computeMethodOverrides,
+                        ParseHelper parseHelper) {
         this.parseHelper = parseHelper;
+        this.computeMethodOverrides = computeMethodOverrides;
     }
 
-    record Todo(Info.Builder<?> infoBuilder, ForwardType forwardType, Object eci, Object expression, Context context) {
+    record Todo(Info info,
+                Info.Builder<?> infoBuilder,
+                ForwardType forwardType,
+                Object eci,
+                Object expression,
+                Context context) {
     }
 
     private final List<Todo> todos = new LinkedList<>();
     private final List<TypeInfo.Builder> types = new LinkedList<>();
 
     public Resolver newEmpty() {
-        return new ResolverImpl(parseHelper);
+        return new ResolverImpl(computeMethodOverrides, parseHelper);
     }
 
-    public void add(Info.Builder<?> infoBuilder, ForwardType forwardType, Object eci, Object expression,
+    public void add(Info info, Info.Builder<?> infoBuilder, ForwardType forwardType, Object eci, Object expression,
                     Context context) {
-        todos.add(new Todo(infoBuilder, forwardType, eci, expression, context));
+        todos.add(new Todo(info, infoBuilder, forwardType, eci, expression, context));
     }
 
     @Override
@@ -84,6 +85,8 @@ public class ResolverImpl implements Resolver {
 
     private void resolveMethod(Todo todo, MethodInfo.Builder builder) {
         parseHelper.resolveMethodInto(builder, todo.context, todo.forwardType, todo.eci, todo.expression);
+        MethodInfo methodInfo = (MethodInfo) todo.info;
+        builder.addOverrides(computeMethodOverrides.overrides(methodInfo));
     }
 
     @Override
