@@ -64,6 +64,14 @@ public class TestPreloadJavaBase {
 
         TypeInfo string = javaInspector.compiledTypesManager().get(String.class);
         assertTrue(string.isSealedOrFinal());
+
+        TypeInfo asb = javaInspector.compiledTypesManager().get("java.lang.AbstractStringBuilder");
+        assertFalse(asb.isPublic());
+
+        TypeInfo comparable = javaInspector.compiledTypesManager().get(Comparable.class);
+        MethodInfo compareTo = comparable.findUniqueMethod("compareTo", 1);
+        assertTrue(compareTo.isAbstract());
+        assertTrue(compareTo.isPublic());
     }
 
     @Test
