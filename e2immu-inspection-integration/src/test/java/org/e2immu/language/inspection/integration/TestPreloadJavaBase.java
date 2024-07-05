@@ -63,7 +63,7 @@ public class TestPreloadJavaBase {
         assertFalse(entry.haveOnDemandInspection());
 
         TypeInfo string = javaInspector.compiledTypesManager().get(String.class);
-        assertTrue(string.isSealedOrFinal());
+        assertFalse(string.isExtensible());
 
         TypeInfo asb = javaInspector.compiledTypesManager().get("java.lang.AbstractStringBuilder");
         assertFalse(asb.isPublic());
