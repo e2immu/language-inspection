@@ -26,6 +26,7 @@ public abstract class CommonTest {
         javaInspector = new JavaInspectorImpl();
         InputConfiguration inputConfiguration = new InputConfigurationImpl.Builder()
                 .addClassPath(InputConfigurationImpl.DEFAULT_CLASSPATH)
+                .addClassPath(JavaInspectorImpl.JAR_WITH_PATH_PREFIX + "org/junit/jupiter/api")
                 .build();
         javaInspector.initialize(inputConfiguration);
     }
