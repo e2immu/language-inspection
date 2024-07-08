@@ -48,7 +48,7 @@ public class TestExtendedConstructor extends CommonTest {
             assertEquals("Type java.util.HashMap<String,String>", cc.anonymousClass().parentClass().toString());
             assertEquals("a.b.C.$1", cc.anonymousClass().fullyQualifiedName());
             MethodInfo constructor = cc.anonymousClass().findConstructor(0);
-            assertEquals("", constructor.fullyQualifiedName());
+            assertEquals("a.b.C.$1.<init>()", constructor.fullyQualifiedName());
         } else fail();
 
         MethodInfo test2 = typeInfo.findUniqueMethod("test2", 0);

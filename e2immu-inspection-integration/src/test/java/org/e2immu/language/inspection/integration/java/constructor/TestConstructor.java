@@ -1,8 +1,15 @@
 package org.e2immu.language.inspection.integration.java.constructor;
 
+import org.e2immu.language.cst.api.expression.ConstructorCall;
+import org.e2immu.language.cst.api.info.FieldInfo;
+import org.e2immu.language.cst.api.info.MethodInfo;
+import org.e2immu.language.cst.api.info.TypeInfo;
+import org.e2immu.language.cst.api.statement.ReturnStatement;
 import org.e2immu.language.inspection.integration.java.CommonTest;
 import org.intellij.lang.annotations.Language;
 import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.*;
 
 public class TestConstructor extends CommonTest {
     @Language("java")
@@ -416,7 +423,15 @@ public class TestConstructor extends CommonTest {
 
     @Test
     public void test13() {
-        javaInspector.parse(INPUT13);
+       TypeInfo typeInfo = javaInspector.parse(INPUT13);
+        FieldInfo map = typeInfo.getFieldByName("map", true);
+        if (map.initializer() instanceof ConstructorCall cc) {
+            assertNotNull(cc.anonymousClass());
+            assertEquals("Type java.util.HashMap<String,String>", cc.anonymousClass().parentClass().toString());
+            assertEquals("org.e2immu.analyser.resolver.testexample.Constructor_12DoubleBrace.$1", cc.anonymousClass().fullyQualifiedName());
+            MethodInfo constructor = cc.anonymousClass().findConstructor(0);
+            assertEquals("org.e2immu.analyser.resolver.testexample.Constructor_12DoubleBrace.$1.<init>()", constructor.fullyQualifiedName());
+        } else fail();
     }
 
     @Language("java")

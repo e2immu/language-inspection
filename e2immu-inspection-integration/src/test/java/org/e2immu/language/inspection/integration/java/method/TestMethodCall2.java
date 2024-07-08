@@ -84,4 +84,43 @@ public class TestMethodCall2 extends CommonTest {
             } else fail();
         } else fail();
     }
+
+
+    @Language("java")
+    private static final String INPUT2 = """
+            package org.e2immu.analyser.resolver.testexample;
+
+            import java.util.*;
+
+            public class InspectionGaps_2 {
+                private static final Map<String, Integer> PRIORITY = new HashMap<>();
+
+                static {
+                    PRIORITY.put("e2container", 1);
+                    PRIORITY.put("e2immutable", 2);
+                }
+
+                static {
+                    PRIORITY.put("e1container", 3);
+                    PRIORITY.put("e1immutable", 4);
+                }
+
+                private static int priority(String in) {
+                    return PRIORITY.getOrDefault(in.substring(0, in.indexOf('-')), 10);
+                }
+
+                private static String highestPriority(String[] annotations) {
+                    List<String> toSort = new ArrayList<>(Arrays.asList(annotations));
+                    toSort.sort(Comparator.comparing(InspectionGaps_2::priority));
+                    return toSort.get(0);
+                }
+            }
+            """;
+
+    // more of a method call test
+    @Test
+    public void test2() {
+        TypeInfo typeInfo = javaInspector.parse(INPUT2);
+    }
+
 }
