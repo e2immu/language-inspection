@@ -31,6 +31,8 @@ public abstract class CommonTest {
                 .addRestrictSourceToPackages("org.e2immu.language.inspection.integration.java.importhelper")
                 .addClassPath(InputConfigurationImpl.DEFAULT_CLASSPATH)
                 .addClassPath(JavaInspectorImpl.JAR_WITH_PATH_PREFIX + "org/junit/jupiter/api")
+                .addClassPath(JavaInspectorImpl.JAR_WITH_PATH_PREFIX + "org/apiguardian/api")
+                .addClassPath(JavaInspectorImpl.JAR_WITH_PATH_PREFIX + "org/junit/platform/commons")
                 .build();
         javaInspector.initialize(inputConfiguration);
         javaInspector.sourceTypes().visit(new String[0], (parts, types) -> {

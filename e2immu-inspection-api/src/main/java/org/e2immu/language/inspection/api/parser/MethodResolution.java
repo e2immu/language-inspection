@@ -23,7 +23,8 @@ public interface MethodResolution {
                                   ParameterizedType formalType,
                                   ParameterizedType expectedConcreteType,
                                   Diamond diamond,
-                                  List<Object> unparsedArguments);
+                                  List<Object> unparsedArguments,
+                                  List<ParameterizedType> methodTypeArguments);
 
     Expression resolveMethod(Context context, List<Comment> comments, Source source, String index,
                              ForwardType forwardType,

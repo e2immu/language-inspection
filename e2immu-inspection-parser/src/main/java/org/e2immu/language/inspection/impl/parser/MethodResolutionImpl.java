@@ -90,7 +90,8 @@ public class MethodResolutionImpl implements MethodResolution {
                                          ParameterizedType formalType,
                                          ParameterizedType expectedConcreteType,
                                          Diamond diamond,
-                                         List<Object> unparsedArguments) {
+                                         List<Object> unparsedArguments,
+                                         List<ParameterizedType> methodTypeArguments) {
         ListMethodAndConstructorCandidates list = new ListMethodAndConstructorCandidates(runtime,
                 context.typeContext().importMap());
         Map<NamedType, ParameterizedType> typeMap = expectedConcreteType == null ? null :

@@ -44,6 +44,8 @@ dependencies {
     implementation("org.e2immu:e2immu-java-bytecode:some.version")
 
     implementation("org.slf4j:slf4j-api:2.0.7")
+    implementation("org.apiguardian:apiguardian-api:1.1.2")
+    implementation("org.junit.platform:junit-platform-commons:1.9.3")
 
     testImplementation("org.jetbrains:annotations:24.1.0")
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.9.3")
