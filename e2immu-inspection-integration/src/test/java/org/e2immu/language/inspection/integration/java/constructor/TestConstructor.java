@@ -370,7 +370,12 @@ public class TestConstructor extends CommonTest {
 
     @Test
     public void test11() {
-        javaInspector.parse(INPUT11);
+        TypeInfo typeInfo = javaInspector.parse(INPUT11);
+        MethodInfo copy = typeInfo.findUniqueMethod("copy", 1);
+        if (copy.methodBody().statements().get(0) instanceof ReturnStatement rs
+            && rs.expression() instanceof ConstructorCall cc) {
+            assertEquals("c", cc.object().toString());
+        } else fail();
     }
 
     @Language("java")
@@ -423,7 +428,7 @@ public class TestConstructor extends CommonTest {
 
     @Test
     public void test13() {
-       TypeInfo typeInfo = javaInspector.parse(INPUT13);
+        TypeInfo typeInfo = javaInspector.parse(INPUT13);
         FieldInfo map = typeInfo.getFieldByName("map", true);
         if (map.initializer() instanceof ConstructorCall cc) {
             assertNotNull(cc.anonymousClass());
@@ -636,8 +641,9 @@ public class TestConstructor extends CommonTest {
                     return new Constructor_18(s);
                 }
             }
-            
+                        
             """;
+
     @Test
     public void test20() {
         javaInspector.parse(INPUT20);

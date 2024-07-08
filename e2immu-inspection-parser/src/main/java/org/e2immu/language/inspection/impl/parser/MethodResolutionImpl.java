@@ -82,26 +82,54 @@ public class MethodResolutionImpl implements MethodResolution {
         return types;
     }
 
+    private record ContextAndScope(Context context, Expression scope) {
+    }
+
+
+    private static ContextAndScope determineTypeContextAndScope(Context context, String index, Object unparsedScope) {
+        Context newContext;
+        Expression scope;
+        if (unparsedScope != null) {
+            scope = context.parseHelper().parseExpression(context, index, context.emptyForwardType(), unparsedScope);
+            newContext = context.newTypeContext();
+            TypeInfo bestType = scope.parameterizedType().bestTypeInfo();
+            if (bestType != null) {
+                for (TypeInfo sub : bestType.subTypes()) {
+                    newContext.typeContext().addToContext(sub);
+                }
+                // TODO are there other things we should add to this context??
+            }
+        } else {
+            newContext = context;
+            scope = null;
+        }
+        return new ContextAndScope(newContext, scope);
+    }
+
     @Override
-    public Expression resolveConstructor(Context context,
+    public Expression resolveConstructor(Context contextIn,
                                          List<Comment> comments,
                                          Source source,
                                          String index,
                                          ParameterizedType formalType,
                                          ParameterizedType expectedConcreteType,
                                          Diamond diamond,
+                                         Object unparsedObject,
                                          List<Object> unparsedArguments,
                                          List<ParameterizedType> methodTypeArguments) {
+        ContextAndScope cas = determineTypeContextAndScope(contextIn, index, unparsedObject);
+        Context context = cas.context;
+        // FIXME cas.scope.pt() has type parameters, which we should add to the expectedConcreteType?
         ListMethodAndConstructorCandidates list = new ListMethodAndConstructorCandidates(runtime,
                 context.typeContext().importMap());
         Map<NamedType, ParameterizedType> typeMap = expectedConcreteType == null ? null :
                 expectedConcreteType.initialTypeParameterMap(runtime);
+        TypeParameterMap typeParameterMap = new TypeParameterMap(typeMap);
         Map<MethodTypeParameterMap, Integer> candidates = list.resolveConstructor(formalType, expectedConcreteType,
                 unparsedArguments.size(), typeMap);
-        ParameterizedType forward = expectedConcreteType == null ? runtime.voidParameterizedType() : expectedConcreteType;
         Candidate candidate = chooseCandidateAndEvaluateCall(context, index, "<init>", candidates,
                 unparsedArguments, formalType,
-                new TypeParameterMap(Map.of())); // TODO replace when we also compute scope
+                typeParameterMap);
         if (candidate == null) {
             throw new UnsupportedOperationException("No candidate for constructor");
         }
@@ -123,6 +151,7 @@ public class MethodResolutionImpl implements MethodResolution {
         // we can check the constructors... See EqualityMode
         return runtime.newConstructorCallBuilder()
                 .setConstructor(candidate.method.methodInfo())
+                .setObject(cas.scope)
                 .setDiamond(diamond)
                 .setConcreteReturnType(finalParameterizedType)
                 .setParameterExpressions(candidate.newParameterExpressions)
