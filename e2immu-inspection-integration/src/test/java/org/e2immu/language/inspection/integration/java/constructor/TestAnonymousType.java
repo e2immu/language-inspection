@@ -57,13 +57,16 @@ public class TestAnonymousType extends CommonTest {
             TypeInfo anon = cc.anonymousClass();
             MethodInfo test = anon.findUniqueMethod("test", 1);
             if (test.methodBody().statements().get(0) instanceof ReturnStatement rs
-                && rs.expression() instanceof BinaryOperator bo
-                && bo.rhs() instanceof BinaryOperator eq && eq.rhs() instanceof MethodCall mc) {
+                && rs.expression() instanceof And and
+                && and.expressions().get(1) instanceof BinaryOperator eq
+                && eq.rhs() instanceof MethodCall mc) {
                 Expression object = mc.object();
                 if (object instanceof VariableExpression ve) {
                     assertInstanceOf(ParameterInfo.class, ve.variable());
                 } else fail();
-            } else fail();
+            } else {
+                fail();
+            }
         } else fail();
     }
 

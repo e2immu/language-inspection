@@ -222,12 +222,7 @@ public class TypeContextImpl implements TypeContext {
             return null; // cannot find it
         }
         // try out java.lang; has been preloaded
-        TypeInfo inJavaLang = data.compiledTypesManager.get("java.lang." + name);
-        if (inJavaLang != null) return inJavaLang;
-
-        // go fully qualified using the package
-        String fqn = data.compilationUnit.packageName() + "." + name;
-        return getFullyQualified(fqn, complain);
+        return data.compiledTypesManager.get("java.lang." + name);
     }
 
 
