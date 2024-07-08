@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class TestStaticInitializer extends CommonTest {
 
@@ -42,6 +43,10 @@ public class TestStaticInitializer extends CommonTest {
         TypeInfo typeInfo = javaInspector.parse(INPUT);
         List<MethodInfo> methods = typeInfo.methods();
         assertEquals(3, methods.size());
+        MethodInfo static0 = typeInfo.findUniqueMethod("<static_0>", 0);
+        assertTrue(static0.isStatic());
+        MethodInfo static1 = typeInfo.findUniqueMethod("<static_1>", 0);
+        assertTrue(static1.isStatic());
     }
 
 }
