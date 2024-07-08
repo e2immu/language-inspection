@@ -590,7 +590,7 @@ public class TestConstructor extends CommonTest {
 
                 }
 
-                public void method(V<String> v6, V<String> v9) {
+                void method(V<String> v6, V<String> v9) {
                     BreakCycles<String> bc2 = new BreakCycles<>((g1, cycle) -> {
                         if (cycle.contains(v6)) {
                             return new Action<String>() {
@@ -622,26 +622,24 @@ public class TestConstructor extends CommonTest {
     @Language("java")
     private static final String INPUT20 = """
             package org.e2immu.analyser.resolver.testexample;
-                        
+
             public class Constructor_18 {
-                        
+
                 interface I {
-                        
+
                 }
-                        
+                I i;
+    
                 Constructor_18(String s, I... is) {
-                        
                 }
-                        
+
                 Constructor_18(Object... objects) {
-                        
                 }
-                        
+
                 static Constructor_18 method(String s) {
                     return new Constructor_18(s);
                 }
             }
-                        
             """;
 
     @Test

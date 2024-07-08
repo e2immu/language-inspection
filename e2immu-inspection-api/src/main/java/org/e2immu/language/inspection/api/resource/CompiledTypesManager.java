@@ -33,7 +33,7 @@ public interface CompiledTypesManager {
     }
 
     default SourceFile fqnToPath(String fqn, String suffix) {
-        throw new UnsupportedOperationException();
+        throw new UnsupportedOperationException("Don't know how to load "+fqn);
     }
 
     default TypeInfo get(Class<?> clazz) {
