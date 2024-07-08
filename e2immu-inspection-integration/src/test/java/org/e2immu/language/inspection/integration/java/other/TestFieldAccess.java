@@ -59,6 +59,7 @@ public class TestFieldAccess extends CommonTest {
 
     @Test
     public void test1() {
+        // tests that we can find the field higher up in the hierarchy
         javaInspector.parse(INPUT1);
     }
 

@@ -210,13 +210,16 @@ public class TypeContextImpl implements TypeContext {
             if (prefixType instanceof TypeInfo typeInfo) {
                 String tail = name.substring(dot + 1);
                 TypeInfo tailType = (TypeInfo) get(tail, false);
-                if(tailType != null && tailType.fullyQualifiedName().startsWith(tailType.fullyQualifiedName())) {
+                if (tailType != null && tailType.fullyQualifiedName().startsWith(tailType.fullyQualifiedName())) {
                     return tailType;
                 }
                 String fqn = typeInfo.fullyQualifiedName() + "." + tail;
                 return getFullyQualified(fqn, complain);
             }
-            throw new UnsupportedOperationException("?");
+            if (complain) {
+                throw new UnsupportedOperationException("?");
+            }
+            return null; // cannot find it
         }
         // try out java.lang; has been preloaded
         TypeInfo inJavaLang = data.compiledTypesManager.get("java.lang." + name);
