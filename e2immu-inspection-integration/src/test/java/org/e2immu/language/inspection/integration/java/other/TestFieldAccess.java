@@ -71,7 +71,7 @@ public class TestFieldAccess extends CommonTest {
             import java.util.List;
             import java.util.stream.Stream;
 
-            import static org.e2immu.analyser.resolver.testexample.importhelper.RMultiLevel.Effective.E1;
+            import static org.e2immu.language.inspection.integration.java.importhelper.RMultiLevel.Effective.E1;
 
             public class FieldAccess_1 {
 

@@ -25,7 +25,9 @@ public class RuntimeWithCompiledTypesManager extends RuntimeImpl {
     @Override
     public TypeInfo getFullyQualified(String name, boolean complain) {
         TypeInfo typeInfo = compiledTypesManager.getOrLoad(name);
-        if (complain) throw new UnsupportedOperationException("Cannot find " + name);
+        if (typeInfo == null && complain) {
+            throw new UnsupportedOperationException("Cannot find " + name);
+        }
         return typeInfo;
     }
 

@@ -18,6 +18,25 @@ public class SourceTypesImpl implements SourceTypes {
     }
 
     @Override
+    public TypeInfo getFindSubTypes(String fqn) {
+        String[] split = fqn.split("\\.");
+        List<TypeInfo> types = trie.get(split);
+        if (types == null) {
+            for (int i = split.length - 1; i >= 0; i--) {
+                List<TypeInfo> parentTypes = trie.get(split, i);
+                if (parentTypes != null && !parentTypes.isEmpty()) {
+                    TypeInfo parent = parentTypes.get(0);
+                    for (int j = i; j < split.length; j++) {
+                        parent = parent.findSubType(split[j], true);
+                    }
+                    return parent;
+                }
+            }
+        }
+        return types == null ? null : types.get(0);
+    }
+
+    @Override
     public boolean isKnown(TypeInfo typeInfo) {
         return false;
     }

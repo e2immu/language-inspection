@@ -17,6 +17,8 @@ public interface SourceTypes {
 
     TypeInfo get(String fqn);
 
+    TypeInfo getFindSubTypes(String fqn);
+
     boolean isKnown(TypeInfo typeInfo);
 
     void visit(String[] split, BiConsumer<String[], List<TypeInfo>> biConsumer);

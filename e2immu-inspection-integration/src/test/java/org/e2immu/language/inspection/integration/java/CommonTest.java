@@ -2,7 +2,9 @@ package org.e2immu.language.inspection.integration.java;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
+import org.e2immu.language.cst.api.info.TypeInfo;
 import org.e2immu.language.inspection.api.integration.JavaInspector;
+import org.e2immu.language.inspection.api.parser.Summary;
 import org.e2immu.language.inspection.api.resource.InputConfiguration;
 import org.e2immu.language.inspection.integration.JavaInspectorImpl;
 import org.e2immu.language.inspection.resource.InputConfigurationImpl;
@@ -13,7 +15,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 
 public abstract class CommonTest {
-
+    private static final org.slf4j.Logger LOGGER = LoggerFactory.getLogger(CommonTest.class);
     protected JavaInspector javaInspector;
 
     @BeforeAll
@@ -25,9 +27,18 @@ public abstract class CommonTest {
     public void beforeEach() throws IOException {
         javaInspector = new JavaInspectorImpl();
         InputConfiguration inputConfiguration = new InputConfigurationImpl.Builder()
+                .addSources("src/test/java")
+                .addRestrictSourceToPackages("org.e2immu.language.inspection.integration.java.importhelper")
                 .addClassPath(InputConfigurationImpl.DEFAULT_CLASSPATH)
                 .addClassPath(JavaInspectorImpl.JAR_WITH_PATH_PREFIX + "org/junit/jupiter/api")
                 .build();
         javaInspector.initialize(inputConfiguration);
+        javaInspector.sourceTypes().visit(new String[0], (parts, types) -> {
+            types.forEach(ti -> {
+                LOGGER.info("Parsing source type {}", ti);
+                javaInspector.parse(ti);
+            });
+        });
     }
+
 }

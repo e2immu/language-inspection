@@ -120,7 +120,7 @@ public class TypeContextImpl implements TypeContext {
 
 
     private TypeInfo loadTypeDoNotImport(String fqn) {
-        TypeInfo inSourceTypes = data.sourceTypes.get(fqn);
+        TypeInfo inSourceTypes = data.sourceTypes.getFindSubTypes(fqn);
         if (inSourceTypes != null) {
             return inSourceTypes;
         }

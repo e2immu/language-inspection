@@ -22,6 +22,11 @@ public class SummaryImpl implements Summary {
     }
 
     @Override
+    public Collection<TypeInfo> types() {
+        return types.keySet();
+    }
+
+    @Override
     public void addMethod(boolean success) {
         if (success) ++methodsSuccess;
         else ++methodsWithErrors;
