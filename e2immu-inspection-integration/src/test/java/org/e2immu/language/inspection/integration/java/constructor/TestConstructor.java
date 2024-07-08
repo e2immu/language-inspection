@@ -462,12 +462,12 @@ public class TestConstructor extends CommonTest {
 
     @Language("java")
     private static final String INPUT15 = """
-            package org.e2immu.analyser.resolver.testexample;
+            package org.e2immu.language.inspection.integration.java.importhelper;
 
             import java.util.HashMap;
             import java.util.Map;
-
-            public class Constructor_13B {
+            
+            class Constructor_13B {
 
                 private Constructor_13A a;
                 private final Map<String, Object> map = new HashMap<>();
@@ -481,6 +481,7 @@ public class TestConstructor extends CommonTest {
 
     @Test
     public void test15() {
+        // we should be looking for other types in the same package, Constructor_13A should be visible.
         javaInspector.parse(INPUT15);
     }
 

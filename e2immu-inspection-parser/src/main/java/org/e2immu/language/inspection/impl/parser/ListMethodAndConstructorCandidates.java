@@ -245,8 +245,8 @@ public class ListMethodAndConstructorCandidates {
                 boolean writeSuper;
                 TypeInfo explicitlyWriteType;
                 if (enclosingType == exact
-                    || exact.isJavaLangObject()
-                    || hierarchyHelper.recursivelyImplements(enclosingType, exact.fullyQualifiedName()) != null) {
+                    || exact.isJavaLangObject()) {
+                    //? See TestTypeParameter,5, "super"      || hierarchyHelper.recursivelyImplements(enclosingType, exact.fullyQualifiedName()) != null) {
                     typeInfo = enclosingType; // the same type
                     writeSuper = false;
                     explicitlyWriteType = null;
