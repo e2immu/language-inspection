@@ -209,8 +209,11 @@ public class TypeContextImpl implements TypeContext {
             NamedType prefixType = get(prefix, complain);
             if (prefixType instanceof TypeInfo typeInfo) {
                 String tail = name.substring(dot + 1);
-                TypeInfo tailType = (TypeInfo) get(tail, false);
-                if (tailType != null && tailType.fullyQualifiedName().startsWith(tailType.fullyQualifiedName())) {
+                // FIXME must fix fully qualified name in type context -- make systematic
+                //  at the same time, remove typeInfoOrNull
+                String newFqn = typeInfo.fullyQualifiedName()+"."+tail;
+                TypeInfo tailType = getFullyQualified(newFqn, false);
+                if (tailType != null) {
                     return tailType;
                 }
                 String fqn = typeInfo.fullyQualifiedName() + "." + tail;
