@@ -84,7 +84,7 @@ public class TestAnnotations extends CommonTest {
                 static final String ZZ = "zz";
             }
             """;
-    
+
     @Language("java")
     private static final String INPUT6 = """
             package org.e2immu.analyser.resolver.testexample;

@@ -208,7 +208,12 @@ public class TypeContextImpl implements TypeContext {
             String prefix = name.substring(0, dot);
             NamedType prefixType = get(prefix, complain);
             if (prefixType instanceof TypeInfo typeInfo) {
-                String fqn = typeInfo.fullyQualifiedName() + "." + name.substring(dot + 1);
+                String tail = name.substring(dot + 1);
+                TypeInfo tailType = (TypeInfo) get(tail, false);
+                if(tailType != null && tailType.fullyQualifiedName().startsWith(tailType.fullyQualifiedName())) {
+                    return tailType;
+                }
+                String fqn = typeInfo.fullyQualifiedName() + "." + tail;
                 return getFullyQualified(fqn, complain);
             }
             throw new UnsupportedOperationException("?");
