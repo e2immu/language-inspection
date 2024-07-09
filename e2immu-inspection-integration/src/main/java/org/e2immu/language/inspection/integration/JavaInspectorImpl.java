@@ -248,9 +248,12 @@ public class JavaInspectorImpl implements JavaInspector {
              StringWriter sw = new StringWriter()) {
             isr.transferTo(sw);
             String sourceCode = sw.toString();
-            JavaParser parser = new JavaParser(sourceCode);
-            parser.setParserTolerant(false);
-            List<TypeInfo> types = internalParse(summary, parser);
+
+            List<TypeInfo> types = internalParse(summary, () -> {
+                JavaParser parser = new JavaParser(sourceCode);
+                parser.setParserTolerant(false);
+                return parser;
+            });
             assert types.stream().anyMatch(ti -> ti == typeInfo);
         } catch (IOException io) {
             LOGGER.error("Caught IO exception", io);

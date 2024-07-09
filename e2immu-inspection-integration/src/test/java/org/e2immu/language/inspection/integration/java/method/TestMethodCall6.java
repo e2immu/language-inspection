@@ -164,4 +164,120 @@ public class TestMethodCall6 extends CommonTest {
         javaInspector.parse(INPUT7);
     }
 
+
+    @Language("java")
+    private static final String INPUT3 = """
+            package org.e2immu.analyser.resolver.testexample;
+
+            /*
+            simply take the first one, if 'null' is involved
+             */
+            public class MethodCall_66 {
+                static class MyException extends RuntimeException {
+
+                }
+                interface Logger {
+                    void logError(String msg, MyException myException);
+
+                    void logError(String msg, Throwable throwable);
+                }
+
+                void method1(Logger logger) {
+                    logger.logError("hello", null);
+                }
+               \s
+                void method2(Logger logger) {
+                    logger.logError("hello", (Throwable) null);
+                }
+            }
+            """;
+
+    @Test
+    public void test3() {
+        javaInspector.parse(INPUT3);
+    }
+
+    @Language("java")
+    private static final String INPUT8 = """
+            package org.e2immu.analyser.resolver.testexample;
+
+            public class MethodCall_64 {
+
+                static class B {
+                    void set(Double d) {
+                    }
+                }
+
+                B b;
+
+                Double getDoubleValueFromString(String val) {
+                    return Double.valueOf(val);
+                }
+
+                void method(String s) {
+                    b.set(getDoubleValueFromString(s) * 100);
+                }
+            }
+            """;
+
+    @Test
+    public void test8() {
+        javaInspector.parse(INPUT8);
+    }
+
+    @Language("java")
+    private static final String INPUT9 = """
+            package org.e2immu.analyser.resolver.testexample;
+
+            public class MethodCall_63 {
+
+                interface I {
+                }
+
+                void set(I[] is) {
+                }
+
+                // from org.apache.commons.lang3
+                @SafeVarargs
+                static <T> T[] addAll(final T[] array1, final T... array2) {
+                    return null;
+                }
+
+                void method(I i, I data[]) {
+                    set(addAll(new I[]{i}, data));
+                }
+            }
+            """;
+
+    @Test
+    public void test9() {
+        javaInspector.parse(INPUT9);
+    }
+
+    @Language("java")
+    private static final String INPUT10 = """
+            package org.e2immu.analyser.resolver.testexample;
+
+            public class MethodCall_60 {
+
+                static class ArrayList<I> extends java.util.ArrayList<I> {
+                }
+
+                ArrayList<String[]> list;
+
+                String accept(String[][] nameValuePairs) {
+                    return nameValuePairs.length + "?";
+                }
+
+                String method() {
+                    String[][] a = new String[list.size()][2];
+                    return accept(list.toArray(a));
+                }
+            }
+            """;
+
+    @Test
+    public void test10() {
+        javaInspector.parse(INPUT10);
+    }
 }

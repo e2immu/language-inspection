@@ -234,4 +234,60 @@ public class TestMethodCall5 extends CommonTest {
         javaInspector.parse(INPUT9);
     }
 
+
+    @Language("java")
+    private static final String INPUT11 = """
+            package org.e2immu.analyser.resolver.testexample;
+
+            public class MethodCall_56 {
+
+                interface I<T> {
+
+                }
+                static class AI<A>  implements I<A> {
+
+                }
+                static class BI<B> implements I<B> {
+
+                }
+
+                String method(I<? extends Number> i) {
+                    return "hello "+i;
+                }
+                public String method(boolean b) {
+                    return method(b ? new AI<Long>(): new BI<Integer>());
+                }
+            }
+            """;
+
+    @Test
+    public void test11() {
+        javaInspector.parse(INPUT11);
+    }
+
+
+    @Language("java")
+    private static final String INPUT12 = """
+            package org.e2immu.analyser.resolver.testexample;
+
+            public class MethodCall_55 {
+
+                interface D {
+                    long id();
+                }
+
+                String method(D d) {
+                    // noinspection ALL
+                    StringBuilder buf = new StringBuilder();
+                    buf.append(d.id() != Long.MIN_VALUE ? d.id() : "");
+                    return buf.toString();
+                }
+            }
+            """;
+
+    @Test
+    public void test12() {
+        javaInspector.parse(INPUT12);
+    }
+
 }
