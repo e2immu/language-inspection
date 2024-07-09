@@ -6,11 +6,14 @@ import org.e2immu.language.cst.api.expression.Expression;
 import org.e2immu.language.cst.api.expression.MethodReference;
 import org.e2immu.language.cst.api.type.Diamond;
 import org.e2immu.language.cst.api.type.ParameterizedType;
+import org.e2immu.support.Either;
 
 import java.util.List;
 import java.util.Set;
 
 public interface MethodResolution {
+    record Count(int parameters, boolean isVoid) {
+    }
 
     GenericsHelper genericsHelper();
 
@@ -32,7 +35,10 @@ public interface MethodResolution {
                              ForwardType forwardType,
                              String methodName, Object unparsedObject, List<Object> unparsedArguments);
 
-    MethodReference resolveMethodReference(Context context, List<Comment> comments, Source source, String index,
-                                           ForwardType forwardType,
-                                           Expression scope, String methodName);
+    Expression resolveMethodReference(Context context, List<Comment> comments, Source source, String index,
+                                      ForwardType forwardType,
+                                      Expression scope, String methodName);
+
+    Either<Set<Count>, Expression> computeMethodReferenceErasureCounts(Context context, List<Comment> comments, Source source,
+                                                                       Expression scope, String methodName);
 }

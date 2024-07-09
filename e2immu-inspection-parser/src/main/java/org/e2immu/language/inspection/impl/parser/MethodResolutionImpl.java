@@ -17,6 +17,7 @@ import org.e2immu.language.cst.api.type.TypeParameter;
 import org.e2immu.language.cst.api.variable.This;
 import org.e2immu.language.cst.api.variable.Variable;
 import org.e2immu.language.inspection.api.parser.*;
+import org.e2immu.support.Either;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -979,9 +980,10 @@ public class MethodResolutionImpl implements MethodResolution {
     }
 
     @Override
-    public MethodReference resolveMethodReference(Context context, List<Comment> comments, Source source, String index,
-                                                  ForwardType forwardType,
-                                                  Expression scope, String methodName) {
+    public Expression resolveMethodReference(Context context, List<Comment> comments, Source source, String index,
+                                             ForwardType forwardType,
+                                             Expression scope, String methodName) {
+        assert !forwardType.erasure();
         MethodTypeParameterMap sam = forwardType.computeSAM(context.runtime(), context.genericsHelper(),
                 context.enclosingType());
         assert sam != null && sam.isSingleAbstractMethod();
@@ -1052,6 +1054,46 @@ public class MethodResolutionImpl implements MethodResolution {
                 .setScope(scope)
                 .setConcreteReturnType(functionalType)
                 .build();
+    }
+
+    @Override
+    public Either<Set<Count>, Expression> computeMethodReferenceErasureCounts(Context context, List<Comment> comments,
+                                                                              Source source, Expression scope, String methodName) {
+        ParameterizedType parameterizedType = scope.parameterizedType();
+        boolean constructor = "new".equals(methodName);
+
+        Map<MethodTypeParameterMap, Integer> methodCandidates;
+        ListMethodAndConstructorCandidates list = new ListMethodAndConstructorCandidates(runtime, context.typeContext().importMap());
+        if (constructor) {
+            if (parameterizedType.arrays() > 0) {
+                Expression e = arrayConstruction(comments, source, parameterizedType);
+                return Either.right(e);
+            }
+            methodCandidates = list.resolveConstructor(parameterizedType, parameterizedType,
+                    IGNORE_PARAMETER_NUMBERS, parameterizedType.initialTypeParameterMap(runtime));
+        } else {
+            methodCandidates = new HashMap<>();
+            list.recursivelyResolveOverloadedMethods(parameterizedType,
+                    methodName, IGNORE_PARAMETER_NUMBERS, false,
+                    parameterizedType.initialTypeParameterMap(runtime), methodCandidates,
+                    ListMethodAndConstructorCandidates.ScopeNature.INSTANCE);
+        }
+        if (methodCandidates.isEmpty()) {
+            throw new UnsupportedOperationException("Cannot find a candidate for " +
+                                                    (constructor ? "constructor" : methodName) + " at " + source);
+        }
+        Set<Count> erasures = new HashSet<>();
+        for (MethodTypeParameterMap mt : methodCandidates.keySet()) {
+            MethodInfo methodInfo = mt.methodInfo();
+            LOGGER.debug("Found method reference candidate, this can work: {}", methodInfo);
+            boolean scopeIsType = scope instanceof TypeExpression;
+            boolean addOne = scopeIsType && !methodInfo.isConstructor() && !methodInfo.isStatic();
+            int n = methodInfo.parameters().size() + (addOne ? 1 : 0);
+            boolean isVoid = !constructor && methodInfo.isVoid();
+            erasures.add(new Count(n, isVoid));
+        }
+        LOGGER.debug("End parsing unevaluated method reference {}, found counts {}", methodName, erasures);
+        return Either.left(erasures);
     }
 
     private List<MethodTypeParameterMap> handleMultipleCandidates(MethodTypeParameterMap singleAbstractMethod,
