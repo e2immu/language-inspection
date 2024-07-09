@@ -298,4 +298,151 @@ public class TestMethodCall0 extends CommonTest {
     public void test7() {
         javaInspector.parse(INPUT7);
     }
+
+    @Language("java")
+    private static final String INPUT8 = """
+            package org.e2immu.analyser.resolver.testexample;
+
+            import java.util.function.Function;
+
+            public class MethodCall_6 {
+
+                interface  A {}
+                interface  B extends A {}
+
+                public A method(Function<B, A> f, B b) {
+                    return f.apply(b);
+                }
+                public B method(Function<A, B> f, A a) {
+                    return f.apply(a);
+                }
+
+                public void test() {
+                    A a = new A() {
+                    };
+                    B b = new B() {
+                    };
+                    // CAUSES "Ambiguous method call": accept(bb -> bb, b);
+                    method((B bb) -> bb, b);
+                    method(aa -> (B)aa, a);
+                }
+            }
+            """;
+
+    @Test
+    public void test8() {
+        javaInspector.parse(INPUT8);
+    }
+
+    @Language("java")
+    private static final String INPUT9 = """
+            package org.e2immu.analyser.resolver.testexample;
+
+            import java.util.List;
+            import java.util.function.BiConsumer;
+            import java.util.function.Consumer;
+
+            // see also MethodCall_27
+            public class MethodCall_7<A, B, BB extends B> {
+
+                public void method(List<B> list, Consumer<B> b) {
+                    b.accept(list.get(0));
+                }
+
+                public void method(List<A> list, BiConsumer<A, B> a) {
+                    a.accept(list.get(0), null);
+                }
+
+                public void test(A a, BB bb) {
+                    method(List.of(bb), System.out::println);
+                    method(List.of(a), (x, y) -> System.out.println(x + " " + y));
+                }
+            }
+            """;
+
+    @Test
+    public void test9() {
+        javaInspector.parse(INPUT9);
+    }
+
+
+    @Language("java")
+    private static final String INPUT10 = """
+            package org.e2immu.analyser.resolver.testexample;
+
+            import java.util.List;
+            import java.util.Set;
+
+            /*
+            A bit contrived
+             */
+            public class MethodCall_8<A, B> {
+
+                public void method(List<A> list1, List<A> list2, List<A> list3) {
+                }
+
+                public void method(List<B> list1, Set<A> set2, List<B> list3) {
+                }
+
+                public void method(Set<A> set1, List<B> list2, List<B> list3) {
+                }
+
+                public void test(A a, B b) {
+                    method(List.of(a), List.of(a), List.of(a));
+                    //compilation error: method(List.of(b), List.of(a),  List.of(a));
+                    method(List.of(b), Set.of(a), List.of(b));
+                    method(Set.of(a), List.of(b), List.of(b));
+                }
+            }
+            """;
+
+    @Test
+    public void test10() {
+        javaInspector.parse(INPUT10);
+    }
+
+
+    @Language("java")
+    private static final String INPUT11 = """
+            package org.e2immu.analyser.resolver.testexample;
+
+            import java.util.Collection;
+            import java.util.List;
+            import java.util.Set;
+
+            public class MethodCall_9 {
+
+                interface Get {
+                    String get();
+                }
+
+                record GetOnly(String s) implements Get {
+
+                    @Override
+                    public String get() {
+                        return s;
+                    }
+                }
+
+                public void accept(Collection<Get> set) {
+                    set.forEach(get -> System.out.println(get.get()));
+                }
+
+                public void accept(Set<Get> set) {
+                    set.forEach(get -> System.out.println(get.get()));
+                }
+
+                public void test() {
+                    // here, List.of(...) becomes a List<Get> because of the context of 'accept(...)'; then, it is compatible
+                    // with Collection<Get>
+                    accept(List.of(new GetOnly("hello")));
+                }
+            }
+            """;
+
+    @Test
+    public void test11() {
+        javaInspector.parse(INPUT11);
+    }
+
 }
