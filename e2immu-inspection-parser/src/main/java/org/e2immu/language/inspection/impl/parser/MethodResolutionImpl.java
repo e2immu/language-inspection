@@ -3,6 +3,8 @@ package org.e2immu.language.inspection.impl.parser;
 import org.e2immu.language.cst.api.element.Comment;
 import org.e2immu.language.cst.api.element.Source;
 import org.e2immu.language.cst.api.expression.Expression;
+import org.e2immu.language.cst.api.expression.MethodReference;
+import org.e2immu.language.cst.api.expression.TypeExpression;
 import org.e2immu.language.cst.api.expression.VariableExpression;
 import org.e2immu.language.cst.api.info.MethodInfo;
 import org.e2immu.language.cst.api.info.ParameterInfo;
@@ -13,13 +15,17 @@ import org.e2immu.language.cst.api.type.NamedType;
 import org.e2immu.language.cst.api.type.ParameterizedType;
 import org.e2immu.language.cst.api.type.TypeParameter;
 import org.e2immu.language.cst.api.variable.This;
+import org.e2immu.language.cst.api.variable.Variable;
 import org.e2immu.language.inspection.api.parser.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.IntFunction;
 import java.util.stream.Collectors;
+
+import static org.e2immu.language.inspection.impl.parser.ListMethodAndConstructorCandidates.IGNORE_PARAMETER_NUMBERS;
 
 public class MethodResolutionImpl implements MethodResolution {
     private static final Logger LOGGER = LoggerFactory.getLogger(MethodResolutionImpl.class);
@@ -970,5 +976,185 @@ public class MethodResolutionImpl implements MethodResolution {
     @Override
     public GenericsHelper genericsHelper() {
         return genericsHelper;
+    }
+
+    @Override
+    public MethodReference resolveMethodReference(Context context, List<Comment> comments, Source source, String index,
+                                                  ForwardType forwardType,
+                                                  Expression scope, String methodName) {
+        MethodTypeParameterMap sam = forwardType.computeSAM(context.runtime(), context.genericsHelper(),
+                context.enclosingType());
+        assert sam != null && sam.isSingleAbstractMethod();
+
+        int parametersPresented = sam.methodInfo().parameters().size();
+        ParameterizedType parameterizedType = scope.parameterizedType();
+
+        boolean isConstructor = "new".equals(methodName);
+        boolean scopeIsAType = scope instanceof TypeExpression;
+
+        Map<MethodTypeParameterMap, Integer> methodCandidates;
+        ListMethodAndConstructorCandidates list = new ListMethodAndConstructorCandidates(runtime,
+                context.typeContext().importMap());
+        if (isConstructor) {
+            if (parameterizedType.arrays() > 0) {
+                return arrayConstruction(comments, source, parameterizedType);
+            }
+            Map<NamedType, ParameterizedType> typeMap = parameterizedType.initialTypeParameterMap(runtime);
+            methodCandidates = list.resolveConstructor(parameterizedType, parameterizedType, parametersPresented, typeMap);
+        } else {
+            Map<NamedType, ParameterizedType> typeMap = parameterizedType.initialTypeParameterMap(runtime);
+            ListMethodAndConstructorCandidates.ScopeNature scopeNature = scopeIsAType
+                    ? ListMethodAndConstructorCandidates.ScopeNature.STATIC
+                    : ListMethodAndConstructorCandidates.ScopeNature.INSTANCE;
+            methodCandidates = new HashMap<>();
+            list.recursivelyResolveOverloadedMethods(parameterizedType, methodName, parametersPresented,
+                    scopeIsAType, typeMap, methodCandidates, scopeNature);
+        }
+        if (methodCandidates.isEmpty()) {
+            throw new Summary.ParseException(context.info(), "Cannot find a candidate for " + methodName);
+        }
+        List<MethodTypeParameterMap> sorted;
+        if (methodCandidates.size() > 1) {
+            sorted = handleMultipleCandidates(sam, methodCandidates, scopeIsAType, isConstructor);
+        } else {
+            sorted = List.copyOf(methodCandidates.keySet());
+        }
+        if (sorted.isEmpty()) {
+            throw new Summary.ParseException(context.info(), "I've killed all the candidates myself??");
+        }
+        MethodTypeParameterMap method = sorted.get(0);
+        MethodInfo methodInfo = method.methodInfo();
+        ParameterizedType formalMethodType = methodInfo.typeInfo().asParameterizedType(runtime);
+
+        List<ParameterizedType> types = inputTypes(formalMethodType, method, parametersPresented);
+
+        ParameterizedType concreteReturnType;
+        if (isConstructor) {
+            concreteReturnType = parameterizedType;
+        } else {
+            concreteReturnType = method.getConcreteReturnType(runtime);
+        }
+        ParameterizedType connected;
+        if (concreteReturnType.hasTypeParameters()) {
+            ParameterizedType formalReturnType = method.methodInfo().returnType();
+            Map<NamedType, ParameterizedType> matched = sam.formalOfSamToConcreteTypes(method.methodInfo(), runtime);
+            // Lambda_18
+            connected = formalReturnType.applyTranslation(runtime, matched);
+        } else {
+            // MethodReference_2
+            connected = concreteReturnType;
+        }
+
+        ParameterizedType functionalType = sam.inferFunctionalType(runtime, types, connected);
+
+        return runtime.newMethodReferenceBuilder().setSource(source).addComments(comments)
+                .setMethod(methodInfo)
+                .setScope(scope)
+                .setConcreteReturnType(functionalType)
+                .build();
+    }
+
+    private List<MethodTypeParameterMap> handleMultipleCandidates(MethodTypeParameterMap singleAbstractMethod,
+                                                                  Map<MethodTypeParameterMap, Integer> methodCandidates,
+                                                                  boolean scopeIsAType,
+                                                                  boolean constructor) {
+        List<MethodTypeParameterMap> sorted = new ArrayList<>(methodCandidates.keySet());
+        // check types of parameters in SAM
+        // see if the method candidate's type fits the SAMs
+        for (int i = 0; i < singleAbstractMethod.methodInfo().parameters().size(); i++) {
+            final int index = i;
+            ParameterizedType concreteType = singleAbstractMethod.getConcreteTypeOfParameter(runtime, i);
+            if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug("Have {} candidates, try to weed out based on compatibility of {} with parameter {}",
+                        sorted.size(), concreteType.detailedString(), i);
+            }
+            List<MethodTypeParameterMap> copy = new ArrayList<>(sorted);
+            copy.removeIf(mt -> {
+                ParameterizedType typeOfMethodCandidate = typeOfMethodCandidate(mt, index, scopeIsAType, constructor);
+                boolean isAssignable = typeOfMethodCandidate.isAssignableFrom(runtime, concreteType);
+                return !isAssignable;
+            });
+            // only accept of this is an improvement
+            // there are situations where this method kills all, as the concrete type
+            // can be a type parameter while the method candidates only have concrete types
+            if (!copy.isEmpty() && copy.size() < sorted.size()) {
+                sorted.retainAll(copy);
+            }
+            // sort on assignability to parameter "index"
+            sorted.sort((mc1, mc2) -> {
+                ParameterizedType typeOfMc1 = typeOfMethodCandidate(mc1, index, scopeIsAType, constructor);
+                ParameterizedType typeOfMc2 = typeOfMethodCandidate(mc2, index, scopeIsAType, constructor);
+                if (typeOfMc1.equals(typeOfMc2)) return 0;
+                return typeOfMc2.isAssignableFrom(runtime, typeOfMc1) ? -1 : 1;
+            });
+        }
+        if (sorted.size() > 1) {
+            LOGGER.debug("Trying to weed out those of the same type, static vs instance");
+            staticVsInstance(sorted);
+            if (sorted.size() > 1) {
+                if (LOGGER.isDebugEnabled()) {
+                    LOGGER.debug("Still have {}", methodCandidates.size());
+                    sorted.forEach(mc -> LOGGER.debug("- {}", mc.methodInfo()));
+                }
+                // method candidates have been sorted; the first one should be the one we're after and others should be
+                // higher in the hierarchy (interfaces, parent classes)
+            }
+        }
+        return sorted;
+    }
+
+
+    private static void staticVsInstance(List<MethodTypeParameterMap> methodCandidates) {
+        Set<TypeInfo> haveInstance = new HashSet<>();
+        methodCandidates.stream()
+                .filter(mt -> !mt.methodInfo().isStatic())
+                .forEach(mt -> haveInstance.add(mt.methodInfo().typeInfo()));
+        methodCandidates
+                .removeIf(mt -> mt.methodInfo().isStatic() && haveInstance.contains(mt.methodInfo().typeInfo()));
+    }
+
+    private ParameterizedType typeOfMethodCandidate(MethodTypeParameterMap mt,
+                                                    int index,
+                                                    boolean scopeIsAType,
+                                                    boolean constructor) {
+        MethodInfo methodInfo = mt.methodInfo();
+        int param = scopeIsAType && !constructor && !methodInfo.isStatic() ? index - 1 : index;
+        if (param == -1) {
+            return methodInfo.typeInfo().asParameterizedType(runtime);
+        }
+        return methodInfo.parameters().get(param).parameterizedType();
+    }
+
+    /**
+     * In this method we provide the types that the "inferFunctionalType" method will use to determine
+     * the functional type. We must provide a concrete type for each of the real method's parameters.
+     */
+    private List<ParameterizedType> inputTypes(ParameterizedType parameterizedType,
+                                               MethodTypeParameterMap method,
+                                               int parametersPresented) {
+        List<ParameterizedType> types = new ArrayList<>();
+        if (method.methodInfo().parameters().size() < parametersPresented) {
+            types.add(parameterizedType);
+        }
+        method.methodInfo().parameters().stream()
+                .map(Variable::parameterizedType)
+                .forEach(pt -> {
+                    ParameterizedType translated = pt.applyTranslation(runtime, method.concreteTypes());
+                    types.add(translated);
+                });
+        return types;
+    }
+
+    private MethodReference arrayConstruction(List<Comment> comments,
+                                              Source source,
+                                              ParameterizedType parameterizedType) {
+        MethodInfo methodInfo = runtime.newArrayCreationConstructor(parameterizedType);
+        TypeInfo intFunction = runtime.getFullyQualified(IntFunction.class, true);
+        ParameterizedType concreteReturnType = runtime.newParameterizedType(intFunction, List.of(parameterizedType));
+        return runtime.newMethodReferenceBuilder().setSource(source).addComments(comments)
+                .setMethod(methodInfo)
+                .setScope(runtime.newTypeExpression(parameterizedType, runtime.diamondNo()))
+                .setConcreteReturnType(concreteReturnType)
+                .build();
     }
 }

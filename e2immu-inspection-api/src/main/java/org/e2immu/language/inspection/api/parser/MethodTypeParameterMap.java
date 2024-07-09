@@ -12,6 +12,8 @@ import java.util.Map;
 
 public interface MethodTypeParameterMap {
 
+    Map<NamedType, ParameterizedType> concreteTypes();
+
     MethodTypeParameterMap expand(Runtime runtime, TypeInfo primaryType, Map<NamedType, ParameterizedType> mapExpansion);
 
     /*

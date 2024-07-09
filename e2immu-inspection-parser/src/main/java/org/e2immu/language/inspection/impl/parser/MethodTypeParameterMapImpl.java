@@ -253,5 +253,8 @@ class MethodTypeParameterMapImpl implements MethodTypeParameterMap {
         }
     }
 
-
+    @Override
+    public Map<NamedType, ParameterizedType> concreteTypes() {
+        return concreteTypes;
+    }
 }

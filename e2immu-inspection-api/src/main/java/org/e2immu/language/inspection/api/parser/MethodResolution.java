@@ -3,6 +3,7 @@ package org.e2immu.language.inspection.api.parser;
 import org.e2immu.language.cst.api.element.Comment;
 import org.e2immu.language.cst.api.element.Source;
 import org.e2immu.language.cst.api.expression.Expression;
+import org.e2immu.language.cst.api.expression.MethodReference;
 import org.e2immu.language.cst.api.type.Diamond;
 import org.e2immu.language.cst.api.type.ParameterizedType;
 
@@ -30,4 +31,8 @@ public interface MethodResolution {
     Expression resolveMethod(Context context, List<Comment> comments, Source source, String index,
                              ForwardType forwardType,
                              String methodName, Object unparsedObject, List<Object> unparsedArguments);
+
+    MethodReference resolveMethodReference(Context context, List<Comment> comments, Source source, String index,
+                                           ForwardType forwardType,
+                                           Expression scope, String methodName);
 }
