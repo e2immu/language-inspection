@@ -16,7 +16,7 @@ import java.util.function.Consumer;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-public class TestMethodCall1_Basics extends CommonTest {
+public class TestMethodCall0 extends CommonTest {
 
     @Language("java")
     private static final String INPUT1 = """
