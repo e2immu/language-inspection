@@ -4,7 +4,6 @@ import org.e2immu.bytecode.java.asm.ByteCodeInspectorImpl;
 import org.e2immu.language.cst.api.element.CompilationUnit;
 import org.e2immu.language.cst.api.info.TypeInfo;
 import org.e2immu.language.cst.api.runtime.Runtime;
-import org.e2immu.language.cst.impl.runtime.RuntimeImpl;
 import org.e2immu.language.inspection.api.integration.JavaInspector;
 import org.e2immu.language.inspection.api.parser.Context;
 import org.e2immu.language.inspection.api.parser.Resolver;
@@ -16,6 +15,7 @@ import org.e2immu.language.inspection.resource.CompiledTypesManagerImpl;
 import org.e2immu.language.inspection.resource.ResourcesImpl;
 import org.e2immu.parser.java.ParseCompilationUnit;
 import org.e2immu.parser.java.ParseHelperImpl;
+import org.e2immu.parser.java.ScanCompilationUnit;
 import org.parsers.java.JavaParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,17 +33,22 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /*
 from input configuration
 to classpath + sourceTypeMap/Trie
-to typeMap
+
+then, do a 1st round of parsing the source types -> map fqn->type/subType + list compilation unit->parsed object
+
+finally, do the actual parsing for all primary types
  */
 public class JavaInspectorImpl implements JavaInspector {
     private Runtime runtime;
     private final SourceTypes sourceTypes = new SourceTypesImpl();
+    private final SourceTypeMapImpl sourceTypeMap = new SourceTypeMapImpl();
     private CompiledTypesManager compiledTypesManager;
 
     private static final Logger LOGGER = LoggerFactory.getLogger(JavaInspector.class);
@@ -208,19 +213,30 @@ public class JavaInspectorImpl implements JavaInspector {
     @Override
     public List<TypeInfo> parseReturnAll(String input) {
         Summary failFastSummary = new SummaryImpl(true);
-        JavaParser parser = new JavaParser(input);
-        parser.setParserTolerant(false);
+        return internalParse(failFastSummary, () -> {
+            JavaParser parser = new JavaParser(input);
+            parser.setParserTolerant(false);
+            return parser;
+        });
+    }
+
+    private List<TypeInfo> internalParse(Summary failFastSummary, Supplier<JavaParser> parser) {
         Resolver resolver = new ResolverImpl(runtime.computeMethodOverrides(), new ParseHelperImpl(runtime));
-        TypeContextImpl typeContext = new TypeContextImpl(compiledTypesManager, sourceTypes);
+        TypeContextImpl typeContext = new TypeContextImpl(compiledTypesManager, sourceTypes, sourceTypeMap);
         Context rootContext = ContextImpl.create(runtime, failFastSummary, resolver, typeContext);
-        ParseCompilationUnit parseCompilationUnit = new ParseCompilationUnit(rootContext);
+        ScanCompilationUnit scanCompilationUnit = new ScanCompilationUnit(rootContext);
+        CompilationUnit cu;
         try {
-            List<TypeInfo> types = parseCompilationUnit.parse(new URI("input"), parser.CompilationUnit());
-            resolver.resolve();
-            return types;
+            ScanCompilationUnit.ScanResult sr = scanCompilationUnit.scan(new URI("input"), parser.get().CompilationUnit());
+            sourceTypeMap.putAll(sr.sourceTypes());
+            cu = sr.compilationUnit();
         } catch (URISyntaxException e) {
             throw new RuntimeException(e);
         }
+        ParseCompilationUnit parseCompilationUnit = new ParseCompilationUnit(rootContext);
+        List<TypeInfo> types = parseCompilationUnit.parse(cu, parser.get().CompilationUnit());
+        rootContext.resolver().resolve();
+        return types;
     }
 
     @Override
@@ -233,14 +249,8 @@ public class JavaInspectorImpl implements JavaInspector {
             isr.transferTo(sw);
             String sourceCode = sw.toString();
             JavaParser parser = new JavaParser(sourceCode);
-
             parser.setParserTolerant(false);
-            Resolver resolver = new ResolverImpl(runtime.computeMethodOverrides(), new ParseHelperImpl(runtime));
-            TypeContextImpl typeContext = new TypeContextImpl(compiledTypesManager, sourceTypes);
-            Context rootContext = ContextImpl.create(runtime, summary, resolver, typeContext);
-            ParseCompilationUnit parseCompilationUnit = new ParseCompilationUnit(rootContext);
-            List<TypeInfo> types = parseCompilationUnit.parse(typeInfo, parser.CompilationUnit());
-            resolver.resolve();
+            List<TypeInfo> types = internalParse(summary, parser);
             assert types.stream().anyMatch(ti -> ti == typeInfo);
         } catch (IOException io) {
             LOGGER.error("Caught IO exception", io);

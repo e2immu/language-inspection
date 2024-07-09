@@ -10,6 +10,7 @@ import org.e2immu.language.cst.api.type.NamedType;
 import org.e2immu.language.cst.api.type.ParameterizedType;
 import org.e2immu.language.cst.api.variable.FieldReference;
 import org.e2immu.language.inspection.api.parser.ImportMap;
+import org.e2immu.language.inspection.api.parser.SourceTypeMap;
 import org.e2immu.language.inspection.api.parser.SourceTypes;
 import org.e2immu.language.inspection.api.parser.TypeContext;
 import org.e2immu.language.inspection.api.resource.CompiledTypesManager;
@@ -27,10 +28,10 @@ public class TypeContextImpl implements TypeContext {
 
     private record Data(CompiledTypesManager compiledTypesManager,
                         SourceTypes sourceTypes,
-                        ImportMap importMap,
+                        SourceTypeMap sourceTypeMap, ImportMap importMap,
                         CompilationUnit compilationUnit) {
         Data withCompilationUnit(CompilationUnit cu) {
-            return new Data(compiledTypesManager, sourceTypes, new ImportMapImpl(), cu);
+            return new Data(compiledTypesManager, sourceTypes, sourceTypeMap, new ImportMapImpl(), cu);
         }
     }
 
@@ -41,8 +42,8 @@ public class TypeContextImpl implements TypeContext {
     /*
     the packageInfo should already contain all the types of the current package
      */
-    public TypeContextImpl(CompiledTypesManager compiledTypesManager, SourceTypes sourceTypes) {
-        this(null, new Data(compiledTypesManager, sourceTypes, null, null));
+    public TypeContextImpl(CompiledTypesManager compiledTypesManager, SourceTypes sourceTypes, SourceTypeMap sourceTypeMap) {
+        this(null, new Data(compiledTypesManager, sourceTypes, sourceTypeMap, null, null));
     }
 
     private TypeContextImpl(TypeContextImpl parentContext, Data data) {
@@ -161,14 +162,18 @@ public class TypeContextImpl implements TypeContext {
      * @return the type
      */
     private TypeInfo getFullyQualified(String fullyQualifiedName, boolean complain) {
-        TypeInfo typeInfo = internalGetFullyQualified(fullyQualifiedName, complain);
+        TypeInfo sourceType = data.sourceTypeMap.get(fullyQualifiedName);
+        if (sourceType != null) {
+            return sourceType;
+        }
+        TypeInfo typeInfo = getFullyQualifiedFromCompiledTypesManager(fullyQualifiedName, complain);
         if (typeInfo != null) {
             data.compiledTypesManager.ensureInspection(typeInfo);
         }
         return typeInfo;
     }
 
-    private TypeInfo internalGetFullyQualified(String fullyQualifiedName, boolean complain) {
+    private TypeInfo getFullyQualifiedFromCompiledTypesManager(String fullyQualifiedName, boolean complain) {
         TypeInfo typeInfo = data.compiledTypesManager.get(fullyQualifiedName);
         if (typeInfo == null) {
             // see InspectionGaps_9: we don't have the type, but we do have an import of its enclosing type
@@ -188,44 +193,37 @@ public class TypeContextImpl implements TypeContext {
 
     @Override
     public NamedType get(String name, boolean complain) {
-        NamedType simple = getSimpleName(name);
-        if (simple != null) {
-            // if (simple instanceof TypeInfo typeInfo && !typeInfo.hasBeenInspected()) {
-            //      if (!data.sourceTypes.isKnown(typeInfo.primaryType())) {
-            //         data.compiledTypesManager.ensureInspection(typeInfo);
-            //      }
-            //  }
-            return simple;
-        }
-
         int dot = name.lastIndexOf('.');
+        if (dot < 0) {
+            NamedType simple = getSimpleName(name);
+            if (simple != null) {
+                return simple;
+            }
+        }
+        // name can be fully qualified, or semi qualified; but the package can be empty, too.
+        // try fully qualified first
+        NamedType fullyQualified = getFullyQualified(name, false);
+        if (fullyQualified != null) return fullyQualified;
+
         if (dot >= 0) {
-            // name can be fully qualified, or semi qualified
-            // try fully qualified first
-            NamedType fullyQualified = getFullyQualified(name, false);
-            if (fullyQualified != null) return fullyQualified;
-            // it must be semi qualified now... go recursive
+            // it must be semi qualified now... go recursive;
             String prefix = name.substring(0, dot);
             NamedType prefixType = get(prefix, complain);
             if (prefixType instanceof TypeInfo typeInfo) {
                 String tail = name.substring(dot + 1);
-                // FIXME must fix fully qualified name in type context -- make systematic
-                //  at the same time, remove typeInfoOrNull
-                String newFqn = typeInfo.fullyQualifiedName()+"."+tail;
+                String newFqn = typeInfo.fullyQualifiedName() + "." + tail;
                 TypeInfo tailType = getFullyQualified(newFqn, false);
                 if (tailType != null) {
                     return tailType;
                 }
-                String fqn = typeInfo.fullyQualifiedName() + "." + tail;
-                return getFullyQualified(fqn, complain);
             }
-            if (complain) {
-                throw new UnsupportedOperationException("?");
-            }
-            return null; // cannot find it
         }
-        // try out java.lang; has been preloaded
-        return data.compiledTypesManager.get("java.lang." + name);
+
+        NamedType javaLang = data.compiledTypesManager.get("java.lang." + name);
+        if (complain && javaLang == null) {
+            throw new UnsupportedOperationException("Cannot find type " + name);
+        }
+        return javaLang;
     }
 
 
