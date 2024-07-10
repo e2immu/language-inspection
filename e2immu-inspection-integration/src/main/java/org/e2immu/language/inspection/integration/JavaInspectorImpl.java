@@ -204,26 +204,28 @@ public class JavaInspectorImpl implements JavaInspector {
     @Override
     public List<TypeInfo> parseReturnAll(String input) {
         Summary failFastSummary = new SummaryImpl(true);
-        return internalParse(failFastSummary, () -> {
-            JavaParser parser = new JavaParser(input);
-            parser.setParserTolerant(false);
-            return parser;
-        });
+        try {
+            URI uri = new URI("input");
+            return internalParse(failFastSummary, uri, () -> {
+                JavaParser parser = new JavaParser(input);
+                parser.setParserTolerant(false);
+                return parser;
+            });
+        } catch (URISyntaxException e) {
+            throw new RuntimeException(e);
+        }
     }
 
-    private List<TypeInfo> internalParse(Summary failFastSummary, Supplier<JavaParser> parser) {
+    private List<TypeInfo> internalParse(Summary failFastSummary, URI uri, Supplier<JavaParser> parser) {
         Resolver resolver = new ResolverImpl(runtime.computeMethodOverrides(), new ParseHelperImpl(runtime));
         TypeContextImpl typeContext = new TypeContextImpl(compiledTypesManager, sourceTypeMap);
         Context rootContext = ContextImpl.create(runtime, failFastSummary, resolver, typeContext);
         ScanCompilationUnit scanCompilationUnit = new ScanCompilationUnit(rootContext);
-        CompilationUnit cu;
-        try {
-            ScanCompilationUnit.ScanResult sr = scanCompilationUnit.scan(new URI("input"), parser.get().CompilationUnit());
-            sourceTypeMap.putAll(sr.sourceTypes());
-            cu = sr.compilationUnit();
-        } catch (URISyntaxException e) {
-            throw new RuntimeException(e);
-        }
+
+        ScanCompilationUnit.ScanResult sr = scanCompilationUnit.scan(uri, parser.get().CompilationUnit());
+        sourceTypeMap.putAll(sr.sourceTypes());
+        CompilationUnit cu = sr.compilationUnit();
+
         ParseCompilationUnit parseCompilationUnit = new ParseCompilationUnit(rootContext);
         List<TypeInfo> types = parseCompilationUnit.parse(cu, parser.get().CompilationUnit());
         rootContext.resolver().resolve();
@@ -239,7 +241,7 @@ public class JavaInspectorImpl implements JavaInspector {
             isr.transferTo(sw);
             String sourceCode = sw.toString();
 
-            internalParse(summary, () -> {
+            internalParse(summary, uri, () -> {
                 JavaParser parser = new JavaParser(sourceCode);
                 parser.setParserTolerant(false);
                 return parser;
