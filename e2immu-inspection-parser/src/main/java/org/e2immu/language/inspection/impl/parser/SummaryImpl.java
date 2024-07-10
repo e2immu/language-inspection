@@ -10,7 +10,7 @@ import java.util.*;
 public class SummaryImpl implements Summary {
     private final static Logger LOGGER = LoggerFactory.getLogger(SummaryImpl.class);
 
-    private final Map<TypeInfo, Boolean> types = new HashMap<>();
+    private final LinkedHashMap<TypeInfo, Boolean> types = new LinkedHashMap<>();
     private final boolean failFast;
     private final List<Throwable> parserErrors = new LinkedList<>();
 
@@ -24,6 +24,11 @@ public class SummaryImpl implements Summary {
     @Override
     public Collection<TypeInfo> types() {
         return types.keySet();
+    }
+
+    @Override
+    public TypeInfo firstType() {
+        return types.keySet().stream().findFirst().orElseThrow();
     }
 
     @Override

@@ -2,9 +2,7 @@ package org.e2immu.language.inspection.integration.java;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
-import org.e2immu.language.cst.api.info.TypeInfo;
 import org.e2immu.language.inspection.api.integration.JavaInspector;
-import org.e2immu.language.inspection.api.parser.Summary;
 import org.e2immu.language.inspection.api.resource.InputConfiguration;
 import org.e2immu.language.inspection.integration.JavaInspectorImpl;
 import org.e2immu.language.inspection.resource.InputConfigurationImpl;
@@ -13,6 +11,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.net.URI;
+
 
 public abstract class CommonTest {
     private static final org.slf4j.Logger LOGGER = LoggerFactory.getLogger(CommonTest.class);
@@ -35,12 +35,9 @@ public abstract class CommonTest {
                 .addClassPath(JavaInspectorImpl.JAR_WITH_PATH_PREFIX + "org/junit/platform/commons")
                 .build();
         javaInspector.initialize(inputConfiguration);
-        javaInspector.sourceTypes().visit(new String[0], (parts, types) -> {
-            types.forEach(ti -> {
-                LOGGER.info("Parsing source type {}", ti);
-                javaInspector.parse(ti);
-            });
-        });
+        for (URI source : javaInspector.sourceURIs()) {
+            LOGGER.info("Parsing source URI {}", source);
+            javaInspector.parse(source);
+        }
     }
-
 }

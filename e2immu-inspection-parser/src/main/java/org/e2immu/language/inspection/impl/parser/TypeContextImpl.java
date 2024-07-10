@@ -27,11 +27,11 @@ public class TypeContextImpl implements TypeContext {
     private static final Logger LOGGER = LoggerFactory.getLogger(TypeContextImpl.class);
 
     private record Data(CompiledTypesManager compiledTypesManager,
-                        SourceTypes sourceTypes,
-                        SourceTypeMap sourceTypeMap, ImportMap importMap,
+                        SourceTypeMap sourceTypeMap,
+                        ImportMap importMap,
                         CompilationUnit compilationUnit) {
         Data withCompilationUnit(CompilationUnit cu) {
-            return new Data(compiledTypesManager, sourceTypes, sourceTypeMap, new ImportMapImpl(), cu);
+            return new Data(compiledTypesManager, sourceTypeMap, new ImportMapImpl(), cu);
         }
     }
 
@@ -42,8 +42,8 @@ public class TypeContextImpl implements TypeContext {
     /*
     the packageInfo should already contain all the types of the current package
      */
-    public TypeContextImpl(CompiledTypesManager compiledTypesManager, SourceTypes sourceTypes, SourceTypeMap sourceTypeMap) {
-        this(null, new Data(compiledTypesManager, sourceTypes, sourceTypeMap, null, null));
+    public TypeContextImpl(CompiledTypesManager compiledTypesManager, SourceTypeMap sourceTypeMap) {
+        this(null, new Data(compiledTypesManager, sourceTypeMap, null, null));
     }
 
     private TypeContextImpl(TypeContextImpl parentContext, Data data) {
@@ -85,16 +85,14 @@ public class TypeContextImpl implements TypeContext {
         String packageName = data.compilationUnit.packageName();
         if (!fullyQualified.equals(packageName)) { // would be our own package; they are already there
             // we either have a type, a subtype, or a package
-            TypeInfo inSourceTypes = data.sourceTypes.get(fullyQualified);
+            TypeInfo inSourceTypes = data.sourceTypeMap.get(fullyQualified);
             if (inSourceTypes == null) {
                 // deal with package
-                data.sourceTypes.visit(fullyQualified.split("\\."), (expansion, typeInfoList) -> {
-                    for (TypeInfo typeInfo : typeInfoList) {
-                        if (typeInfo.fullyQualifiedName().equals(fullyQualified + "." + typeInfo.simpleName())) {
-                            addImport(typeInfo, false, false);
-                        }
+                for (TypeInfo typeInfo : data.sourceTypeMap.inPackage(fullyQualified)) {
+                    if (typeInfo.fullyQualifiedName().equals(fullyQualified + "." + typeInfo.simpleName())) {
+                        addImport(typeInfo, false, false);
                     }
-                });
+                }
             } else {
                 // we must import all subtypes, but we will do that lazily
                 addImportWildcard(inSourceTypes);
@@ -121,7 +119,7 @@ public class TypeContextImpl implements TypeContext {
 
 
     private TypeInfo loadTypeDoNotImport(String fqn) {
-        TypeInfo inSourceTypes = data.sourceTypes.getFindSubTypes(fqn);
+        TypeInfo inSourceTypes = data.sourceTypeMap.get(fqn);
         if (inSourceTypes != null) {
             return inSourceTypes;
         }

@@ -7,7 +7,6 @@ import org.e2immu.language.cst.api.runtime.Runtime;
 import org.e2immu.language.inspection.api.integration.JavaInspector;
 import org.e2immu.language.inspection.api.parser.Context;
 import org.e2immu.language.inspection.api.parser.Resolver;
-import org.e2immu.language.inspection.api.parser.SourceTypes;
 import org.e2immu.language.inspection.api.parser.Summary;
 import org.e2immu.language.inspection.api.resource.*;
 import org.e2immu.language.inspection.impl.parser.*;
@@ -28,10 +27,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -47,7 +43,8 @@ finally, do the actual parsing for all primary types
  */
 public class JavaInspectorImpl implements JavaInspector {
     private Runtime runtime;
-    private final SourceTypes sourceTypes = new SourceTypesImpl();
+    private List<URI> sourceURIs;
+    private List<URI> testURIs;
     private final SourceTypeMapImpl sourceTypeMap = new SourceTypeMapImpl();
     private CompiledTypesManager compiledTypesManager;
 
@@ -85,12 +82,10 @@ public class JavaInspectorImpl implements JavaInspector {
         Resources testSourcePath = assemblePath(inputConfiguration, false, "Test source path",
                 inputConfiguration.testSources());
 
-        Map<TypeInfo, URI> sourceURLs = computeSourceURLs(sourcePath,
+        sourceURIs = computeSourceURIs(sourcePath,
                 inputConfiguration.restrictSourceToPackages(), "source path");
-        Map<TypeInfo, URI> testSourceURLs = computeSourceURLs(testSourcePath,
+        testURIs = computeSourceURIs(testSourcePath,
                 inputConfiguration.restrictTestSourceToPackages(), "test source path");
-        sourceURLs.putAll(testSourceURLs);
-        sourceTypes.freeze();
     }
 
 
@@ -103,8 +98,8 @@ public class JavaInspectorImpl implements JavaInspector {
                 .distinct().toList();
     }
 
-    private Map<TypeInfo, URI> computeSourceURLs(Resources sourcePath, List<String> restrictions, String what) {
-        Map<TypeInfo, URI> sourceURLs = new HashMap<>();
+    private List<URI> computeSourceURIs(Resources sourcePath, List<String> restrictions, String what) {
+        List<URI> uris = new LinkedList<>();
         AtomicInteger ignored = new AtomicInteger();
         sourcePath.visit(new String[0], (parts, list) -> {
             if (parts.length >= 1) {
@@ -115,20 +110,16 @@ public class JavaInspectorImpl implements JavaInspector {
                     String packageName = Arrays.stream(parts).limit(n).collect(Collectors.joining("."));
                     if (acceptSource(packageName, typeName, restrictions)) {
                         URI uri = list.get(0);
-                        CompilationUnit cu = runtime.newCompilationUnitBuilder().setPackageName(packageName)
-                                .setURI(uri).build();
-                        TypeInfo typeInfo = runtime.newTypeInfo(cu, typeName);
-                        sourceURLs.put(typeInfo, uri);
+                        uris.add(uri);
                         parts[n] = typeName;
-                        sourceTypes.add(parts, typeInfo);
                     } else {
                         ignored.incrementAndGet();
                     }
                 }
             }
         });
-        LOGGER.info("Found {} .java files in {}, skipped {}", sourceURLs.size(), what, ignored);
-        return sourceURLs;
+        LOGGER.info("Found {} .java files in {}, skipped {}", uris.size(), what, ignored);
+        return List.copyOf(uris);
     }
 
     public static boolean acceptSource(String packageName, String typeName, List<String> restrictions) {
@@ -222,7 +213,7 @@ public class JavaInspectorImpl implements JavaInspector {
 
     private List<TypeInfo> internalParse(Summary failFastSummary, Supplier<JavaParser> parser) {
         Resolver resolver = new ResolverImpl(runtime.computeMethodOverrides(), new ParseHelperImpl(runtime));
-        TypeContextImpl typeContext = new TypeContextImpl(compiledTypesManager, sourceTypes, sourceTypeMap);
+        TypeContextImpl typeContext = new TypeContextImpl(compiledTypesManager, sourceTypeMap);
         Context rootContext = ContextImpl.create(runtime, failFastSummary, resolver, typeContext);
         ScanCompilationUnit scanCompilationUnit = new ScanCompilationUnit(rootContext);
         CompilationUnit cu;
@@ -240,21 +231,19 @@ public class JavaInspectorImpl implements JavaInspector {
     }
 
     @Override
-    public Summary parse(TypeInfo typeInfo) {
+    public Summary parse(URI uri) {
         Summary summary = new SummaryImpl(true); // once stable, change to false
-        URI uri = typeInfo.compilationUnit().uri();
 
         try (InputStreamReader isr = new InputStreamReader(uri.toURL().openStream(), StandardCharsets.UTF_8);
              StringWriter sw = new StringWriter()) {
             isr.transferTo(sw);
             String sourceCode = sw.toString();
 
-            List<TypeInfo> types = internalParse(summary, () -> {
+            internalParse(summary, () -> {
                 JavaParser parser = new JavaParser(sourceCode);
                 parser.setParserTolerant(false);
                 return parser;
             });
-            assert types.stream().anyMatch(ti -> ti == typeInfo);
         } catch (IOException io) {
             LOGGER.error("Caught IO exception", io);
 
@@ -274,8 +263,13 @@ public class JavaInspectorImpl implements JavaInspector {
     }
 
     @Override
-    public SourceTypes sourceTypes() {
-        return sourceTypes;
+    public List<URI> sourceURIs() {
+        return sourceURIs;
+    }
+
+    @Override
+    public List<URI> testURIs() {
+        return testURIs;
     }
 }
 

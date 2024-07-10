@@ -2,6 +2,8 @@ package org.e2immu.language.inspection.api.parser;
 
 import org.e2immu.language.cst.api.info.TypeInfo;
 
+import java.util.List;
+
 /*
 differs from SourceTypes in that:
 - it remains mutable during parsing
@@ -11,4 +13,6 @@ differs from SourceTypes in that:
 public interface SourceTypeMap {
 
     TypeInfo get(String fullyQualifiedName);
+
+    List<TypeInfo> inPackage(String packageName);
 }

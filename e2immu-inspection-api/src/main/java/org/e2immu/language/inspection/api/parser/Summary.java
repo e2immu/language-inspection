@@ -6,6 +6,7 @@ import java.util.Collection;
 import java.util.List;
 
 public interface Summary {
+
     boolean haveErrors();
 
     class ParseException extends RuntimeException {
@@ -44,4 +45,6 @@ public interface Summary {
     List<Throwable> parserErrors();
 
     Collection<TypeInfo> types();
+
+    TypeInfo firstType();
 }

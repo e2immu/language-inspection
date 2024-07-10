@@ -9,6 +9,7 @@ import org.e2immu.language.inspection.api.resource.CompiledTypesManager;
 import org.e2immu.language.inspection.api.resource.InputConfiguration;
 
 import java.io.IOException;
+import java.net.URI;
 import java.util.List;
 
 /*
@@ -24,7 +25,7 @@ public interface JavaInspector {
 
     TypeInfo parse(String input);
 
-    Summary parse(TypeInfo typeInfo);
+    Summary parse(URI typeInfo);
 
     List<TypeInfo> parseReturnAll(String input);
 
@@ -32,5 +33,7 @@ public interface JavaInspector {
 
     CompiledTypesManager compiledTypesManager();
 
-    SourceTypes sourceTypes();
+    List<URI> sourceURIs();
+
+    List<URI> testURIs();
 }
