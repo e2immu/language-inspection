@@ -203,6 +203,8 @@ public class ListMethodAndConstructorCandidates {
             } else {
                 typeInfo = pt.typeInfo();
             }
+        } else if(typeOfObject.typeInfo().isPrimitiveExcludingVoid() && typeOfObject.arrays()>0) {
+            typeInfo = runtime.objectTypeInfo();
         } else {
             typeInfo = typeOfObject.typeInfo();
         }
