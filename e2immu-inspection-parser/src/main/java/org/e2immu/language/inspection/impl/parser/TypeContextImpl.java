@@ -11,7 +11,6 @@ import org.e2immu.language.cst.api.type.ParameterizedType;
 import org.e2immu.language.cst.api.variable.FieldReference;
 import org.e2immu.language.inspection.api.parser.ImportMap;
 import org.e2immu.language.inspection.api.parser.SourceTypeMap;
-import org.e2immu.language.inspection.api.parser.SourceTypes;
 import org.e2immu.language.inspection.api.parser.TypeContext;
 import org.e2immu.language.inspection.api.resource.CompiledTypesManager;
 import org.e2immu.language.inspection.api.resource.Resources;
@@ -21,6 +20,7 @@ import org.slf4j.LoggerFactory;
 
 import java.net.URI;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class TypeContextImpl implements TypeContext {
@@ -88,7 +88,7 @@ public class TypeContextImpl implements TypeContext {
             TypeInfo inSourceTypes = data.sourceTypeMap.get(fullyQualified);
             if (inSourceTypes == null) {
                 // deal with package
-                for (TypeInfo typeInfo : data.sourceTypeMap.inPackage(fullyQualified)) {
+                for (TypeInfo typeInfo : data.sourceTypeMap.primaryTypesInPackage(fullyQualified)) {
                     if (typeInfo.fullyQualifiedName().equals(fullyQualified + "." + typeInfo.simpleName())) {
                         addImport(typeInfo, false, false);
                     }
@@ -354,5 +354,10 @@ public class TypeContextImpl implements TypeContext {
         for (ParameterizedType interfaceImplemented : typeInfo.interfacesImplemented()) {
             recursivelyAddVisibleSubTypes(interfaceImplemented.typeInfo());
         }
+    }
+
+    @Override
+    public List<TypeInfo> typesInSamePackage(String packageName) {
+        return data.sourceTypeMap().primaryTypesInPackage(packageName);
     }
 }

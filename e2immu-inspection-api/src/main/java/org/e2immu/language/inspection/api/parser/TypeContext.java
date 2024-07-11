@@ -8,6 +8,7 @@ import org.e2immu.language.cst.api.runtime.Runtime;
 import org.e2immu.language.cst.api.type.NamedType;
 import org.e2immu.language.cst.api.variable.FieldReference;
 
+import java.util.List;
 import java.util.Map;
 
 /*
@@ -36,4 +37,6 @@ public interface TypeContext {
     void addToContext(String altName, @NotNull NamedType namedType, boolean allowOverwrite);
 
     TypeContext newTypeContext();
+
+    List<TypeInfo> typesInSamePackage(String packageName);
 }

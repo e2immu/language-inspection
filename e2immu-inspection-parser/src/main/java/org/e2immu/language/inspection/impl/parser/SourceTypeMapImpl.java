@@ -21,21 +21,15 @@ public class SourceTypeMapImpl implements SourceTypeMap {
     }
 
     @Override
-    public List<TypeInfo> inPackage(String packageName) {
+    public List<TypeInfo> primaryTypesInPackage(String packageName) {
         List<TypeInfo> result = new LinkedList<>();
-        Map.Entry<String, TypeInfo> lower = map.floorEntry(packageName);
-        while (accept(lower, packageName)) {
-            result.add(lower.getValue());
-            lower = map.floorEntry(lower.getKey());
+        Map.Entry<String, TypeInfo> lower = map.ceilingEntry(packageName);
+        while (lower != null && lower.getKey().startsWith(packageName)) {
+            if(lower.getValue().isPrimaryType()) {
+                result.add(lower.getValue());
+            }
+            lower = map.higherEntry(lower.getKey());
         }
         return result;
-    }
-
-    private static boolean accept(Map.Entry<String, TypeInfo> lower, String packageName) {
-        if (lower == null) return false;
-        String fqn = lower.getKey();
-        if (!fqn.startsWith(packageName)) return false;
-        int lastDot = fqn.lastIndexOf('.');
-        return packageName.equals(fqn.substring(0, lastDot));
     }
 }

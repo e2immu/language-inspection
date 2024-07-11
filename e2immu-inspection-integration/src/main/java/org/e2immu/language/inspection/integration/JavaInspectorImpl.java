@@ -254,6 +254,53 @@ public class JavaInspectorImpl implements JavaInspector {
         return summary;
     }
 
+    private record URICompilationUnit(URI uri, org.parsers.java.ast.CompilationUnit cu, CompilationUnit parsedCu) {
+    }
+
+    @Override
+    public Summary parse(boolean failFast) {
+        Summary summary = new SummaryImpl(true); // once stable, change to false
+
+        List<URICompilationUnit> list = new ArrayList<>(sourceURIs.size());
+        for (URI uri : sourceURIs) {
+            try (InputStreamReader isr = new InputStreamReader(uri.toURL().openStream(), StandardCharsets.UTF_8);
+                 StringWriter sw = new StringWriter()) {
+                isr.transferTo(sw);
+                String sourceCode = sw.toString();
+
+                JavaParser parser = new JavaParser(sourceCode);
+                parser.setParserTolerant(false);
+
+                TypeContextImpl typeContext = new TypeContextImpl(compiledTypesManager, sourceTypeMap);
+                Resolver resolver = new ResolverImpl(runtime.computeMethodOverrides(), new ParseHelperImpl(runtime));
+                Context rootContext = ContextImpl.create(runtime, summary, resolver, typeContext);
+                ScanCompilationUnit scanCompilationUnit = new ScanCompilationUnit(rootContext);
+
+                org.parsers.java.ast.CompilationUnit cu = parser.CompilationUnit();
+                LOGGER.debug("Scanning {}", uri);
+                ScanCompilationUnit.ScanResult sr = scanCompilationUnit.scan(uri, cu);
+                sourceTypeMap.putAll(sr.sourceTypes());
+                CompilationUnit compilationUnit = sr.compilationUnit();
+                URICompilationUnit uc = new URICompilationUnit(uri, cu, compilationUnit);
+                list.add(uc);
+            } catch (IOException io) {
+                LOGGER.error("Caught IO exception", io);
+
+                summary.addParserError(io);
+            }
+        }
+        for (URICompilationUnit uc : list) {
+            TypeContextImpl typeContext = new TypeContextImpl(compiledTypesManager, sourceTypeMap);
+            Resolver resolver = new ResolverImpl(runtime.computeMethodOverrides(), new ParseHelperImpl(runtime));
+            Context rootContext = ContextImpl.create(runtime, summary, resolver, typeContext);
+            ParseCompilationUnit parseCompilationUnit = new ParseCompilationUnit(rootContext);
+            LOGGER.debug("Parsing {}", uc.uri);
+            parseCompilationUnit.parse(uc.parsedCu, uc.cu);
+            rootContext.resolver().resolve();
+        }
+        return summary;
+    }
+
     @Override
     public Runtime runtime() {
         return runtime;

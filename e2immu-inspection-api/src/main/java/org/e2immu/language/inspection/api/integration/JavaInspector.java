@@ -23,10 +23,15 @@ public interface JavaInspector {
 
     void preload(String thePackage);
 
+    Summary parse(boolean failFast);
+
+    // only for testing, after general parse()
     TypeInfo parse(String input);
 
+    // only for testing, after general parse();
     Summary parse(URI typeInfo);
 
+    // only for testing, after general parse();
     List<TypeInfo> parseReturnAll(String input);
 
     Runtime runtime();

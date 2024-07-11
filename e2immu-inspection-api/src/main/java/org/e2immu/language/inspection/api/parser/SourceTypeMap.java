@@ -14,5 +14,5 @@ public interface SourceTypeMap {
 
     TypeInfo get(String fullyQualifiedName);
 
-    List<TypeInfo> inPackage(String packageName);
+    List<TypeInfo> primaryTypesInPackage(String packageName);
 }
