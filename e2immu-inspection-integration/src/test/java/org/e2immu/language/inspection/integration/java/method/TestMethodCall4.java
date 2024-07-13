@@ -91,8 +91,8 @@ public class TestMethodCall4 extends CommonTest {
     private static final String INPUT3= """
             package org.e2immu.analyser.resolver.testexample;
 
-            import org.e2immu.analyser.resolver.testexample.a.CanBeSerialized;
-            import org.e2immu.analyser.resolver.testexample.a.Serializer;
+            import org.e2immu.language.inspection.integration.java.importhelper.a.CanBeSerialized;
+            import org.e2immu.language.inspection.integration.java.importhelper.a.Serializer;
 
             public class MethodCall_43<E extends CanBeSerialized> extends Serializer<E> {
 
