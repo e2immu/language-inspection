@@ -216,11 +216,11 @@ public class JavaInspectorImpl implements JavaInspector {
         }
     }
 
-    private List<TypeInfo> internalParse(Summary failFastSummary, URI uri, Supplier<JavaParser> parser) {
+    private List<TypeInfo> internalParse(Summary summary, URI uri, Supplier<JavaParser> parser) {
         Resolver resolver = new ResolverImpl(runtime.computeMethodOverrides(), new ParseHelperImpl(runtime));
         TypeContextImpl typeContext = new TypeContextImpl(compiledTypesManager, sourceTypeMap);
-        Context rootContext = ContextImpl.create(runtime, failFastSummary, resolver, typeContext);
-        ScanCompilationUnit scanCompilationUnit = new ScanCompilationUnit(rootContext);
+        Context rootContext = ContextImpl.create(runtime, summary, resolver, typeContext);
+        ScanCompilationUnit scanCompilationUnit = new ScanCompilationUnit(summary, runtime);
 
         ScanCompilationUnit.ScanResult sr = scanCompilationUnit.scan(uri, parser.get().CompilationUnit());
         sourceTypeMap.putAll(sr.sourceTypes());
@@ -260,6 +260,11 @@ public class JavaInspectorImpl implements JavaInspector {
     @Override
     public Summary parse(boolean failFast) {
         Summary summary = new SummaryImpl(true); // once stable, change to false
+        Resolver resolver = new ResolverImpl(runtime.computeMethodOverrides(), new ParseHelperImpl(runtime));
+        TypeContextImpl typeContext = new TypeContextImpl(compiledTypesManager, sourceTypeMap);
+        Context rootContext = ContextImpl.create(runtime, summary, resolver, typeContext);
+
+        // PHASE 1: scanning all the types, call CongoCC parser
 
         List<URICompilationUnit> list = new ArrayList<>(sourceURIs.size());
         for (URI uri : sourceURIs) {
@@ -271,11 +276,7 @@ public class JavaInspectorImpl implements JavaInspector {
                 JavaParser parser = new JavaParser(sourceCode);
                 parser.setParserTolerant(false);
 
-                TypeContextImpl typeContext = new TypeContextImpl(compiledTypesManager, sourceTypeMap);
-                Resolver resolver = new ResolverImpl(runtime.computeMethodOverrides(), new ParseHelperImpl(runtime));
-                Context rootContext = ContextImpl.create(runtime, summary, resolver, typeContext);
-                ScanCompilationUnit scanCompilationUnit = new ScanCompilationUnit(rootContext);
-
+                ScanCompilationUnit scanCompilationUnit = new ScanCompilationUnit(summary, runtime);
                 org.parsers.java.ast.CompilationUnit cu = parser.CompilationUnit();
                 LOGGER.debug("Scanning {}", uri);
                 ScanCompilationUnit.ScanResult sr = scanCompilationUnit.scan(uri, cu);
@@ -285,19 +286,21 @@ public class JavaInspectorImpl implements JavaInspector {
                 list.add(uc);
             } catch (IOException io) {
                 LOGGER.error("Caught IO exception", io);
-
                 summary.addParserError(io);
             }
         }
+
+        // PHASE 2: actual parsing of types, methods, fields
+
         for (URICompilationUnit uc : list) {
-            TypeContextImpl typeContext = new TypeContextImpl(compiledTypesManager, sourceTypeMap);
-            Resolver resolver = new ResolverImpl(runtime.computeMethodOverrides(), new ParseHelperImpl(runtime));
-            Context rootContext = ContextImpl.create(runtime, summary, resolver, typeContext);
             ParseCompilationUnit parseCompilationUnit = new ParseCompilationUnit(rootContext);
             LOGGER.debug("Parsing {}", uc.uri);
             parseCompilationUnit.parse(uc.parsedCu, uc.cu);
-            rootContext.resolver().resolve();
         }
+
+        // PHASE 3: resolving: content of methods, field initializers
+
+        rootContext.resolver().resolve();
         return summary;
     }
 
