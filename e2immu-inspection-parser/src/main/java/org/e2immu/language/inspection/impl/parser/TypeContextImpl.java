@@ -22,6 +22,7 @@ import java.net.URI;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 
 public class TypeContextImpl implements TypeContext {
     private static final Logger LOGGER = LoggerFactory.getLogger(TypeContextImpl.class);
@@ -320,20 +321,8 @@ public class TypeContextImpl implements TypeContext {
 
     @Override
     public TypeContext newAnonymousClassBody(TypeInfo baseType) {
-        recursivelyAddVisibleSubTypes(baseType);
+        addSubTypesOfHierarchy(baseType);
         return new TypeContextImpl(this, data);
-    }
-
-    private void recursivelyAddVisibleSubTypes(TypeInfo typeInfo) {
-        typeInfo.subTypes()
-                .stream().filter(st -> !typeInfo.access().isPrivate())
-                .forEach(this::addToContext);
-        if (!typeInfo.parentClass().isJavaLangObject()) {
-            recursivelyAddVisibleSubTypes(typeInfo.parentClass().typeInfo());
-        }
-        for (ParameterizedType interfaceImplemented : typeInfo.interfacesImplemented()) {
-            recursivelyAddVisibleSubTypes(interfaceImplemented.typeInfo());
-        }
     }
 
     @Override
@@ -343,10 +332,10 @@ public class TypeContextImpl implements TypeContext {
 
     @Override
     public void addSubTypesOfHierarchy(TypeInfo typeInfo) {
-        typeInfo.subTypes().forEach(this::addToContext);
-        if(typeInfo.parentClass() != null && !typeInfo.parentClass().isJavaLangObject()) {
-            addSubTypesOfHierarchy(typeInfo.parentClass().typeInfo());
-        }
-        typeInfo.interfacesImplemented().forEach(ii -> addSubTypesOfHierarchy(ii.typeInfo()));
+        CompilationUnit cu = typeInfo.compilationUnit();
+        Stream.concat(Stream.of(typeInfo), typeInfo.superTypesExcludingJavaLangObject().stream())
+                .forEach(superType -> superType.subTypes()
+                        .stream().filter(st -> st.compilationUnit() == cu || !typeInfo.access().isPrivate())
+                        .forEach(this::addToContext));
     }
 }
