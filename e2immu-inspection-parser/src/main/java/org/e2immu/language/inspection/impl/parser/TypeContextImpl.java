@@ -9,7 +9,7 @@ import org.e2immu.language.cst.api.runtime.Runtime;
 import org.e2immu.language.cst.api.type.NamedType;
 import org.e2immu.language.cst.api.type.ParameterizedType;
 import org.e2immu.language.cst.api.variable.FieldReference;
-import org.e2immu.language.inspection.api.parser.ImportMap;
+import org.e2immu.language.inspection.api.parser.StaticImportMap;
 import org.e2immu.language.inspection.api.parser.SourceTypeMap;
 import org.e2immu.language.inspection.api.parser.TypeContext;
 import org.e2immu.language.inspection.api.resource.CompiledTypesManager;
@@ -28,10 +28,10 @@ public class TypeContextImpl implements TypeContext {
 
     private record Data(CompiledTypesManager compiledTypesManager,
                         SourceTypeMap sourceTypeMap,
-                        ImportMap importMap,
+                        StaticImportMap staticImportMap,
                         CompilationUnit compilationUnit) {
         Data withCompilationUnit(CompilationUnit cu) {
-            return new Data(compiledTypesManager, sourceTypeMap, new ImportMapImpl(), cu);
+            return new Data(compiledTypesManager, sourceTypeMap, new StaticImportMapImpl(), cu);
         }
     }
 
@@ -52,68 +52,81 @@ public class TypeContextImpl implements TypeContext {
     }
 
     @Override
-    public void addToImportMap(ImportStatement importStatement) {
+    public void addToStaticImportMap(ImportStatement importStatement) {
+        assert importStatement.isStatic();
+
         String fqnWithAsterisk = importStatement.importString();
         boolean isAsterisk = fqnWithAsterisk.endsWith(".*");
         String fqn = isAsterisk ? fqnWithAsterisk.substring(0, fqnWithAsterisk.length() - 2) : fqnWithAsterisk;
-        if (importStatement.isStatic()) {
-            if (isAsterisk) {
-                TypeInfo typeInfo = loadTypeDoNotImport(fqn);
-                LOGGER.debug("Add import static wildcard {}", typeInfo);
-                addImportStaticWildcard(typeInfo);
-            } else {
-                int dot = fqn.lastIndexOf('.');
-                String typeOrSubTypeName = fqn.substring(0, dot);
-                String member = fqn.substring(dot + 1);
-                TypeInfo typeInfo = loadTypeDoNotImport(typeOrSubTypeName);
-                LOGGER.debug("Add import static, type {}, member {}", typeInfo, member);
-                addImportStatic(typeInfo, member);
-            }
+
+        if (isAsterisk) {
+            TypeInfo typeInfo = loadTypeDoNotImport(fqn);
+            LOGGER.debug("Add import static wildcard {}", typeInfo);
+            addImportStaticWildcard(typeInfo);
         } else {
-            if (isAsterisk) {
-                importAsterisk(fqn);
-            } else {
-                TypeInfo typeInfo = loadTypeDoNotImport(fqn);
-                LOGGER.debug("Import of {}", fqn);
-                addImport(typeInfo, true, true);
-            }
+            int dot = fqn.lastIndexOf('.');
+            String typeOrSubTypeName = fqn.substring(0, dot);
+            String member = fqn.substring(dot + 1);
+            TypeInfo typeInfo = loadTypeDoNotImport(typeOrSubTypeName);
+            LOGGER.debug("Add import static, type {}, member {}", typeInfo, member);
+            addImportStatic(typeInfo, member);
         }
     }
 
-    private void importAsterisk(String fullyQualified) {
-        LOGGER.debug("Need to parse package {}", fullyQualified);
-        String packageName = data.compilationUnit.packageName();
-        if (!fullyQualified.equals(packageName)) { // would be our own package; they are already there
-            // we either have a type, a subtype, or a package
-            TypeInfo inSourceTypes = data.sourceTypeMap.get(fullyQualified);
-            if (inSourceTypes == null) {
-                // deal with package
-                for (TypeInfo typeInfo : data.sourceTypeMap.primaryTypesInPackage(fullyQualified)) {
-                    if (typeInfo.fullyQualifiedName().equals(fullyQualified + "." + typeInfo.simpleName())) {
-                        addImport(typeInfo, false, false);
+    @Override
+    public void addNonStaticImportToContext(ImportStatement importStatement) {
+        assert !importStatement.isStatic();
+        String fqnWithAsterisk = importStatement.importString();
+        boolean isAsterisk = fqnWithAsterisk.endsWith(".*");
+        if (isAsterisk) {
+            String fullyQualified = fqnWithAsterisk.substring(0, fqnWithAsterisk.length() - 2);
+
+            LOGGER.debug("Need to parse package {}", fullyQualified);
+            String packageName = data.compilationUnit.packageName();
+            if (!fullyQualified.equals(packageName)) { // would be our own package; they are already there
+                // we either have a type, a subtype, or a package
+                TypeInfo inSourceTypes = data.sourceTypeMap.get(fullyQualified);
+                if (inSourceTypes == null) {
+                    // deal with package
+                    for (TypeInfo typeInfo : data.sourceTypeMap.primaryTypesInPackage(fullyQualified)) {
+                        if (typeInfo.fullyQualifiedName().equals(fullyQualified + "." + typeInfo.simpleName())) {
+                            addToContext(typeInfo, false);
+                        }
                     }
+                } else {
+                    // we must import all subtypes
+                    inSourceTypes.subTypes().forEach(st -> map.putIfAbsent(st.simpleName(), st));
+                }
+                // TODO this should be java-specific (call to data.compiledTypesManager.XXX)
+                data.compiledTypesManager.classPath().expandLeaves(fullyQualified, ".class", (expansion, urls) -> {
+                    String leaf = expansion[expansion.length - 1];
+                    if (!leaf.contains("$")) {
+                        // primary type
+                        String simpleName = Resources.stripDotClass(leaf);
+                        URI uri = urls.get(0);
+                        String path = fullyQualified.replace(".", "/") + "/" + simpleName + ".class";
+                        TypeInfo newTypeInfo = data.compiledTypesManager.load(new SourceFile(path, uri));
+                        if (newTypeInfo != null) {
+                            LOGGER.debug("Registering inspection handler for {}", newTypeInfo);
+                            addToContext(newTypeInfo, false);
+                        } else {
+                            LOGGER.error("Could not load {}, URI {}", path, uri);
+                        }
+                    }
+                });
+            }
+        } else {
+            TypeInfo inSourceTypes = data.sourceTypeMap.get(importStatement.importString());
+            if (inSourceTypes == null) {
+                TypeInfo inCompiledTypes = data.compiledTypesManager.getOrLoad(importStatement.importString());
+                if (inCompiledTypes != null) {
+                    addToContext(inCompiledTypes, false);
+                } else {
+                    LOGGER.error("Cannot handle import {}", importStatement.importString());
                 }
             } else {
-                // we must import all subtypes, but we will do that lazily
-                addImportWildcard(inSourceTypes);
+                addToContext(inSourceTypes, false);
             }
-            // TODO this should be java-specific (call to data.compiledTypesManager.XXX)
-            data.compiledTypesManager.classPath().expandLeaves(fullyQualified, ".class", (expansion, urls) -> {
-                String leaf = expansion[expansion.length - 1];
-                if (!leaf.contains("$")) {
-                    // primary type
-                    String simpleName = Resources.stripDotClass(leaf);
-                    URI uri = urls.get(0);
-                    String path = fullyQualified.replace(".", "/") + "/" + simpleName + ".class";
-                    TypeInfo newTypeInfo = data.compiledTypesManager.load(new SourceFile(path, uri));
-                    if (newTypeInfo != null) {
-                        LOGGER.debug("Registering inspection handler for {}", newTypeInfo);
-                        addImport(newTypeInfo, false, false);
-                    } else {
-                        LOGGER.error("Could not load {}, URI {}", path, uri);
-                    }
-                }
-            });
         }
     }
 
@@ -144,8 +157,8 @@ public class TypeContextImpl implements TypeContext {
     }
 
     @Override
-    public ImportMap importMap() {
-        return data.importMap;
+    public StaticImportMap importMap() {
+        return data.staticImportMap;
     }
 
     @Override
@@ -159,35 +172,17 @@ public class TypeContextImpl implements TypeContext {
      * @param fullyQualifiedName the fully qualified name, such as java.lang.String
      * @return the type
      */
-    private TypeInfo getFullyQualified(String fullyQualifiedName, boolean complain) {
+    private TypeInfo getFullyQualified(String fullyQualifiedName) {
         TypeInfo sourceType = data.sourceTypeMap.get(fullyQualifiedName);
         if (sourceType != null) {
             return sourceType;
         }
-        TypeInfo typeInfo = getFullyQualifiedFromCompiledTypesManager(fullyQualifiedName, complain);
+        TypeInfo typeInfo = data.compiledTypesManager.getOrLoad(fullyQualifiedName);
         if (typeInfo != null) {
             data.compiledTypesManager.ensureInspection(typeInfo);
         }
         return typeInfo;
     }
-
-    private TypeInfo getFullyQualifiedFromCompiledTypesManager(String fullyQualifiedName, boolean complain) {
-        TypeInfo typeInfo = data.compiledTypesManager.get(fullyQualifiedName);
-        if (typeInfo == null) {
-            // see InspectionGaps_9: we don't have the type, but we do have an import of its enclosing type
-            TypeInfo imported = data.importMap.isImported(fullyQualifiedName);
-            if (imported != null) {
-                return imported;
-            }
-            TypeInfo ti = data.compiledTypesManager.getOrLoad(fullyQualifiedName);
-            if (complain && ti == null) {
-                throw new UnsupportedOperationException("Cannot find " + fullyQualifiedName);
-            }
-            return ti;
-        }
-        return typeInfo;
-    }
-
 
     @Override
     public NamedType get(String name, boolean complain) {
@@ -200,7 +195,7 @@ public class TypeContextImpl implements TypeContext {
         }
         // name can be fully qualified, or semi qualified; but the package can be empty, too.
         // try fully qualified first
-        NamedType fullyQualified = getFullyQualified(name, false);
+        NamedType fullyQualified = getFullyQualified(name);
         if (fullyQualified != null) return fullyQualified;
 
         if (dot >= 0) {
@@ -247,12 +242,6 @@ public class TypeContextImpl implements TypeContext {
             return namedType;
         }
 
-        // explicit imports
-        TypeInfo fromImport = data.importMap.getSimpleName(name);
-        if (fromImport != null) {
-            return fromImport;
-        }
-
         // Same package, and * imports (in that order!)
         if (parentContext != null) {
             NamedType fromParent = parentContext.getSimpleName(name);
@@ -262,27 +251,15 @@ public class TypeContextImpl implements TypeContext {
         }
 
         /*
-        On-demand: subtype from import statement (see e.g. Import_2)
+        On-demand: subtype from import static statement (see e.g. Import_2)
         This is done on-demand to fight cyclic dependencies if we do eager inspection.
          */
-        TypeInfo parent = data.importMap.getStaticMemberToTypeInfo(name);
+        TypeInfo parent = data.staticImportMap.getStaticMemberToTypeInfo(name);
         if (parent != null) {
             TypeInfo subType = parent.subTypes()
                     .stream().filter(st -> name.equals(st.simpleName())).findFirst().orElse(null);
             if (subType != null) {
-                data.importMap.putTypeMap(subType.fullyQualifiedName(), subType, false, false);
-                return subType;
-            }
-        }
-        /*
-        On-demand: try to resolve the * imports registered in this type context
-         */
-        for (TypeInfo wildcard : data.importMap.importAsterisk()) {
-            // the call to getTypeInspection triggers the JavaParser
-            TypeInfo subType = wildcard.subTypes()
-                    .stream().filter(st -> name.equals(st.simpleName())).findFirst().orElse(null);
-            if (subType != null) {
-                data.importMap.putTypeMap(subType.fullyQualifiedName(), subType, false, false);
+                map.put(name, subType);
                 return subType;
             }
         }
@@ -315,17 +292,17 @@ public class TypeContextImpl implements TypeContext {
     }
 
     public void addImportStaticWildcard(TypeInfo typeInfo) {
-        data.importMap.addStaticAsterisk(typeInfo);
+        data.staticImportMap.addStaticAsterisk(typeInfo);
     }
 
     public void addImportStatic(TypeInfo typeInfo, String member) {
-        data.importMap.putStaticMemberToTypeInfo(member, typeInfo);
+        data.staticImportMap.putStaticMemberToTypeInfo(member, typeInfo);
     }
 
     @Override
     public Map<String, FieldReference> staticFieldImports(Runtime runtime) {
         Map<String, FieldReference> map = new HashMap<>();
-        for (Map.Entry<String, TypeInfo> entry : data.importMap.staticMemberToTypeInfoEntrySet()) {
+        for (Map.Entry<String, TypeInfo> entry : data.staticImportMap.staticMemberToTypeInfoEntrySet()) {
             TypeInfo typeInfo = entry.getValue();
             String memberName = entry.getKey();
             typeInfo.fields().stream()
@@ -334,24 +311,12 @@ public class TypeContextImpl implements TypeContext {
                     .findFirst()
                     .ifPresent(fieldInfo -> map.put(memberName, runtime.newFieldReference(fieldInfo)));
         }
-        for (TypeInfo typeInfo : data.importMap.staticAsterisk()) {
+        for (TypeInfo typeInfo : data.staticImportMap.staticAsterisk()) {
             typeInfo.fields().stream()
                     .filter(FieldInfo::isStatic)
                     .forEach(fieldInfo -> map.put(fieldInfo.name(), runtime.newFieldReference(fieldInfo)));
         }
         return map;
-    }
-
-    public void addImport(TypeInfo typeInfo, boolean highPriority, boolean directImport) {
-        data.importMap.putTypeMap(typeInfo.fullyQualifiedName(), typeInfo, highPriority, directImport);
-        if (!directImport) {
-            addToContext(typeInfo, highPriority);
-        }
-    }
-
-    public void addImportWildcard(TypeInfo typeInfo) {
-        data.importMap.addToSubtypeAsterisk(typeInfo);
-        // not adding the type to the context!!! the subtypes will be added by the inspector
     }
 
     @Override

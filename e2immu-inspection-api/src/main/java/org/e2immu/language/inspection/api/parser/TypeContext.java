@@ -15,7 +15,9 @@ import java.util.Map;
 NOT to be used by byte code inspection: exclusive to parser system!
  */
 public interface TypeContext {
-    void addToImportMap(ImportStatement importStatement);
+    void addToStaticImportMap(ImportStatement importStatement);
+
+    void addNonStaticImportToContext(ImportStatement importStatement);
 
     TypeContext newCompilationUnit(CompilationUnit compilationUnit);
 
@@ -23,7 +25,7 @@ public interface TypeContext {
 
     TypeContext newAnonymousClassBody(TypeInfo baseType);
 
-    ImportMap importMap();
+    StaticImportMap importMap();
 
     CompilationUnit compilationUnit();
 

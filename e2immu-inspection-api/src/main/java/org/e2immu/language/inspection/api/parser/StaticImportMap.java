@@ -4,7 +4,7 @@ import org.e2immu.language.cst.api.info.TypeInfo;
 
 import java.util.Map;
 
-public interface ImportMap {
+public interface StaticImportMap {
     void addStaticAsterisk(TypeInfo typeInfo);
 
     void putStaticMemberToTypeInfo(String member, TypeInfo typeInfo);
@@ -14,16 +14,4 @@ public interface ImportMap {
     Iterable<? extends TypeInfo> staticAsterisk();
 
     TypeInfo getStaticMemberToTypeInfo(String methodName);
-
-    void putTypeMap(String fullyQualifiedName, TypeInfo typeInfo, boolean highPriority, boolean isDirectImport);
-
-    TypeInfo isImported(String fullyQualifiedName);
-
-    void addToSubtypeAsterisk(TypeInfo typeInfo);
-
-    boolean isSubtypeAsterisk(TypeInfo typeInfo);
-
-    Iterable<? extends TypeInfo> importAsterisk();
-
-    TypeInfo getSimpleName(String name);
 }

@@ -19,14 +19,14 @@ for method/constructor resolution. Further resolution will only restrict based o
  */
 public class ListMethodAndConstructorCandidates {
     private final Runtime runtime;
-    private final ImportMap importMap;
+    private final StaticImportMap staticImportMap;
 
     public enum ScopeNature {
         ABSENT, STATIC, INSTANCE,
     }
 
-    public ListMethodAndConstructorCandidates(Runtime runtime, ImportMap importMap) {
-        this.importMap = importMap;
+    public ListMethodAndConstructorCandidates(Runtime runtime, StaticImportMap staticImportMap) {
+        this.staticImportMap = staticImportMap;
         this.runtime = runtime;
     }
 
@@ -88,7 +88,7 @@ public class ListMethodAndConstructorCandidates {
         }
         // it is possible that we find the method in one of the statically imported types... with * import
         // if the method is static, we must be talking about the same type (See Import_10).
-        for (TypeInfo typeInfo : importMap.staticAsterisk()) {
+        for (TypeInfo typeInfo : staticImportMap.staticAsterisk()) {
             if (!visited.contains(typeInfo) && !visitedStatic.contains(typeInfo)
                 && (scopeNature != ScopeNature.STATIC || typeInfo == typeOfObject.bestTypeInfo())) {
                 visitedStatic.add(typeInfo);
@@ -98,7 +98,7 @@ public class ListMethodAndConstructorCandidates {
             }
         }
         // or import by name
-        TypeInfo byName = importMap.getStaticMemberToTypeInfo(methodName);
+        TypeInfo byName = staticImportMap.getStaticMemberToTypeInfo(methodName);
         if (byName != null && !visited.contains(byName) && !visitedStatic.contains(byName)) {
             visitedStatic.add(byName);
             resolveOverloadedMethodsSingleType(byName, true, scopeNature, methodName,
