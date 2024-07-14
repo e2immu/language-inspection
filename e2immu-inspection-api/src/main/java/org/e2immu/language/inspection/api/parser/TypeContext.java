@@ -15,6 +15,8 @@ import java.util.Map;
 NOT to be used by byte code inspection: exclusive to parser system!
  */
 public interface TypeContext {
+    void addSubTypesOfHierarchy(TypeInfo typeInfo);
+
     void addToStaticImportMap(ImportStatement importStatement);
 
     void addNonStaticImportToContext(ImportStatement importStatement);

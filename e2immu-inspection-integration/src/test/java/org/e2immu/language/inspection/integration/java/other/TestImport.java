@@ -327,12 +327,14 @@ public class TestImport extends CommonTest {
         javaInspector.parse(INPUT12);
     }
 
+    // priority of imports: the explicit ErrorHandler in 'a' gets priority over the supertype of ImplementsErrorHandler
+    // which lives in 'b'
     @Language("java")
     private static final String INPUT13 = """
             package org.e2immu.analyser.resolver.testexample;
 
             import org.e2immu.language.inspection.integration.java.importhelper.ImplementsErrorHandler;
-            import org.e2immu.language.inspection.integration.java.importhelper.c.ErrorHandler;
+            import org.e2immu.language.inspection.integration.java.importhelper.a.ErrorHandler;
 
             public class Import_13 {
 
@@ -349,6 +351,7 @@ public class TestImport extends CommonTest {
         javaInspector.parse(INPUT13);
     }
 
+    // priority of explicit import over * import lower down
     @Language("java")
     private static final String INPUT14 = """
             package org.e2immu.analyser.resolver.testexample;

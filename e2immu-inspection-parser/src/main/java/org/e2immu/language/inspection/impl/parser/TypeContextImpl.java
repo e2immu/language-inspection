@@ -221,9 +221,8 @@ public class TypeContextImpl implements TypeContext {
     private TypeInfo subTypeOfRelated(TypeInfo typeInfo, String name) {
         TypeInfo sub = typeInfo.findSubType(name, false);
         if (sub != null) return sub;
-        TypeInfo parent = typeInfo.parentClass().typeInfo();
-        if (parent != null && !parent.isJavaLangObject()) {
-            TypeInfo subParent = subTypeOfRelated(parent, name);
+        if (typeInfo.parentClass() != null && !typeInfo.parentClass().typeInfo().isJavaLangObject()) {
+            TypeInfo subParent = subTypeOfRelated(typeInfo.parentClass().typeInfo(), name);
             if (subParent != null) return subParent;
         }
         for (ParameterizedType interfaceImplemented : typeInfo.interfacesImplemented()) {
@@ -340,5 +339,14 @@ public class TypeContextImpl implements TypeContext {
     @Override
     public List<TypeInfo> typesInSamePackage(String packageName) {
         return data.sourceTypeMap().primaryTypesInPackage(packageName);
+    }
+
+    @Override
+    public void addSubTypesOfHierarchy(TypeInfo typeInfo) {
+        typeInfo.subTypes().forEach(this::addToContext);
+        if(typeInfo.parentClass() != null && !typeInfo.parentClass().isJavaLangObject()) {
+            addSubTypesOfHierarchy(typeInfo.parentClass().typeInfo());
+        }
+        typeInfo.interfacesImplemented().forEach(ii -> addSubTypesOfHierarchy(ii.typeInfo()));
     }
 }
