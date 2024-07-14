@@ -1,8 +1,13 @@
 package org.e2immu.language.inspection.integration.java.method;
 
+import org.e2immu.language.cst.api.info.MethodInfo;
+import org.e2immu.language.cst.api.info.ParameterInfo;
+import org.e2immu.language.cst.api.info.TypeInfo;
 import org.e2immu.language.inspection.integration.java.CommonTest;
 import org.intellij.lang.annotations.Language;
 import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.*;
 
 public class TestMethodCall6 extends CommonTest {
 
@@ -251,7 +256,30 @@ public class TestMethodCall6 extends CommonTest {
 
     @Test
     public void test9() {
-        javaInspector.parse(INPUT9);
+        TypeInfo typeInfo = javaInspector.parse(INPUT9);
+        MethodInfo addAll = typeInfo.findUniqueMethod("addAll", 2);
+        assertEquals(2, addAll.parameters().size());
+        ParameterInfo p0 = addAll.parameters().get(0);
+        assertTrue(p0.isFinal());
+        assertFalse(p0.isVarArgs());
+        assertEquals("Type param T[]", p0.parameterizedType().toString());
+        ParameterInfo p1 = addAll.parameters().get(1);
+        assertTrue(p1.isFinal());
+        assertTrue(p1.isVarArgs());
+        assertEquals("Type param T[]", p1.parameterizedType().toString());
+
+        MethodInfo method = typeInfo.findUniqueMethod("method", 2);
+        assertEquals(2, method.parameters().size());
+        ParameterInfo p0m = method.parameters().get(0);
+        assertFalse(p0m.isFinal());
+        assertFalse(p0m.isVarArgs());
+
+        ParameterInfo p1m = method.parameters().get(1);
+        assertEquals("Type org.e2immu.analyser.resolver.testexample.MethodCall_63.I[]",
+                p1m.parameterizedType().toString());
+        assertFalse(p1m.isFinal());
+        assertFalse(p1m.isVarArgs());
+
     }
 
     @Language("java")
