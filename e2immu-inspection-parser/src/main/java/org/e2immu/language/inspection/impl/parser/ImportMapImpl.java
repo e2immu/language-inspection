@@ -24,16 +24,25 @@ public class ImportMapImpl implements ImportMap {
         staticMemberToTypeInfo.put(member, typeInfo);
     }
 
+    /*
+     used in TypeContextImpl.staticFieldImports
+    */
     @Override
     public Iterable<? extends Map.Entry<String, TypeInfo>> staticMemberToTypeInfoEntrySet() {
         return staticMemberToTypeInfo.entrySet();
     }
 
+    /*
+    used in ListMethodAndConstructorCandidates, and TypeContextImpl.staticFieldImports
+     */
     @Override
     public Iterable<? extends TypeInfo> staticAsterisk() {
         return staticAsterisk;
     }
 
+    /*
+    used in ListMethodAndConstructorCandidates, and TypeContextImpl.staticFieldImports
+    */
     @Override
     public TypeInfo getStaticMemberToTypeInfo(String methodName) {
         return staticMemberToTypeInfo.get(methodName);

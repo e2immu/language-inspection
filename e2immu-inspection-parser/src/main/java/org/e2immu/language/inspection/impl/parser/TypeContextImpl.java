@@ -209,8 +209,7 @@ public class TypeContextImpl implements TypeContext {
             NamedType prefixType = get(prefix, complain);
             if (prefixType instanceof TypeInfo typeInfo) {
                 String tail = name.substring(dot + 1);
-                String newFqn = typeInfo.fullyQualifiedName() + "." + tail;
-                TypeInfo tailType = getFullyQualified(newFqn, false);
+                TypeInfo tailType = subTypeOfRelated(typeInfo, tail);
                 if (tailType != null) {
                     return tailType;
                 }
@@ -222,6 +221,23 @@ public class TypeContextImpl implements TypeContext {
             throw new UnsupportedOperationException("Cannot find type " + name);
         }
         return javaLang;
+    }
+
+    private TypeInfo subTypeOfRelated(TypeInfo typeInfo, String name) {
+        TypeInfo sub = typeInfo.findSubType(name, false);
+        if (sub != null) return sub;
+        TypeInfo parent = typeInfo.parentClass().typeInfo();
+        if (parent != null && !parent.isJavaLangObject()) {
+            TypeInfo subParent = subTypeOfRelated(parent, name);
+            if (subParent != null) return subParent;
+        }
+        for (ParameterizedType interfaceImplemented : typeInfo.interfacesImplemented()) {
+            TypeInfo subImplemented = subTypeOfRelated(interfaceImplemented.typeInfo(), name);
+            if (subImplemented != null) {
+                return subImplemented;
+            }
+        }
+        return null;
     }
 
 

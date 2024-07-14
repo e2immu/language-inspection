@@ -270,7 +270,7 @@ public class TestImport extends CommonTest {
             import java.util.TreeMap;
             import java.util.function.BiConsumer;
 
-            import static org.e2immu.analyser.resolver.testexample.a.ImplementsIterable.INT;
+            import static org.e2immu.language.inspection.integration.java.importhelper.a.ImplementsIterable.INT;
 
             public class Import_11 {
                 interface Variable {
@@ -307,8 +307,8 @@ public class TestImport extends CommonTest {
     private static final String INPUT12 = """
             package org.e2immu.analyser.resolver.testexample;
 
-            import org.e2immu.analyser.resolver.testexample.access.AbstractFilter;
-            import org.e2immu.analyser.resolver.testexample.access.Filter;
+            import org.e2immu.language.inspection.integration.java.importhelper.access.AbstractFilter;
+            import org.e2immu.language.inspection.integration.java.importhelper.access.Filter;
 
             public class Import_12 {
 
