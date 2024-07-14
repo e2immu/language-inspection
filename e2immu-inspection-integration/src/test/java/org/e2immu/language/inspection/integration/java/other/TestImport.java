@@ -1,8 +1,13 @@
 package org.e2immu.language.inspection.integration.java.other;
 
+import org.e2immu.language.cst.api.info.MethodInfo;
+import org.e2immu.language.cst.api.info.TypeInfo;
+import org.e2immu.language.cst.api.statement.LocalVariableCreation;
 import org.e2immu.language.inspection.integration.java.CommonTest;
 import org.intellij.lang.annotations.Language;
 import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.*;
 
 public class TestImport extends CommonTest {
 
@@ -195,7 +200,16 @@ public class TestImport extends CommonTest {
 
     @Test
     public void test8() {
-        javaInspector.parse(INPUT8);
+        TypeInfo typeInfo = javaInspector.parse(INPUT8);
+        MethodInfo methodInfo = typeInfo.findUniqueMethod("method", 0);
+        if (methodInfo.methodBody().statements().get(1) instanceof LocalVariableCreation lvc) {
+            TypeInfo findLoopResult = lvc.localVariable().parameterizedType().typeInfo();
+            assertEquals("FindLoopResult", findLoopResult.simpleName());
+            assertTrue(findLoopResult.parentClass().isJavaLangObject());
+            TypeInfo enclosing = findLoopResult.compilationUnitOrEnclosingType().getRight();
+            assertEquals("RStatementAnalysis", enclosing.simpleName());
+            assertEquals(2, enclosing.superTypesExcludingJavaLangObject().size());
+        } else fail();
     }
 
     @Language("java")
