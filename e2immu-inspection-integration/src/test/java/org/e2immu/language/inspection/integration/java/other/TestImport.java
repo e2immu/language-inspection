@@ -2,7 +2,12 @@ package org.e2immu.language.inspection.integration.java.other;
 
 import org.e2immu.language.cst.api.info.MethodInfo;
 import org.e2immu.language.cst.api.info.TypeInfo;
+import org.e2immu.language.cst.api.output.Formatter;
+import org.e2immu.language.cst.api.output.OutputBuilder;
 import org.e2immu.language.cst.api.statement.LocalVariableCreation;
+import org.e2immu.language.cst.impl.info.TypePrinter;
+import org.e2immu.language.cst.print.FormatterImpl;
+import org.e2immu.language.cst.print.FormattingOptionsImpl;
 import org.e2immu.language.inspection.integration.java.CommonTest;
 import org.intellij.lang.annotations.Language;
 import org.junit.jupiter.api.Test;
@@ -28,9 +33,22 @@ public class TestImport extends CommonTest {
             }
             """;
 
+    @Language("java")
+    private static final String OUTPUT1 = """
+            package org.e2immu.analyser.resolver.testexample;
+            import org.e2immu.language.inspection.integration.java.importhelper.RLevel;
+            import org.e2immu.language.inspection.integration.java.importhelper.RMultiLevel.Effective;
+            public class Import_0 { public void method() { System.out.println(RLevel.LEVEL + ": " + RMultiLevel.Effective.E1); } }
+            """;
+
     @Test
     public void test0() {
-        javaInspector.parse(INPUT0);
+        TypeInfo typeInfo = javaInspector.parse(INPUT0);
+        OutputBuilder ob = new TypePrinter(typeInfo).print(null, true);
+        Formatter formatter = new FormatterImpl(javaInspector.runtime(), FormattingOptionsImpl.DEFAULT);
+        String s = formatter.write(ob);
+
+        assertEquals(OUTPUT1, s);
     }
 
     @Language("java")

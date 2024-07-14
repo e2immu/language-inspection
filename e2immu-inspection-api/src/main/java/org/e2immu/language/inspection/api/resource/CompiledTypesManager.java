@@ -2,6 +2,7 @@ package org.e2immu.language.inspection.api.resource;
 
 import org.e2immu.language.cst.api.info.TypeInfo;
 
+import java.util.Collection;
 import java.util.List;
 
 /**
@@ -73,4 +74,6 @@ public interface CompiledTypesManager {
     default boolean acceptFQN(String fqn) {
         return !fqn.startsWith("jdk.internal.");
     }
+
+    default List<TypeInfo> typesLoaded() { throw new UnsupportedOperationException(); }
 }

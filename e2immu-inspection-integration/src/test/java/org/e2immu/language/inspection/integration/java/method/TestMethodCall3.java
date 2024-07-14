@@ -1,8 +1,16 @@
 package org.e2immu.language.inspection.integration.java.method;
 
+import org.e2immu.language.cst.api.info.TypeInfo;
+import org.e2immu.language.cst.api.output.Formatter;
+import org.e2immu.language.cst.api.output.OutputBuilder;
+import org.e2immu.language.cst.impl.info.TypePrinter;
+import org.e2immu.language.cst.print.FormatterImpl;
+import org.e2immu.language.cst.print.FormattingOptionsImpl;
 import org.e2immu.language.inspection.integration.java.CommonTest;
 import org.intellij.lang.annotations.Language;
 import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class TestMethodCall3 extends CommonTest {
     @Language("java")
@@ -63,9 +71,37 @@ public class TestMethodCall3 extends CommonTest {
             }
             """;
 
+    @Language("java")
+    private static final String OUTPUT1 = """
+            package org.e2immu.analyser.resolver.testexample;
+            import java.net.URI;
+            import java.net.http.HttpRequest;
+            import java.net.http.HttpRequest.Builder;
+            import java.time.Duration;
+            import java.util.Objects;
+            public class MethodCall_31 {
+                private static final long DEFAULT_TIMEOUT = 30;
+                private static final String ACCEPT = "Accept";
+                public static HttpRequest same4(URI uri, String a1, String a2, Long timeout) {
+                    HttpRequest.Builder builder = HttpRequest.newBuilder()
+                        .GET()
+                        .uri(uri)
+                        .timeout(Duration.ofMillis(Objects.requireNonNullElse(timeout, MethodCall_31.DEFAULT_TIMEOUT)))
+                        .header(MethodCall_31.ACCEPT, a1)
+                        .header("Accept", a2);
+                    return builder.build();
+                }
+            }
+            """;
+
     @Test
     public void test1() {
-        javaInspector.parse(INPUT1);
+        TypeInfo typeInfo = javaInspector.parse(INPUT1);
+        OutputBuilder ob = new TypePrinter(typeInfo).print(null, true);
+        Formatter formatter = new FormatterImpl(javaInspector.runtime(), FormattingOptionsImpl.DEFAULT);
+        String s = formatter.write(ob);
+
+        assertEquals(OUTPUT1, s);
     }
 
     @Language("java")
@@ -169,7 +205,7 @@ public class TestMethodCall3 extends CommonTest {
 
     @Test
     public void test2() {
-       javaInspector.parse(INPUT2);
+        javaInspector.parse(INPUT2);
     }
 
     @Language("java")
@@ -203,7 +239,7 @@ public class TestMethodCall3 extends CommonTest {
     }
 
     @Language("java")
-    private static final String INPUT4= """
+    private static final String INPUT4 = """
             package org.e2immu.analyser.resolver.testexample;
 
             public class MethodCall_34 {
@@ -228,7 +264,7 @@ public class TestMethodCall3 extends CommonTest {
     }
 
     @Language("java")
-    private static final String INPUT5= """
+    private static final String INPUT5 = """
             package org.e2immu.analyser.resolver.testexample;
 
             import java.io.Serializable;
@@ -264,7 +300,7 @@ public class TestMethodCall3 extends CommonTest {
     }
 
     @Language("java")
-    private static final String INPUT6= """
+    private static final String INPUT6 = """
             package org.e2immu.analyser.resolver.testexample;
 
             public class MethodCall_36 {
@@ -289,7 +325,7 @@ public class TestMethodCall3 extends CommonTest {
     }
 
     @Language("java")
-    private static final String INPUT7= """
+    private static final String INPUT7 = """
             package org.e2immu.analyser.resolver.testexample;
 
             import java.util.Map;
@@ -317,7 +353,7 @@ public class TestMethodCall3 extends CommonTest {
     }
 
     @Language("java")
-    private static final String INPUT8= """
+    private static final String INPUT8 = """
             package org.e2immu.analyser.resolver.testexample;
 
             import java.io.IOException;
@@ -351,7 +387,7 @@ public class TestMethodCall3 extends CommonTest {
     }
 
     @Language("java")
-    private static final String INPUT9= """
+    private static final String INPUT9 = """
             package org.e2immu.analyser.resolver.testexample;
 
             public class MethodCall_39 {

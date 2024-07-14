@@ -132,4 +132,9 @@ public class CompiledTypesManagerImpl implements CompiledTypesManager {
         }
         throw new UnsupportedOperationException("Expected .class or .java file, but got " + combined);
     }
+
+    @Override
+    public List<TypeInfo> typesLoaded() {
+        return typeMap.values().stream().sorted(Comparator.comparing(TypeInfo::fullyQualifiedName)).toList();
+    }
 }
