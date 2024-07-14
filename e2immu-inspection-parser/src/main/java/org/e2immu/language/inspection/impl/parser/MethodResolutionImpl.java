@@ -129,7 +129,7 @@ public class MethodResolutionImpl implements MethodResolution {
         // FIXME cas.scope.pt() has type parameters, which we should add to the expectedConcreteType?
         ListMethodAndConstructorCandidates list = new ListMethodAndConstructorCandidates(runtime,
                 context.typeContext().importMap());
-        Map<NamedType, ParameterizedType> typeMap = expectedConcreteType == null ? null :
+        Map<NamedType, ParameterizedType> typeMap = expectedConcreteType == null ? Map.of() :
                 expectedConcreteType.initialTypeParameterMap(runtime);
         TypeParameterMap typeParameterMap = new TypeParameterMap(typeMap);
         Map<MethodTypeParameterMap, Integer> candidates = list.resolveConstructor(formalType, expectedConcreteType,
