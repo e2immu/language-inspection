@@ -138,7 +138,8 @@ public class MethodResolutionImpl implements MethodResolution {
                 unparsedArguments, formalType,
                 typeParameterMap);
         if (candidate == null) {
-            throw new UnsupportedOperationException("No candidate for constructor");
+            throw new UnsupportedOperationException("No candidate for constructor, "
+                                                    + unparsedArguments.size() + " args, formal type " + formalType);
         }
 
 
