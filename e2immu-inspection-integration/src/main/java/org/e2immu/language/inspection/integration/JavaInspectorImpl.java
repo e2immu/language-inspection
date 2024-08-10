@@ -271,8 +271,10 @@ public class JavaInspectorImpl implements JavaInspector {
 
         // PHASE 1: scanning all the types, call CongoCC parser
 
-        List<URICompilationUnit> list = new ArrayList<>(sourceURIs.size());
-        for (URI uri : sourceURIs) {
+        List<URI> allURIs = Stream.concat(sourceURIs.stream(), testURIs.stream()).toList();
+
+        List<URICompilationUnit> list = new ArrayList<>(allURIs.size());
+        for (URI uri : allURIs) {
             try (InputStreamReader isr = new InputStreamReader(uri.toURL().openStream(), StandardCharsets.UTF_8);
                  StringWriter sw = new StringWriter()) {
                 isr.transferTo(sw);
@@ -300,7 +302,8 @@ public class JavaInspectorImpl implements JavaInspector {
         for (URICompilationUnit uc : list) {
             ParseCompilationUnit parseCompilationUnit = new ParseCompilationUnit(rootContext);
             LOGGER.debug("Parsing {}", uc.uri);
-            parseCompilationUnit.parse(uc.parsedCu, uc.cu);
+            List<TypeInfo> types = parseCompilationUnit.parse(uc.parsedCu, uc.cu);
+            types.forEach(ti -> summary.addType(ti, true));
         }
 
         // PHASE 3: resolving: content of methods, field initializers
