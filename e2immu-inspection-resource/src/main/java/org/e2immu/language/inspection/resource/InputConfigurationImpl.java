@@ -21,7 +21,8 @@ public record InputConfigurationImpl(List<String> sources,
                                      List<String> testRuntimeClassPathParts,
                                      String alternativeJREDirectory,
                                      Charset sourceEncoding,
-                                     List<String> dependencies) implements InputConfiguration {
+                                     List<String> dependencies,
+                                     boolean infoLogClasspath) implements InputConfiguration {
     public static final String DEFAULT_SOURCE_DIRS = "src/main/java";
     public static final String DEFAULT_TEST_SOURCE_DIRS = "src/test/java";
 
@@ -58,6 +59,7 @@ public record InputConfigurationImpl(List<String> sources,
 
         private String alternativeJREDirectory;
         private String sourceEncoding;
+        private boolean infoLogClasspath;
 
         public InputConfiguration build() {
             Charset sourceCharset = sourceEncoding == null ? StandardCharsets.UTF_8 : Charset.forName(sourceEncoding);
@@ -72,7 +74,8 @@ public record InputConfigurationImpl(List<String> sources,
                     List.copyOf(testRuntimeClassPathParts),
                     alternativeJREDirectory,
                     sourceCharset,
-                    List.copyOf(dependencies)
+                    List.copyOf(dependencies),
+                    infoLogClasspath
             );
         }
 
@@ -150,6 +153,12 @@ public record InputConfigurationImpl(List<String> sources,
         @Fluent
         public Builder addRestrictTestSourceToPackages(String... packages) {
             restrictTestSourceToPackages.addAll(Arrays.asList(packages));
+            return this;
+        }
+
+        @Override
+        public InputConfiguration.Builder setInfoLogClasspath(boolean infoLogClasspath) {
+            this.infoLogClasspath = infoLogClasspath;
             return this;
         }
     }

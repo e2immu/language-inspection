@@ -66,6 +66,11 @@ public class JavaInspectorImpl implements JavaInspector {
     public void initialize(InputConfiguration inputConfiguration) throws IOException {
         List<String> classPathAsList = classPathAsList(inputConfiguration);
         LOGGER.info("Combined classpath and test classpath has {} entries", classPathAsList.size());
+        if (inputConfiguration.infoLogClasspath()) {
+            for (String cp : classPathAsList) {
+                LOGGER.info("Classpath entry: {}", cp);
+            }
+        }
         Resources classPath = assemblePath(inputConfiguration, true, "Classpath", classPathAsList);
         CompiledTypesManagerImpl ctm = new CompiledTypesManagerImpl(classPath);
         runtime = new RuntimeWithCompiledTypesManager(ctm);

@@ -7,6 +7,8 @@ import java.util.List;
 
 public interface InputConfiguration {
 
+    boolean infoLogClasspath();
+
     List<String> sources();
 
     List<String> restrictSourceToPackages();
@@ -63,5 +65,8 @@ public interface InputConfiguration {
 
         @Fluent
         Builder setSourceEncoding(String sourceEncoding);
+
+        @Fluent
+        Builder setInfoLogClasspath(boolean infoLogClasspath);
     }
 }
