@@ -5,6 +5,7 @@ import org.e2immu.annotation.Container;
 import org.e2immu.annotation.Fluent;
 import org.e2immu.language.inspection.api.resource.InputConfiguration;
 
+import java.io.File;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -28,6 +29,7 @@ public record InputConfigurationImpl(List<String> sources,
 
     public static final String[] DEFAULT_CLASSPATH = {"build/classes/java/main", "jmods/java.base.jmod",
             "jmods/java.xml.jmod", "jmods/java.net.http.jmod"};
+    public static final String DEFAULT_CLASSPATH_STRING = String.join(File.pathSeparator, DEFAULT_CLASSPATH);
 
     static final String NL_TAB = "\n    ";
 

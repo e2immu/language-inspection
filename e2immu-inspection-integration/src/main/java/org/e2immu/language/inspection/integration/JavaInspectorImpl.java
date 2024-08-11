@@ -61,6 +61,7 @@ public class JavaInspectorImpl implements JavaInspector {
      * jar:file:/Users/bnaudts/.gradle/caches/modules-2/files-2.1/com.google.guava/guava/28.1-jre/b0e91dcb6a44ffb6221b5027e12a5cb34b841145/guava-28.1-jre.jar!/
      */
     public static final String JAR_WITH_PATH_PREFIX = "jar-on-classpath:";
+    public static final String JAR_WITH_PATH_PREFIX_DOUBLE_COLON = "jar-on-classpath::";
 
     @Override
     public void initialize(InputConfiguration inputConfiguration) throws IOException {
@@ -190,7 +191,8 @@ public class JavaInspectorImpl implements JavaInspector {
             } else {
                 File directory = new File(part);
                 if (directory.isDirectory()) {
-                    LOGGER.info("Adding {} to classpath", directory.getAbsolutePath());
+                    String what = isClassPath ? "classpath" : "source path";
+                    LOGGER.info("Adding {} to " + what, directory.getAbsolutePath());
                     resources.addDirectoryFromFileSystem(directory);
                 } else {
                     LOGGER.error("{} part '{}' is not a .jar file, and not a directory: ignored", msg, part);
