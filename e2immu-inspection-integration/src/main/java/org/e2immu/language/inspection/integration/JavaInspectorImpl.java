@@ -94,14 +94,15 @@ public class JavaInspectorImpl implements JavaInspector {
                 inputConfiguration.restrictTestSourceToPackages(), "test source path");
     }
 
-
     private static List<String> classPathAsList(InputConfiguration inputConfiguration) {
         Stream<String> compileCp = inputConfiguration.classPathParts().stream();
         Stream<String> runtimeCp = inputConfiguration.runtimeClassPathParts().stream();
         Stream<String> testCompileCp = inputConfiguration.testClassPathParts().stream();
         Stream<String> testRuntimeCp = inputConfiguration.testClassPathParts().stream();
         return Stream.concat(Stream.concat(compileCp, runtimeCp), Stream.concat(testCompileCp, testRuntimeCp))
-                .distinct().toList();
+                .distinct()
+                .filter(s -> inputConfiguration.excludeFromClasspath().stream().noneMatch(s::contains))
+                .toList();
     }
 
     private List<URI> computeSourceURIs(Resources sourcePath, List<String> restrictions, String what) {

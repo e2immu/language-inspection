@@ -20,6 +20,7 @@ public record InputConfigurationImpl(List<String> sources,
                                      List<String> runtimeClassPathParts,
                                      List<String> testClassPathParts,
                                      List<String> testRuntimeClassPathParts,
+                                     List<String> excludeFromClasspath,
                                      String alternativeJREDirectory,
                                      Charset sourceEncoding,
                                      List<String> dependencies,
@@ -53,6 +54,7 @@ public record InputConfigurationImpl(List<String> sources,
         private final List<String> runtimeClassPathParts = new ArrayList<>();
         private final List<String> testClassPathParts = new ArrayList<>();
         private final List<String> testRuntimeClassPathParts = new ArrayList<>();
+        private final List<String> excludeFromClasspath = new ArrayList<>();
 
         // result of dependency analysis: group:artifactId:version:configuration
         private final List<String> dependencies = new ArrayList<>();
@@ -74,6 +76,7 @@ public record InputConfigurationImpl(List<String> sources,
                     List.copyOf(runtimeClassPathParts),
                     List.copyOf(testClassPathParts),
                     List.copyOf(testRuntimeClassPathParts),
+                    List.copyOf(excludeFromClasspath),
                     alternativeJREDirectory,
                     sourceCharset,
                     List.copyOf(dependencies),
@@ -120,6 +123,13 @@ public record InputConfigurationImpl(List<String> sources,
         @Fluent
         public Builder addTestRuntimeClassPath(String... sources) {
             testRuntimeClassPathParts.addAll(Arrays.asList(sources));
+            return this;
+        }
+
+        @Override
+        @Fluent
+        public Builder addExcludeFromClasspath(String... jarNames) {
+            excludeFromClasspath.addAll(Arrays.asList(jarNames));
             return this;
         }
 

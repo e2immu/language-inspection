@@ -25,6 +25,8 @@ public interface InputConfiguration {
 
     List<String> testRuntimeClassPathParts();
 
+    List<String> excludeFromClasspath();
+
     String alternativeJREDirectory();
 
     Charset sourceEncoding();
@@ -35,6 +37,9 @@ public interface InputConfiguration {
 
         @Fluent
         Builder addClassPath(String... sources);
+
+        @Fluent
+        Builder addExcludeFromClasspath(String... jarNames);
 
         @Fluent
         Builder addDependencies(String... deps);
