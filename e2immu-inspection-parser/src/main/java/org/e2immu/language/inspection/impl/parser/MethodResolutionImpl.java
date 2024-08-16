@@ -505,7 +505,7 @@ public class MethodResolutionImpl implements MethodResolution {
 
     private Candidate noCandidatesError(String methodName, Map<Integer, Expression> evaluatedExpressions) {
         LOGGER.error("Evaluated expressions for {}: ", methodName);
-        evaluatedExpressions.forEach((i, expr) -> LOGGER.error("  {} = {}", i, expr));
+        evaluatedExpressions.forEach((i, expr) -> LOGGER.error("  {} = {}, type {}", i, expr, expr.parameterizedType()));
         LOGGER.error("No candidate found for {}", methodName);
         return null;
     }
@@ -963,11 +963,12 @@ public class MethodResolutionImpl implements MethodResolution {
 
     private static Set<ParameterizedType> erasureTypes(Expression start) {
         Set<ParameterizedType> set = new HashSet<>();
+        if(!(start instanceof ErasedExpression)) {
+            set.add(start.parameterizedType());
+        }
         start.visit(e -> {
             if (e instanceof ErasedExpression erasedExpression) {
                 set.addAll(erasedExpression.erasureTypes());
-            } else if (e instanceof Expression expr) {
-                set.add(expr.parameterizedType());
             }
             return true;
         });
