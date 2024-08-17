@@ -271,8 +271,7 @@ public class TestMethodCall1 extends CommonTest {
             && lvc.localVariable().assignmentExpression() instanceof Lambda lambda) {
             assertEquals("Type java.util.function.Function<org.e2immu.analyser.resolver.testexample.MethodCall_18.AnnotationExpression,String>",
                     lambda.concreteFunctionalType().toString());
-            MethodInfo sam = lambda.methodInfo();
-            if (sam.methodBody().statements().get(0) instanceof LocalVariableCreation lvc2
+            if (lambda.methodBody().statements().get(0) instanceof LocalVariableCreation lvc2
                 && lvc2.localVariable().assignmentExpression() instanceof MethodCall mc) {
                 assertEquals("Type String[]", mc.concreteReturnType().toString());
             } else fail();
