@@ -261,4 +261,37 @@ public class TestOverload extends CommonTest {
     public void test8() {
         javaInspector.parse(INPUT8);
     }
+
+    private static final String INPUT9 = """
+            package a.b;
+            class X {
+                public String toString() {
+                  return "X";
+                }
+                class MyClass {
+                    public String toString() { return ""; }
+                }
+                public String test(MyClass s) {
+                    return s.toString();
+                }
+            }
+            """;
+
+    @Test
+    public void test9() {
+        TypeInfo X = javaInspector.parse(INPUT9);
+        MethodInfo toString = X.findUniqueMethod("toString", 0);
+        assertEquals("a.b.X.toString()", toString.fullyQualifiedName());
+        assertEquals(1, toString.overrides().size());
+
+        MethodInfo test = X.findUniqueMethod("test", 1);
+        if (test.methodBody().statements().get(0) instanceof ReturnStatement rs) {
+            if (rs.expression() instanceof MethodCall mc) {
+                MethodInfo myClassToString = mc.methodInfo();
+                assertEquals("a.b.X.MyClass.toString()", myClassToString.fullyQualifiedName());
+                MethodInfo override = myClassToString.overrides().stream().findFirst().orElseThrow();
+                assertEquals("java.lang.Object.toString()", override.fullyQualifiedName());
+            } else fail();
+        } else fail();
+    }
 }

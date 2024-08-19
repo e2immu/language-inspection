@@ -87,6 +87,7 @@ public class ResolverImpl implements Resolver {
         parseHelper.resolveMethodInto(builder, todo.context, todo.forwardType, todo.eci, todo.expression);
         MethodInfo methodInfo = (MethodInfo) todo.info;
         builder.addOverrides(computeMethodOverrides.overrides(methodInfo));
+        builder.commit();
     }
 
     @Override
