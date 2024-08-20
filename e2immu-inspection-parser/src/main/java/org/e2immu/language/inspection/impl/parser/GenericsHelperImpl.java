@@ -1,15 +1,26 @@
 package org.e2immu.language.inspection.impl.parser;
 
+import org.e2immu.language.cst.api.element.Comment;
+import org.e2immu.language.cst.api.element.Source;
+import org.e2immu.language.cst.api.expression.AnnotationExpression;
+import org.e2immu.language.cst.api.expression.Expression;
+import org.e2immu.language.cst.api.expression.Lambda;
 import org.e2immu.language.cst.api.info.MethodInfo;
 import org.e2immu.language.cst.api.info.ParameterInfo;
 import org.e2immu.language.cst.api.info.TypeInfo;
 import org.e2immu.language.cst.api.runtime.Runtime;
+import org.e2immu.language.cst.api.statement.Block;
+import org.e2immu.language.cst.api.statement.Statement;
+import org.e2immu.language.cst.api.translate.TranslationMap;
 import org.e2immu.language.cst.api.type.NamedType;
 import org.e2immu.language.cst.api.type.ParameterizedType;
+import org.e2immu.language.cst.api.variable.Variable;
 import org.e2immu.language.inspection.api.parser.GenericsHelper;
 import org.e2immu.language.inspection.api.parser.MethodTypeParameterMap;
 
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 public record GenericsHelperImpl(Runtime runtime) implements GenericsHelper {
@@ -243,5 +254,148 @@ public record GenericsHelperImpl(Runtime runtime) implements GenericsHelper {
             }
         }
         return null; // not in this branch of the recursion
+    }
+
+    @Override
+    public ExpressionBuilder newLambdaExpressionBuilder() {
+        return new ExpressionBuilderImp();
+    }
+
+    public class ExpressionBuilderImp implements ExpressionBuilder {
+        private final List<Variable> variables = new ArrayList<>();
+        private MethodInfo enclosingMethod;
+        private TypeInfo enclosingType;
+        private Expression expression;
+        private Source source;
+        private final List<Comment> comments = new ArrayList<>();
+        private final List<AnnotationExpression> annotations = new ArrayList<>();
+        private ParameterizedType forwardType;
+
+        @Override
+        public ExpressionBuilder setEnclosingType(TypeInfo typeInfo) {
+            this.enclosingType = typeInfo;
+            return this;
+        }
+
+        @Override
+        public ExpressionBuilder setEnclosingMethod(MethodInfo enclosingMethod) {
+            this.enclosingMethod = enclosingMethod;
+            if (enclosingMethod != null) {
+                this.enclosingType = enclosingMethod.typeInfo();
+            }
+            return this;
+        }
+
+        @Override
+        public ExpressionBuilder addVariable(Variable variable) {
+            variables.add(variable);
+            return this;
+        }
+
+        @Override
+        public ExpressionBuilder setExpression(Expression expression) {
+            this.expression = expression;
+            return this;
+        }
+
+        @Override
+        public ExpressionBuilder setForwardType(ParameterizedType forwardType) {
+            this.forwardType = forwardType;
+            return this;
+        }
+
+        private static final Pattern ANON = Pattern.compile("\\$(\\d+)");
+
+        @Override
+        public Lambda build() {
+            int typeIndex = enclosingType.subTypes().stream().mapToInt(st -> {
+                Matcher m = ANON.matcher(st.simpleName());
+                if (m.matches()) {
+                    return Integer.parseInt(m.group(1));
+                }
+                return -1;
+            }).max().orElse(-1) + 1;
+            TypeInfo anonymousType = runtime.newAnonymousType(enclosingType, typeIndex);
+            anonymousType.builder()
+                    .setAccess(runtime.accessPrivate())
+                    .setTypeNature(runtime.typeNatureClass())
+                    .setParentClass(runtime.objectParameterizedType());
+            ParameterizedType concreteReturnType = expression.parameterizedType();
+
+            MethodTypeParameterMap singleAbstractMethod = findSingleAbstractMethodOfInterface(forwardType);
+
+            MethodInfo sam = singleAbstractMethod.methodInfo();
+            MethodInfo methodInfo = runtime.newMethod(anonymousType, sam.name(), runtime.methodTypeMethod());
+            MethodInfo.Builder miBuilder = methodInfo.builder();
+
+            TranslationMap.Builder tmBuilder = runtime().newTranslationMapBuilder();
+            for (Variable variable : variables) {
+                ParameterInfo pi = miBuilder.addParameter(variable.simpleName(), variable.parameterizedType());
+                pi.builder().commit();
+                tmBuilder.put(variable, pi);
+            }
+            Expression tExpression = expression.translate(tmBuilder.build());
+
+            Statement returnStatement = runtime.newReturnBuilder()
+                    .setSource(expression.source())
+                    .setExpression(tExpression)
+                    .build();
+            Block methodBody = runtime.newBlockBuilder().addStatement(returnStatement).build();
+
+            miBuilder.setAccess(runtime.accessPrivate());
+            miBuilder.setSynthetic(true);
+            miBuilder.setMethodBody(methodBody);
+            miBuilder.setReturnType(concreteReturnType);
+            miBuilder.commit();
+
+            List<ParameterizedType> types = methodInfo.parameters().stream().map(ParameterInfo::parameterizedType).toList();
+            ParameterizedType functionalType = singleAbstractMethod.inferFunctionalType(runtime, types, concreteReturnType);
+
+            anonymousType.builder()
+                    .addMethod(methodInfo)
+                    .addInterfaceImplemented(functionalType)
+                    .setEnclosingMethod(enclosingMethod)
+                    .commit();
+
+            List<Lambda.OutputVariant> outputVariants = methodInfo.parameters()
+                    .stream().map(v -> runtime.lambdaOutputVariantEmpty()).toList();
+            return runtime.newLambdaBuilder()
+                    .addAnnotations(annotations)
+                    .addComments(comments)
+                    .setSource(source)
+                    .setMethodInfo(methodInfo)
+                    .setOutputVariants(outputVariants)
+                    .build();
+        }
+
+        @Override
+        public ExpressionBuilder setSource(Source source) {
+            this.source = source;
+            return this;
+        }
+
+        @Override
+        public ExpressionBuilder addComment(Comment comment) {
+            this.comments.add(comment);
+            return this;
+        }
+
+        @Override
+        public ExpressionBuilder addComments(List<Comment> comments) {
+            this.comments.addAll(comments);
+            return this;
+        }
+
+        @Override
+        public ExpressionBuilder addAnnotation(AnnotationExpression annotation) {
+            this.annotations.add(annotation);
+            return this;
+        }
+
+        @Override
+        public ExpressionBuilder addAnnotations(List<AnnotationExpression> annotations) {
+            this.annotations.addAll(annotations);
+            return this;
+        }
     }
 }

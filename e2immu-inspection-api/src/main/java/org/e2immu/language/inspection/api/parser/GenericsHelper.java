@@ -1,10 +1,16 @@
 package org.e2immu.language.inspection.api.parser;
 
+import org.e2immu.annotation.Fluent;
 import org.e2immu.language.cst.api.analysis.Property;
+import org.e2immu.language.cst.api.element.Element;
+import org.e2immu.language.cst.api.expression.Expression;
+import org.e2immu.language.cst.api.expression.Lambda;
 import org.e2immu.language.cst.api.info.MethodInfo;
 import org.e2immu.language.cst.api.info.TypeInfo;
+import org.e2immu.language.cst.api.runtime.Runtime;
 import org.e2immu.language.cst.api.type.NamedType;
 import org.e2immu.language.cst.api.type.ParameterizedType;
+import org.e2immu.language.cst.api.variable.Variable;
 
 import java.util.Map;
 
@@ -37,4 +43,28 @@ public interface GenericsHelper {
     Map<NamedType, ParameterizedType> translateMap(ParameterizedType formalType,
                                                    ParameterizedType concreteType,
                                                    boolean concreteTypeIsAssignableToThis);
+
+    ExpressionBuilder newLambdaExpressionBuilder();
+
+    interface ExpressionBuilder extends Element.Builder<ExpressionBuilder> {
+        // use when defining field expressions
+        @Fluent
+        ExpressionBuilder setEnclosingType(TypeInfo typeInfo);
+
+        // use in methods
+        @Fluent
+        ExpressionBuilder setEnclosingMethod(MethodInfo methodInfo);
+
+        // the variables of the expression which will become parameters
+        @Fluent
+        ExpressionBuilder addVariable(Variable variable);
+
+        @Fluent
+        ExpressionBuilder setExpression(Expression expression);
+
+        @Fluent
+        ExpressionBuilder setForwardType(ParameterizedType forwardType);
+
+        Lambda build();
+    }
 }
