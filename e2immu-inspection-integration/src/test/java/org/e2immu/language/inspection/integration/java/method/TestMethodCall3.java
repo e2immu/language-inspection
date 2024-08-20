@@ -3,6 +3,7 @@ package org.e2immu.language.inspection.integration.java.method;
 import org.e2immu.language.cst.api.info.TypeInfo;
 import org.e2immu.language.cst.api.output.Formatter;
 import org.e2immu.language.cst.api.output.OutputBuilder;
+import org.e2immu.language.cst.api.output.Qualification;
 import org.e2immu.language.cst.impl.info.TypePrinter;
 import org.e2immu.language.cst.print.FormatterImpl;
 import org.e2immu.language.cst.print.FormattingOptionsImpl;
@@ -76,7 +77,6 @@ public class TestMethodCall3 extends CommonTest {
             package org.e2immu.analyser.resolver.testexample;
             import java.net.URI;
             import java.net.http.HttpRequest;
-            import java.net.http.HttpRequest.Builder;
             import java.time.Duration;
             import java.util.Objects;
             public class MethodCall_31 {
@@ -97,7 +97,8 @@ public class TestMethodCall3 extends CommonTest {
     @Test
     public void test1() {
         TypeInfo typeInfo = javaInspector.parse(INPUT1);
-        OutputBuilder ob = new TypePrinter(typeInfo).print(null, true);
+        Qualification qualification = javaInspector.runtime().qualificationQualifyFromPrimaryType();
+        OutputBuilder ob = new TypePrinter(typeInfo).print(qualification, true);
         Formatter formatter = new FormatterImpl(javaInspector.runtime(), FormattingOptionsImpl.DEFAULT);
         String s = formatter.write(ob);
 
