@@ -6,6 +6,9 @@ import org.e2immu.language.cst.api.expression.MethodCall;
 import org.e2immu.language.cst.api.info.MethodInfo;
 import org.e2immu.language.cst.api.info.TypeInfo;
 import org.e2immu.language.cst.api.statement.ExpressionAsStatement;
+import org.e2immu.language.cst.api.statement.LocalVariableCreation;
+import org.e2immu.language.cst.api.type.ParameterizedType;
+import org.e2immu.language.cst.api.variable.LocalVariable;
 import org.e2immu.language.inspection.integration.java.CommonTest;
 import org.intellij.lang.annotations.Language;
 import org.junit.jupiter.api.Test;
@@ -85,6 +88,36 @@ public class TestMethodCall7 extends CommonTest {
     @Test
     public void test4() {
         javaInspector.parse(INPUT4);
+    }
+
+
+    @Language("java")
+    private static final String INPUT5 = """
+            package org.e2immu.analyser.resolver.testexample;
+
+            public class MethodCall_75 {
+
+               String method(Class<?> clazz) {
+                    Class[] classes = clazz.getInterfaces();
+                    for(Class c: classes) {
+                        System.out.println(c);
+                    }
+               }
+            }
+            """;
+
+    @Test
+    public void test5() {
+        TypeInfo ti = javaInspector.parse(INPUT5);
+        MethodInfo methodInfo = ti.findUniqueMethod("method", 1);
+        LocalVariableCreation lvc  = (LocalVariableCreation) methodInfo.methodBody().statements().get(0);
+        LocalVariable classes = lvc.localVariable();
+        ParameterizedType classesPt = classes.parameterizedType();
+        assertEquals("Class[]", classesPt.fullyQualifiedName());
+        MethodCall getInterfaces = (MethodCall) classes.assignmentExpression();
+        ParameterizedType methodRt = getInterfaces.methodInfo().returnType();
+        assertEquals("Type Class<?>[]", methodRt.toString());
+        assertEquals("Type Class<?>[]", getInterfaces.parameterizedType().toString());
     }
 
 }
