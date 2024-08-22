@@ -38,6 +38,7 @@ public abstract class CommonTest {
                 .addClassPath(JAR_WITH_PATH_PREFIX + "org/slf4j/event")
                 .addClassPath(JAR_WITH_PATH_PREFIX + "ch/qos/logback/core")
                 .addClassPath(JAR_WITH_PATH_PREFIX + "ch/qos/logback/classic")
+                .addClassPath(JAR_WITH_PATH_PREFIX + "org/opentest4j")
                 .build();
         javaInspector.initialize(inputConfiguration);
         javaInspector.parse(true);
