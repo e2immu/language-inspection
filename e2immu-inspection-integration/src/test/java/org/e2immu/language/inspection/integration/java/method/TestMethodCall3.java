@@ -86,8 +86,8 @@ public class TestMethodCall3 extends CommonTest {
                     HttpRequest.Builder builder = HttpRequest.newBuilder()
                         .GET()
                         .uri(uri)
-                        .timeout(Duration.ofMillis(Objects.requireNonNullElse(timeout, MethodCall_31.DEFAULT_TIMEOUT)))
-                        .header(MethodCall_31.ACCEPT, a1)
+                        .timeout(Duration.ofMillis(Objects.requireNonNullElse(timeout, DEFAULT_TIMEOUT)))
+                        .header(ACCEPT, a1)
                         .header("Accept", a2);
                     return builder.build();
                 }
