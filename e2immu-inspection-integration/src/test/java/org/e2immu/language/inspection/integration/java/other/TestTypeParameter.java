@@ -5,6 +5,7 @@ import org.e2immu.language.cst.api.expression.VariableExpression;
 import org.e2immu.language.cst.api.info.MethodInfo;
 import org.e2immu.language.cst.api.info.TypeInfo;
 import org.e2immu.language.cst.api.statement.ReturnStatement;
+import org.e2immu.language.cst.api.type.TypeParameter;
 import org.e2immu.language.cst.api.variable.This;
 import org.e2immu.language.inspection.integration.java.CommonTest;
 import org.intellij.lang.annotations.Language;
@@ -289,4 +290,60 @@ public class TestTypeParameter extends CommonTest {
         } else fail();
     }
 
+
+    // on a method
+
+    @Language("java")
+    public static final String INPUT6 = """
+            package a.b;
+            import java.util.Collection;
+            class X {
+                public static <T extends Collection<I>, I> T method(T target, Collection<I>... collections) {
+                    for (Collection<I> collection : collections) {
+                        target.addAll(collection);
+                    }
+                    return target;
+                }
+            }
+            """;
+
+    @Test
+    public void test6() {
+        TypeInfo typeInfo = javaInspector.parse(INPUT6);
+        MethodInfo method = typeInfo.findUniqueMethod("method", 2);
+        assertEquals(2, method.typeParameters().size());
+        TypeParameter tp0 = method.typeParameters().get(0);
+        assertEquals("T=TP#0 in X.method", tp0.toString());
+        assertEquals("[Type java.util.Collection<I>]", tp0.typeBounds().toString());
+        assertEquals("I=TP#1 in X.method", method.typeParameters().get(1).toString());
+    }
+
+
+    // on a type
+
+    @Language("java")
+    public static final String INPUT7 = """
+            package a.b;
+            import java.util.Collection;
+            class X<T extends Collection<I>, I> {
+                public T method(T target, Collection<I>... collections) {
+                    for (Collection<I> collection : collections) {
+                        target.addAll(collection);
+                    }
+                    return target;
+                }
+            }
+            """;
+
+    @Test
+    public void test7() {
+        TypeInfo typeInfo = javaInspector.parse(INPUT7);
+        assertEquals(2, typeInfo.typeParameters().size());
+        TypeParameter tp0 = typeInfo.typeParameters().get(0);
+        assertEquals("T=TP#0 in X", tp0.toString());
+        assertEquals("[Type java.util.Collection<I>]", tp0.typeBounds().toString());
+        assertEquals("I=TP#1 in X", typeInfo.typeParameters().get(1).toString());
+        MethodInfo method = typeInfo.findUniqueMethod("method", 2);
+        assertEquals(0, method.typeParameters().size());
+    }
 }
