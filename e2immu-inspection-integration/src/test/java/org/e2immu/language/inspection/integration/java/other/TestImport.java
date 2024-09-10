@@ -458,4 +458,20 @@ public class TestImport extends CommonTest {
     public void test16() {
         javaInspector.parse(INPUT16);
     }
+
+
+    @Language("java")
+    private static final String INPUT17 = """
+            package a.b;
+            public class X {
+                public static int size(java.util.List<java.util.Set<Integer>> listOfSets) {
+                    return listOfSets.stream().mapToInt(java.util.Collection::size).sum();
+                }
+            }
+            """;
+
+    @Test
+    public void test17() {
+        javaInspector.parse(INPUT17);
+    }
 }

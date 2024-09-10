@@ -148,4 +148,33 @@ public class TestFieldAccess extends CommonTest {
     public void test3() {
         javaInspector.parse(INPUT3);
     }
+
+
+    @Language("java")
+    private static final String INPUT4 = """
+            package a.b;
+            import java.text.CharacterIterator;
+            import java.text.StringCharacterIterator;
+            public class X {
+                public static String forRegex(String s) {
+                    final StringBuilder result = new StringBuilder();
+                    final StringCharacterIterator iterator = new StringCharacterIterator(s);
+                    char character = iterator.current();
+                    while (character != StringCharacterIterator.DONE) {
+                        if (character == '.') {
+                            result.append("\\\\.");
+                        } else {
+                            result.append(CharacterIterator.DONE);
+                        }
+                        character = iterator.next();
+                    }
+                    return result.toString();
+                }
+            }
+            """;
+
+    @Test
+    public void test4() {
+        javaInspector.parse(INPUT4);
+    }
 }

@@ -11,13 +11,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.net.URI;
 
 import static org.e2immu.language.inspection.integration.JavaInspectorImpl.JAR_WITH_PATH_PREFIX;
 
 
 public abstract class CommonTest {
-    private static final org.slf4j.Logger LOGGER = LoggerFactory.getLogger(CommonTest.class);
     protected JavaInspector javaInspector;
 
     @BeforeAll
