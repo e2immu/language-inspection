@@ -5,6 +5,7 @@ import org.e2immu.language.cst.api.output.Formatter;
 import org.e2immu.language.cst.api.output.OutputBuilder;
 import org.e2immu.language.cst.api.output.Qualification;
 import org.e2immu.language.cst.impl.info.TypePrinter;
+import org.e2immu.language.cst.impl.output.QualificationImpl;
 import org.e2immu.language.cst.print.FormatterImpl;
 import org.e2immu.language.cst.print.FormattingOptionsImpl;
 import org.e2immu.language.inspection.integration.java.CommonTest;
