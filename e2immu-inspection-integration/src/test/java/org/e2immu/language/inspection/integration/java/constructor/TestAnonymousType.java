@@ -194,7 +194,12 @@ public class TestAnonymousType extends CommonTest {
         LocalVariableCreation lvcReader = (LocalVariableCreation) mi.methodBody().statements().get(1);
         ConstructorCall newInputStreamReader = (ConstructorCall) lvcReader.localVariable().assignmentExpression();
         ConstructorCall newFIS = (ConstructorCall) newInputStreamReader.parameterExpressions().get(0);
+        assertEquals("in", newFIS.parameterExpressions().get(0).toString());
         TypeInfo anon = newFIS.anonymousClass();
         assertNotNull(anon);
+        MethodInfo read = anon.findUniqueMethod("read", 0);
+        LocalVariableCreation readLvc = (LocalVariableCreation) read.methodBody().statements().get(0);
+        MethodCall callSuper = (MethodCall) readLvc.localVariable().assignmentExpression();
+        assertEquals("java.io.FilterInputStream.read()", callSuper.methodInfo().fullyQualifiedName());
     }
 }

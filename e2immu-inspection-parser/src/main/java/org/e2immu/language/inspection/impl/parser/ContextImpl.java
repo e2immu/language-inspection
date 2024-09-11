@@ -126,11 +126,6 @@ public class ContextImpl implements Context {
         return variableContext.newVariableContext();
     }
 
-
-    public ForwardType typeOfEnclosingSwitchExpression() {
-        return typeOfEnclosingSwitchExpression;
-    }
-
     public ContextImpl newCompilationUnit(CompilationUnit compilationUnit) {
         TypeContext typeContext = typeContext().newCompilationUnit(compilationUnit);
         return new ContextImpl(data, null, null, null, resolver,
@@ -158,22 +153,11 @@ public class ContextImpl implements Context {
                 typeContext, dependentVariableContext(), anonymousTypeCounters, forwardType);
     }
 
-
-    public ContextImpl newTypeContext(String reason) {
-        LOGGER.debug("Creating a new type context for {}", reason);
-        return new ContextImpl(data, enclosingType, enclosingMethod, enclosingField, resolver,
-                typeContext.newTypeContext(), variableContext, anonymousTypeCounters, typeOfEnclosingSwitchExpression);
-    }
-
-
-    public ContextImpl newTypeContext(FieldInfo fieldInfo) {
-        return new ContextImpl(data, enclosingType, null, fieldInfo, resolver, typeContext,
-                variableContext, anonymousTypeCounters, typeOfEnclosingSwitchExpression);
-    }
-
-
     public ContextImpl newAnonymousClassBody(TypeInfo baseType) {
-        throw new UnsupportedOperationException();
+        TypeContext newTypeContext = typeContext.newAnonymousClassBody(baseType);
+        VariableContext newVariableContext = variableContext.newVariableContext();
+        return new ContextImpl(data, baseType, null, null, resolver.newEmpty(), newTypeContext,
+                newVariableContext, anonymousTypeCounters, typeOfEnclosingSwitchExpression);
     }
 
 
@@ -181,15 +165,6 @@ public class ContextImpl implements Context {
         return new ContextImpl(data, subType, null, null, resolver,
                 typeContext.newTypeContext(), variableContext, anonymousTypeCounters, null);
     }
-
-
-    public ContextImpl newSwitchExpressionContext(TypeInfo subType,
-                                                  VariableContext variableContext,
-                                                  ForwardType typeOfEnclosingSwitchExpression) {
-        return new ContextImpl(data, subType, null, null, resolver, typeContext,
-                variableContext, anonymousTypeCounters, typeOfEnclosingSwitchExpression);
-    }
-
 
     @Override
     public Context newLambdaContext(MethodInfo sam) {
@@ -207,14 +182,6 @@ public class ContextImpl implements Context {
                                       boolean erasure,
                                       Map<NamedType, ParameterizedType> typeParameterMap) {
         return new ForwardTypeImpl(parameterizedType, erasure, new TypeParameterMap(typeParameterMap));
-    }
-
-    @Override
-    public Context newAnonymousClassBody() {
-        TypeContext newTypeContext = typeContext.newAnonymousClassBody(enclosingType);
-        VariableContext newVariableContext = variableContext.newVariableContext();
-        return new ContextImpl(data, enclosingType, enclosingMethod, enclosingField, resolver.newEmpty(), newTypeContext,
-                newVariableContext, anonymousTypeCounters, typeOfEnclosingSwitchExpression);
     }
 
     @Override

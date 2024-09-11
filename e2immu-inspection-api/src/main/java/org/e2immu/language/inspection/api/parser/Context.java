@@ -40,7 +40,7 @@ public interface Context {
                                boolean erasure, Map<NamedType,
             ParameterizedType> typeParameterMap);
 
-    Context newAnonymousClassBody();
+    Context newAnonymousClassBody(TypeInfo anonymousType);
 
     Context newSubType(TypeInfo typeInfo);
 
