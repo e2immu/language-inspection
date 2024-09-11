@@ -29,7 +29,8 @@ public interface MethodResolution {
                                   Diamond diamond,
                                   Object unparsedObject,
                                   List<Object> unparsedArguments,
-                                  List<ParameterizedType> methodTypeArguments);
+                                  List<ParameterizedType> methodTypeArguments,
+                                  boolean complain);
 
     Expression resolveMethod(Context context, List<Comment> comments, Source source, String index,
                              ForwardType forwardType,

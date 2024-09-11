@@ -123,7 +123,8 @@ public class MethodResolutionImpl implements MethodResolution {
                                          Diamond diamond,
                                          Object unparsedObject,
                                          List<Object> unparsedArguments,
-                                         List<ParameterizedType> methodTypeArguments) {
+                                         List<ParameterizedType> methodTypeArguments,
+                                         boolean complain) {
         ContextAndScope cas = determineTypeContextAndScope(contextIn, index, unparsedObject);
         Context context = cas.context;
         // FIXME cas.scope.pt() has type parameters, which we should add to the expectedConcreteType?
@@ -138,10 +139,12 @@ public class MethodResolutionImpl implements MethodResolution {
                 unparsedArguments, formalType,
                 typeParameterMap);
         if (candidate == null) {
-            throw new UnsupportedOperationException("No candidate for constructor, "
-                                                    + unparsedArguments.size() + " args, formal type " + formalType);
+            if (complain) {
+                throw new UnsupportedOperationException("No candidate for constructor, "
+                                                        + unparsedArguments.size() + " args, formal type " + formalType);
+            }
+            return null;
         }
-
 
         ParameterizedType finalParameterizedType;
         if (expectedConcreteType == null) {
@@ -963,7 +966,7 @@ public class MethodResolutionImpl implements MethodResolution {
 
     private static Set<ParameterizedType> erasureTypes(Expression start) {
         Set<ParameterizedType> set = new HashSet<>();
-        if(!(start instanceof ErasedExpression)) {
+        if (!(start instanceof ErasedExpression)) {
             set.add(start.parameterizedType());
         }
         start.visit(e -> {

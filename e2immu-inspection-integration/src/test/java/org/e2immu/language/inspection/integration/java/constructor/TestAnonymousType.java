@@ -8,6 +8,7 @@ import org.e2immu.language.cst.api.statement.LocalVariableCreation;
 import org.e2immu.language.cst.api.statement.ReturnStatement;
 import org.e2immu.language.inspection.integration.java.CommonTest;
 import org.intellij.lang.annotations.Language;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -108,5 +109,92 @@ public class TestAnonymousType extends CommonTest {
     @Test
     public void test2() {
         javaInspector.parse(INPUT2);
+    }
+
+
+    @Language("java")
+    private static final String INPUT3 = """
+            package a.b;
+            import java.io.*;
+            public class X {
+                public InputStream readFully(InputStream in, String charset, StringBuilder sb) throws IOException {
+                    final ByteArrayOutputStream bos = new ByteArrayOutputStream();
+                    InputStream is = new FilterInputStream(in) {
+
+                        @Override
+                        public int read() throws IOException {
+                            int read = super.read();
+                            if (read >= 0)
+                                bos.write(read);
+                            return read;
+                        }
+
+                        @Override
+                        public int read(byte[] arg0, int arg1, int arg2) throws IOException {
+                            int read = super.read(arg0, arg1, arg2);
+                            if (read > 0)
+                                bos.write(arg0, arg1, read);
+                            return read;
+                        }
+                    };
+                    // some code commented out
+                    bos.close();
+                    return new ByteArrayInputStream(bos.toByteArray());
+                }
+            }
+            """;
+
+    @DisplayName("New anonymous class with argument")
+    @Test
+    public void test3() {
+        javaInspector.parse(INPUT3);
+    }
+
+
+    @Language("java")
+    private static final String INPUT3b = """
+            package a.b;
+            import java.io.*;
+            public class X {
+                public InputStream readFully(InputStream in, String charset, StringBuilder sb) throws IOException {
+                    final ByteArrayOutputStream bos = new ByteArrayOutputStream();
+                    Reader reader = new InputStreamReader(new FilterInputStream(in) {
+
+                        @Override
+                        public int read() throws IOException {
+                            int read = super.read();
+                            if (read >= 0)
+                                bos.write(read);
+                            return read;
+                        }
+
+                        @Override
+                        public int read(byte[] arg0, int arg1, int arg2) throws IOException {
+                            int read = super.read(arg0, arg1, arg2);
+                            if (read > 0)
+                                bos.write(arg0, arg1, read);
+                            return read;
+                        }
+                    }, charset);
+                    int read;
+                    while ((read = reader.read()) >= 0) {
+                        sb.append((char) read);
+                    }
+                    bos.close();
+                    return new ByteArrayInputStream(bos.toByteArray());
+                }
+            }
+            """;
+
+    @DisplayName("New anonymous class with argument, inside other constructor call")
+    @Test
+    public void test3b() {
+        TypeInfo X = javaInspector.parse(INPUT3b);
+        MethodInfo mi = X.findUniqueMethod("readFully", 3);
+        LocalVariableCreation lvcReader = (LocalVariableCreation) mi.methodBody().statements().get(1);
+        ConstructorCall newInputStreamReader = (ConstructorCall) lvcReader.localVariable().assignmentExpression();
+        ConstructorCall newFIS = (ConstructorCall) newInputStreamReader.parameterExpressions().get(0);
+        TypeInfo anon = newFIS.anonymousClass();
+        assertNotNull(anon);
     }
 }
