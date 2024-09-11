@@ -1,8 +1,15 @@
 package org.e2immu.language.inspection.integration.java.other;
 
+import org.e2immu.language.cst.api.element.Element;
+import org.e2immu.language.cst.api.info.TypeInfo;
 import org.e2immu.language.inspection.integration.java.CommonTest;
 import org.intellij.lang.annotations.Language;
 import org.junit.jupiter.api.Test;
+
+import java.util.Set;
+import java.util.stream.Collectors;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class TestFieldAccess extends CommonTest {
     @Language("java")
@@ -113,34 +120,34 @@ public class TestFieldAccess extends CommonTest {
     @Language("java")
     private static final String INPUT3 = """
             package org.e2immu.analyser.resolver.testexample;
-            
+                        
             import java.util.Map;
             import java.util.stream.Stream;
-            
+                        
             public record FieldAccess_2(Container c) {
-            
+                        
                 interface VIC {
                     String current();
                 }
-            
+                        
                 record Variables(Map<String, VIC> variables) {
                     Stream<Map.Entry<String, VIC>> stream() {
                         return variables.entrySet().stream();
                     }
                 }
-            
+                        
                 record Container(Variables v) {
-            
+                        
                 }
-            
+                        
                 public void test() {
                     c.v.stream().map(Map.Entry::getValue).forEach(vic -> System.out.println(vic.current()));
                 }
-            
+                        
                 public void test2() {
                     c.v.stream().map(java.util.Map.Entry::getValue).forEach(vic -> System.out.println(vic.current()));
                 }
-            
+                        
             }
             """;
 
@@ -175,6 +182,11 @@ public class TestFieldAccess extends CommonTest {
 
     @Test
     public void test4() {
-        javaInspector.parse(INPUT4);
+        TypeInfo X = javaInspector.parse(INPUT4);
+        Set<Element.TypeReference> typeReferences = X.typesReferenced()
+                .filter(Element.TypeReference::explicit)
+                .filter(tr -> "java.text".equals(tr.typeInfo().packageName()))
+                .collect(Collectors.toUnmodifiableSet());
+        assertEquals(2, typeReferences.size());
     }
 }

@@ -81,7 +81,7 @@ public class TestMethodCall3 extends CommonTest {
             import java.time.Duration;
             import java.util.Objects;
             public class MethodCall_31 {
-                private static final long DEFAULT_TIMEOUT = 30;
+                private static final long DEFAULT_TIMEOUT = 30L;
                 private static final String ACCEPT = "Accept";
                 public static HttpRequest same4(URI uri, String a1, String a2, Long timeout) {
                     HttpRequest.Builder builder = HttpRequest.newBuilder()
