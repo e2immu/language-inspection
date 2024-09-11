@@ -198,6 +198,8 @@ public class TestAnonymousType extends CommonTest {
         TypeInfo anon = newFIS.anonymousClass();
         assertNotNull(anon);
         MethodInfo read = anon.findUniqueMethod("read", 0);
+        assertTrue(read.isPublic()); // overrides interface method, so must be public
+        assertFalse(read.isPubliclyAccessible()); // because in private anonymous type
         LocalVariableCreation readLvc = (LocalVariableCreation) read.methodBody().statements().get(0);
         MethodCall callSuper = (MethodCall) readLvc.localVariable().assignmentExpression();
         assertEquals("java.io.FilterInputStream.read()", callSuper.methodInfo().fullyQualifiedName());
