@@ -4,9 +4,11 @@ import org.e2immu.language.cst.api.expression.AnnotationExpression;
 import org.e2immu.language.cst.api.expression.ArrayInitializer;
 import org.e2immu.language.cst.api.expression.Expression;
 import org.e2immu.language.cst.api.expression.StringConstant;
+import org.e2immu.language.cst.api.info.FieldInfo;
 import org.e2immu.language.cst.api.info.MethodInfo;
 import org.e2immu.language.cst.api.info.TypeInfo;
 import org.e2immu.language.cst.api.statement.Statement;
+import org.e2immu.language.cst.api.statement.TryStatement;
 import org.e2immu.language.inspection.integration.java.CommonTest;
 import org.intellij.lang.annotations.Language;
 import org.junit.jupiter.api.Test;
@@ -226,7 +228,59 @@ public class TestAnnotations extends CommonTest {
 
     @Test
     public void test8() {
-        javaInspector.parse(INPUT8);
+        TypeInfo ti = javaInspector.parse(INPUT8);
+        MethodInfo mi = ti.findUniqueMethod("getAnalysisDataDir", 1);
+        TryStatement ts = (TryStatement) mi.methodBody().statements().get(1);
+        TryStatement.CatchClause cc = ts.catchClauses().get(0);
+        assertEquals(1, cc.annotations().size());
     }
 
+
+    @Language("java")
+    private static final String INPUT9 = """
+            package a.b;
+
+            import java.lang.annotation.ElementType;
+            import java.lang.annotation.Retention;
+            import java.lang.annotation.RetentionPolicy;
+            import java.lang.annotation.Target;
+
+            @Target({ElementType.TYPE, ElementType.FIELD, ElementType.METHOD})
+            @Retention(RetentionPolicy.RUNTIME)
+            public @interface Resource {
+                String name() default "";
+
+                String lookup() default "";
+
+                Class<?> type() default Object.class;
+
+                AuthenticationType authenticationType() default AuthenticationType.CONTAINER;
+
+                boolean shareable() default true;
+
+                String mappedName() default "";
+
+                String description() default "";
+
+                enum AuthenticationType {
+                    CONTAINER,
+                    APPLICATION;
+
+                    AuthenticationType() {
+                    }
+                }
+            }
+            """;
+
+    @Test
+    public void test9() {
+        TypeInfo resource = javaInspector.parse(INPUT9);
+        TypeInfo at = resource.findSubType("AuthenticationType");
+        assertTrue(at.typeNature().isEnum());
+        assertEquals(2, at.fields().size());
+        FieldInfo c = at.getFieldByName("CONTAINER", true);
+        assertTrue(c.isSynthetic());
+        assertTrue(c.isStatic());
+        assertTrue(c.isFinal());
+    }
 }

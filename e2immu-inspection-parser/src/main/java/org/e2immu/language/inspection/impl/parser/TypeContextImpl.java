@@ -256,14 +256,14 @@ public class TypeContextImpl implements TypeContext {
          */
         TypeInfo parent = data.staticImportMap.getStaticMemberToTypeInfo(name);
         if (parent != null) {
-            TypeInfo subType = parent.subTypes()
-                    .stream().filter(st -> name.equals(st.simpleName())).findFirst().orElse(null);
+            TypeInfo subType = parent.recursiveSubTypeStream()
+                    .filter(st -> name.equals(st.simpleName())).findFirst().orElse(null);
             if (subType != null) {
                 map.put(name, subType);
                 return subType;
             }
         }
-        return null;
+        return parent;
     }
 
     @Override
