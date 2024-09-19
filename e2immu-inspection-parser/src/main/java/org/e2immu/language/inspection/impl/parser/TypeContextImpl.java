@@ -121,12 +121,12 @@ public class TypeContextImpl implements TypeContext {
             if (inSourceTypes == null) {
                 TypeInfo inCompiledTypes = data.compiledTypesManager.getOrLoad(importStatement.importString());
                 if (inCompiledTypes != null) {
-                    addToContext(inCompiledTypes, false);
+                    addToContext(inCompiledTypes, true);
                 } else {
                     LOGGER.error("Cannot handle import {}", importStatement.importString());
                 }
             } else {
-                addToContext(inSourceTypes, false);
+                addToContext(inSourceTypes, true);
             }
         }
     }

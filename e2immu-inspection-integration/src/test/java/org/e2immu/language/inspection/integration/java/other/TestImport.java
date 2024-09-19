@@ -11,6 +11,7 @@ import org.e2immu.language.cst.print.FormatterImpl;
 import org.e2immu.language.cst.print.FormattingOptionsImpl;
 import org.e2immu.language.inspection.integration.java.CommonTest;
 import org.intellij.lang.annotations.Language;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -474,4 +475,36 @@ public class TestImport extends CommonTest {
     public void test17() {
         javaInspector.parse(INPUT17);
     }
+
+    @Language("java")
+    private static final String INPUT18 = """
+            import java.io.DataOutputStream;
+            import java.io.IOException;
+            import java.security.*; // unused, j.s.c.Certificate has priority over j.s.Certificate!!!
+            import java.security.cert.Certificate;
+            import java.security.cert.CertificateEncodingException;
+
+            public class X {
+
+                public void method(Certificate cert, DataOutputStream dOut) throws IOException {
+                    try {
+                        byte[] cEnc = cert.getEncoded();
+                        dOut.writeUTF(cert.getType());
+                        dOut.writeInt(cEnc.length);
+                        dOut.write(cEnc);
+                    } catch (CertificateEncodingException ex) {
+                        throw new IOException(ex.toString());
+                    }
+                }
+            }
+            """;
+
+    @DisplayName("Override asterisk import with explicit one")
+    @Test
+    public void test18() {
+        TypeInfo X = javaInspector.parse(INPUT18);
+        MethodInfo method = X.findUniqueMethod("method", 2);
+        assertEquals("Type java.security.cert.Certificate", method.parameters().get(0).parameterizedType().toString());
+    }
+
 }
