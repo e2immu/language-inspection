@@ -1096,6 +1096,10 @@ public class MethodResolutionImpl implements MethodResolution {
             int n = methodInfo.parameters().size() + (addOne ? 1 : 0);
             boolean isVoid = !constructor && methodInfo.isVoid();
             erasures.add(new Count(n, isVoid));
+            // we'll allow for empty var-args as well! NOTE: we do not go "up"!
+            if (!methodInfo.parameters().isEmpty() && methodInfo.parameters().get(methodInfo.parameters().size() - 1).isVarArgs()) {
+                erasures.add(new Count(n - 1, isVoid));
+            }
         }
         LOGGER.debug("End parsing unevaluated method reference {}, found counts {}", methodName, erasures);
         return Either.left(erasures);

@@ -201,4 +201,32 @@ public class TestAnnotations extends CommonTest {
         assertEquals("unchecked", ((StringConstant) kv.value()).constant());
     }
 
+
+    @Language("java")
+    private static final String INPUT8 = """
+            import java.io.BufferedReader;
+            import java.io.IOException;
+            import java.nio.charset.StandardCharsets;
+            import java.nio.file.Files;
+            import java.nio.file.Path;
+            import java.util.Properties;
+
+            public class AnalyzerProfile {
+              private static String getAnalysisDataDir(Path propFile) {
+                Properties prop = new Properties();
+                try (BufferedReader reader = Files.newBufferedReader(propFile, StandardCharsets.UTF_8)) {
+                  prop.load(reader);
+                  return prop.getProperty("analysis.data.dir", "");
+                } catch (@SuppressWarnings("unused") IOException e) {
+                  return "";
+                }
+              }
+            }
+            """;
+
+    @Test
+    public void test8() {
+        javaInspector.parse(INPUT8);
+    }
+
 }

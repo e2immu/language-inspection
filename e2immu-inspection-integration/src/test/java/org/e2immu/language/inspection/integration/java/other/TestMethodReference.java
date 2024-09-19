@@ -1,8 +1,18 @@
 package org.e2immu.language.inspection.integration.java.other;
 
+import org.e2immu.language.cst.api.expression.MethodCall;
+import org.e2immu.language.cst.api.expression.MethodReference;
+import org.e2immu.language.cst.api.expression.VariableExpression;
+import org.e2immu.language.cst.api.info.MethodInfo;
+import org.e2immu.language.cst.api.info.TypeInfo;
+import org.e2immu.language.cst.api.statement.ReturnStatement;
 import org.e2immu.language.inspection.integration.java.CommonTest;
 import org.intellij.lang.annotations.Language;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.fail;
 
 public class TestMethodReference extends CommonTest {
     @Language("java")
@@ -263,5 +273,62 @@ public class TestMethodReference extends CommonTest {
     @Test
     public void test7() {
         javaInspector.parse(INPUT7);
+    }
+
+
+    @Language("java")
+    private static final String INPUT8 = """
+            import java.io.File;
+            import java.io.IOException;
+            import java.nio.file.Files;
+            import java.nio.file.Path;
+            import java.util.Collections;
+            import java.util.List;
+            import java.util.regex.Pattern;
+            import java.util.stream.Collectors;
+            import java.util.stream.Stream;
+
+            public class SourceDocumentFinder {
+              private List<File> find(Path sourceDirectory, Pattern sourceDocumentPattern) {
+                try (Stream<Path> sourceDocumentCandidates = Files.walk(sourceDirectory)) {
+                  return sourceDocumentCandidates
+                      .filter(Files::isRegularFile)
+                      .filter(path -> sourceDocumentPattern.matcher(path.getFileName().toString()).matches())
+                      .filter(
+                          path -> {
+                            for (Path part : sourceDirectory.relativize(path)) {
+                              char firstCharacter = part.toString().charAt(0);
+                              if (firstCharacter == '_' || firstCharacter == '.') {
+                                return false;
+                              }
+                            }
+                            return true;
+                          })
+                      .map(Path::toFile)
+                      .collect(Collectors.toList());
+                } catch (IOException e) {
+                  return Collections.emptyList();
+                }
+              }
+            }
+            """;
+
+    @DisplayName("methor reference with varargs")
+    @Test
+    public void test8() {
+        TypeInfo typeInfo = javaInspector.parse(INPUT8);
+        MethodInfo method1 = typeInfo.findUniqueMethod("find", 2);
+        ReturnStatement rs = (ReturnStatement) method1.methodBody().statements().get(0).block().statements().get(0);
+        MethodCall collect = (MethodCall) rs.expression();
+        MethodCall map = (MethodCall) collect.object();
+        MethodCall filter3 = (MethodCall) map.object();
+        MethodCall filter2 = (MethodCall) filter3.object();
+        MethodCall filter1 = (MethodCall) filter2.object();
+        if (filter1.parameterExpressions().get(0) instanceof MethodReference mr) {
+            assertEquals("java.nio.file.Files.isRegularFile(java.nio.file.Path,java.nio.file.LinkOption...)",
+                    mr.methodInfo().fullyQualifiedName());
+        } else fail();
+        VariableExpression ve = (VariableExpression) filter1.object();
+        assertEquals("sourceDocumentCandidates", ve.variable().simpleName());
     }
 }

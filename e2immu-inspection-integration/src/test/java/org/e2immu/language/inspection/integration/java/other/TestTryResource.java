@@ -49,4 +49,35 @@ public class TestTryResource extends CommonTest {
             assertTrue(lvc.modifiers().contains(javaInspector.runtime().localVariableModifierFinal()));
         } else fail();
     }
+
+    @Language("java")
+    public static final String INPUT2 = """
+            package a.b;
+            public class Example2 {
+                void test() {
+                    try (final var a = lock()) {
+                    } catch (Exception e) {
+                    }
+                }
+            
+                AutoCloseable lock() {
+                    return null;
+                }
+            }
+            """;
+
+
+    @Test
+    public void test2() {
+        TypeInfo typeInfo = javaInspector.parse(INPUT2);
+        MethodInfo methodInfo = typeInfo.findUniqueMethod("test", 0);
+        TryStatement ts = (TryStatement) methodInfo.methodBody().statements().get(0);
+        assertEquals(1, ts.resources().size());
+        Element r0 = ts.resources().get(0);
+        if (r0 instanceof LocalVariableCreation lvc) {
+            assertEquals("a", lvc.localVariable().simpleName());
+            assertTrue(lvc.isVar());
+            assertTrue(lvc.isFinal());
+        } else fail();
+    }
 }

@@ -8,6 +8,7 @@ import org.e2immu.language.cst.api.info.ParameterInfo;
 import org.e2immu.language.cst.api.info.TypeInfo;
 import org.e2immu.language.cst.api.statement.ExpressionAsStatement;
 import org.e2immu.language.cst.api.statement.LocalVariableCreation;
+import org.e2immu.language.cst.api.statement.TryStatement;
 import org.e2immu.language.cst.api.type.ParameterizedType;
 import org.e2immu.language.cst.api.variable.LocalVariable;
 import org.e2immu.language.inspection.integration.java.CommonTest;
@@ -157,14 +158,12 @@ public class TestMethodCall7 extends CommonTest {
 
         TypeInfo ti = javaInspector.parse(INPUT6);
         MethodInfo methodInfo = ti.findUniqueMethod("method", 1);
-        LocalVariableCreation lvc = (LocalVariableCreation) methodInfo.methodBody().statements().get(0);
-        LocalVariable classes = lvc.localVariable();
-        ParameterizedType classesPt = classes.parameterizedType();
-        assertEquals("Class[]", classesPt.fullyQualifiedName());
-        MethodCall getInterfaces = (MethodCall) classes.assignmentExpression();
-        ParameterizedType methodRt = getInterfaces.methodInfo().returnType();
-        assertEquals("Type Class<?>[]", methodRt.toString());
-        assertEquals("Type Class<?>[]", getInterfaces.parameterizedType().toString());
+        TryStatement ts = (TryStatement) methodInfo.methodBody().statements().get(0);
+        assertEquals(1, ts.resources().size());
+        LocalVariableCreation lvc = (LocalVariableCreation) ts.resources().get(0);
+        MethodCall nfs = (MethodCall) lvc.localVariable().assignmentExpression();
+        Expression arg1 = nfs.parameterExpressions().get(1);
+        assertEquals("Collections.emptyMap()", arg1.toString()); // TODO have no type parameters on method call (yet)
     }
 
 }
