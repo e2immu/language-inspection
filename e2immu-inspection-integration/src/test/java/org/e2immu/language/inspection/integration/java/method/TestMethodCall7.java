@@ -4,6 +4,7 @@ import org.e2immu.language.cst.api.expression.BinaryOperator;
 import org.e2immu.language.cst.api.expression.Expression;
 import org.e2immu.language.cst.api.expression.MethodCall;
 import org.e2immu.language.cst.api.info.MethodInfo;
+import org.e2immu.language.cst.api.info.ParameterInfo;
 import org.e2immu.language.cst.api.info.TypeInfo;
 import org.e2immu.language.cst.api.statement.ExpressionAsStatement;
 import org.e2immu.language.cst.api.statement.LocalVariableCreation;
@@ -11,10 +12,12 @@ import org.e2immu.language.cst.api.type.ParameterizedType;
 import org.e2immu.language.cst.api.variable.LocalVariable;
 import org.e2immu.language.inspection.integration.java.CommonTest;
 import org.intellij.lang.annotations.Language;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import java.nio.file.FileSystem;
+
+import static org.junit.jupiter.api.Assertions.*;
 
 public class TestMethodCall7 extends CommonTest {
     @Language("java")
@@ -110,7 +113,51 @@ public class TestMethodCall7 extends CommonTest {
     public void test5() {
         TypeInfo ti = javaInspector.parse(INPUT5);
         MethodInfo methodInfo = ti.findUniqueMethod("method", 1);
-        LocalVariableCreation lvc  = (LocalVariableCreation) methodInfo.methodBody().statements().get(0);
+        LocalVariableCreation lvc = (LocalVariableCreation) methodInfo.methodBody().statements().get(0);
+        LocalVariable classes = lvc.localVariable();
+        ParameterizedType classesPt = classes.parameterizedType();
+        assertEquals("Class[]", classesPt.fullyQualifiedName());
+        MethodCall getInterfaces = (MethodCall) classes.assignmentExpression();
+        ParameterizedType methodRt = getInterfaces.methodInfo().returnType();
+        assertEquals("Type Class<?>[]", methodRt.toString());
+        assertEquals("Type Class<?>[]", getInterfaces.parameterizedType().toString());
+    }
+
+
+    @Language("java")
+    private static final String INPUT6 = """
+            package org.e2immu.analyser.resolver.testexample;
+
+            import java.net.URI;
+            import java.nio.file.*;
+            import java.util.Collections;
+
+            public class MethodCall_75 {
+
+               String method(URI uri) {
+                   try (FileSystem fileSystem = FileSystems.newFileSystem(uri, Collections.<String, Object>emptyMap())) {
+                        Path basePath = fileSystem.getPath(".").toAbsolutePath();
+                        if (!Files.exists(basePath)) {
+                            // called in a privileged action, thus no need to deal with security manager
+                            basePath = fileSystem.getPath("agent/.").toAbsolutePath();
+                        }
+                        return basePath.toString();
+                   }
+               }
+            }
+            """;
+
+    @DisplayName("empty varargs")
+    @Test
+    public void test6() {
+        TypeInfo fileSystem = javaInspector.runtime().getFullyQualified(FileSystem.class, true);
+        MethodInfo getPath = fileSystem.findUniqueMethod("getPath", 2);
+        ParameterInfo pi1 = getPath.parameters().get(1);
+        assertTrue(pi1.isVarArgs());
+
+        TypeInfo ti = javaInspector.parse(INPUT6);
+        MethodInfo methodInfo = ti.findUniqueMethod("method", 1);
+        LocalVariableCreation lvc = (LocalVariableCreation) methodInfo.methodBody().statements().get(0);
         LocalVariable classes = lvc.localVariable();
         ParameterizedType classesPt = classes.parameterizedType();
         assertEquals("Class[]", classesPt.fullyQualifiedName());

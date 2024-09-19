@@ -1,8 +1,17 @@
 package org.e2immu.language.inspection.integration.java.other;
 
+import org.e2immu.language.cst.api.expression.AnnotationExpression;
+import org.e2immu.language.cst.api.expression.ArrayInitializer;
+import org.e2immu.language.cst.api.expression.Expression;
+import org.e2immu.language.cst.api.expression.StringConstant;
+import org.e2immu.language.cst.api.info.MethodInfo;
+import org.e2immu.language.cst.api.info.TypeInfo;
+import org.e2immu.language.cst.api.statement.Statement;
 import org.e2immu.language.inspection.integration.java.CommonTest;
 import org.intellij.lang.annotations.Language;
 import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.*;
 
 public class TestAnnotations extends CommonTest {
     @Language("java")
@@ -44,7 +53,21 @@ public class TestAnnotations extends CommonTest {
 
     @Test
     public void test2() {
-        javaInspector.parse(INPUT2);
+        TypeInfo t = javaInspector.parse(INPUT2);
+        assertEquals(1, t.annotations().size());
+        AnnotationExpression ae = t.annotations().get(0);
+        assertEquals("org.e2immu.language.inspection.integration.java.importhelper.a.Resources",
+                ae.typeInfo().fullyQualifiedName());
+        assertEquals(1, ae.keyValuePairs().size());
+        AnnotationExpression.KV kv0 = ae.keyValuePairs().get(0);
+        assertEquals("value", kv0.key());
+        assertTrue(kv0.keyIsDefault());
+        Expression e = kv0.value();
+        if (e instanceof ArrayInitializer ai) {
+            if (ai.expressions().get(0) instanceof AnnotationExpression ae1) {
+                assertEquals(3, ae1.keyValuePairs().size());
+            } else fail();
+        } else fail();
     }
 
     @Language("java")
@@ -141,9 +164,9 @@ public class TestAnnotations extends CommonTest {
             import java.io.IOException;
             import java.io.ObjectInputStream;
             import java.io.Serializable;
-            
+
             public class X {
-            
+
                 public static <T extends Serializable> T u(final String pFilename, final Class<T> pClass) {
                     try {
                         final FileInputStream myFileInputStream = new FileInputStream(pFilename);
@@ -166,7 +189,16 @@ public class TestAnnotations extends CommonTest {
 
     @Test
     public void test7() {
-        javaInspector.parse(INPUT7);
+        TypeInfo X = javaInspector.parse(INPUT7);
+        MethodInfo u = X.findUniqueMethod("u", 2);
+        Statement ifElse = u.methodBody().statements().get(0).block().statements().get(5);
+        Statement s = ifElse.block().statements().get(0);
+        assertEquals(1, s.annotations().size());
+        AnnotationExpression ae = s.annotations().get(0);
+        assertEquals(SuppressWarnings.class.getCanonicalName(), ae.typeInfo().fullyQualifiedName());
+        AnnotationExpression.KV kv = ae.keyValuePairs().get(0);
+        assertEquals("value", kv.key());
+        assertEquals("unchecked", ((StringConstant) kv.value()).constant());
     }
 
 }
