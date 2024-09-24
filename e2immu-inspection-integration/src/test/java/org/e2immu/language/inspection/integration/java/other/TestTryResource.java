@@ -4,6 +4,7 @@ import org.e2immu.language.cst.api.element.Element;
 import org.e2immu.language.cst.api.expression.VariableExpression;
 import org.e2immu.language.cst.api.info.MethodInfo;
 import org.e2immu.language.cst.api.info.TypeInfo;
+import org.e2immu.language.cst.api.statement.ExpressionAsStatement;
 import org.e2immu.language.cst.api.statement.LocalVariableCreation;
 import org.e2immu.language.cst.api.statement.TryStatement;
 import org.e2immu.language.inspection.integration.java.CommonTest;
@@ -40,7 +41,7 @@ public class TestTryResource extends CommonTest {
         TryStatement ts = (TryStatement) methodInfo.methodBody().statements().get(1);
         assertEquals(2, ts.resources().size());
         Element r0 = ts.resources().get(0);
-        if (r0 instanceof VariableExpression ve) {
+        if (r0 instanceof ExpressionAsStatement eas && eas.expression() instanceof VariableExpression ve) {
             assertEquals("out", ve.variable().simpleName());
         } else fail();
         Element r1 = ts.resources().get(1);
