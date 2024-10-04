@@ -137,7 +137,7 @@ public class MethodResolutionImpl implements MethodResolution {
                 unparsedArguments.size(), typeMap);
         Candidate candidate = chooseCandidateAndEvaluateCall(context, index, "<init>", candidates,
                 unparsedArguments, formalType,
-                typeParameterMap);
+                typeParameterMap, complain);
         if (candidate == null) {
             if (complain) {
                 throw new UnsupportedOperationException("No candidate for constructor, "
@@ -243,7 +243,7 @@ public class MethodResolutionImpl implements MethodResolution {
         }
         TypeParameterMap extra = forwardType.extra().merge(scope.typeParameterMap());
         Candidate candidate = chooseCandidateAndEvaluateCall(context, index, methodName, methodCandidates,
-                unparsedArguments, forwardType.type(), extra);
+                unparsedArguments, forwardType.type(), extra, true);
 
         if (candidate == null) {
             throw new Summary.ParseException(context.info(), "Failed to find a unique method candidate");
@@ -325,7 +325,8 @@ public class MethodResolutionImpl implements MethodResolution {
                                              Map<MethodTypeParameterMap, Integer> methodCandidates,
                                              List<Object> unparsedArguments,
                                              ParameterizedType returnType,
-                                             TypeParameterMap extra) {
+                                             TypeParameterMap extra,
+                                             boolean complain) {
 
         Map<Integer, Expression> evaluatedExpressions = new TreeMap<>();
         int i = 0;
@@ -340,7 +341,10 @@ public class MethodResolutionImpl implements MethodResolution {
         // now we need to ensure that there is only 1 method left, but, there can be overloads and
         // methods with implicit type conversions, varargs, etc. etc.
         if (methodCandidates.isEmpty()) {
-            return noCandidatesError(methodName, filterResult.evaluatedExpressions);
+            if (complain) {
+                noCandidatesError(context.enclosingType(), methodName, filterResult.evaluatedExpressions);
+            }
+            return null;
         }
 
         if (methodCandidates.size() > 1) {
@@ -506,11 +510,14 @@ public class MethodResolutionImpl implements MethodResolution {
         return Arrays.stream(newParameterExpressions).toList();
     }
 
-    private Candidate noCandidatesError(String methodName, Map<Integer, Expression> evaluatedExpressions) {
-        LOGGER.error("Evaluated expressions for {}: ", methodName);
-        evaluatedExpressions.forEach((i, expr) -> LOGGER.error("  {} = {}, type {}", i, expr, expr.parameterizedType()));
-        LOGGER.error("No candidate found for {}", methodName);
-        return null;
+    private void noCandidatesError(TypeInfo typeInfo,
+                                   String methodName,
+                                   Map<Integer, Expression> evaluatedExpressions) {
+        if (!evaluatedExpressions.isEmpty()) {
+            LOGGER.error("Evaluated expressions for {}: ", methodName);
+            evaluatedExpressions.forEach((i, expr) -> LOGGER.error("  {} = {}, type {}", i, expr, expr.parameterizedType()));
+        }
+        LOGGER.error("No candidate found for {} in {}", methodName, typeInfo);
     }
 
     private record FilterResult(Map<Integer, Expression> evaluatedExpressions,
