@@ -73,5 +73,7 @@ public interface InputConfiguration {
 
         @Fluent
         Builder setInfoLogClasspath(boolean infoLogClasspath);
+
+        InputConfiguration build();
     }
 }
