@@ -35,8 +35,8 @@ public class GetSetUtil {
                 } else {
                     fieldName = GetSetHelper.fieldName(mi.name());
                 }
-                boolean exists = builder.fields().stream().anyMatch(f -> fieldName.equals(f.name()));
-                if (!exists) {
+                FieldInfo fieldInfo = builder.fields().stream().filter(f -> fieldName.equals(f.name())).findFirst().orElse(null);
+                if (fieldInfo == null) {
                     LOGGER.debug("Create synthetic field for {}, named {}", mi, fieldName);
                     ParameterizedType type = extractFieldType(mi);
                     FieldInfo syntheticField = runtime.newFieldInfo(fieldName, false, type, typeInfo);
@@ -45,6 +45,9 @@ public class GetSetUtil {
                             .computeAccess()
                             .commit();
                     builder.addField(syntheticField);
+                    runtime.setGetSetField(mi, syntheticField);
+                } else {
+                    runtime.setGetSetField(mi, fieldInfo);
                 }
             }
         });
