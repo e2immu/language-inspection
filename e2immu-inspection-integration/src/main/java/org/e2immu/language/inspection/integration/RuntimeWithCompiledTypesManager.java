@@ -73,7 +73,7 @@ public class RuntimeWithCompiledTypesManager extends RuntimeImpl {
         for (int i = 0; i < inputParameters + (hasReturnValue ? 1 : 0); i++) {
             TypeParameter tp = newTypeParameter(i, "P" + i, typeInfo);
             tp.builder().setTypeBounds(List.of()).commit();
-            builder.addTypeParameter(tp);
+            builder.addOrSetTypeParameter(tp);
             typeParameters.add(tp);
         }
         builder.setAccess(accessPublic());
