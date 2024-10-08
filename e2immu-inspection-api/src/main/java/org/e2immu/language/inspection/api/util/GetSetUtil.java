@@ -6,6 +6,7 @@ import org.e2immu.language.cst.api.info.FieldInfo;
 import org.e2immu.language.cst.api.info.MethodInfo;
 import org.e2immu.language.cst.api.info.TypeInfo;
 import org.e2immu.language.cst.api.runtime.Runtime;
+import org.e2immu.language.cst.api.type.ParameterizedType;
 import org.e2immu.util.internal.util.GetSetHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,7 +38,13 @@ public class GetSetUtil {
                 boolean exists = builder.fields().stream().anyMatch(f -> fieldName.equals(f.name()));
                 if (!exists) {
                     LOGGER.debug("Create synthetic field for {}, named {}", mi, fieldName);
-                    FieldInfo syntheticField = runtime.newFieldInfo(fieldName, false, mi.returnType(), typeInfo);
+                    ParameterizedType type;
+                    if(mi.parameters().isEmpty()) {
+                        type =  mi.returnType();
+                    } else  {
+                        type = mi.parameters().get(0).parameterizedType();
+                    }
+                    FieldInfo syntheticField = runtime.newFieldInfo(fieldName, false, type, typeInfo);
                     syntheticField.builder().setSynthetic(true)
                             .addFieldModifier(runtime.fieldModifierPrivate())
                             .computeAccess()
