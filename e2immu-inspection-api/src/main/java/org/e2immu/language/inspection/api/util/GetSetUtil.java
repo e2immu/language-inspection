@@ -1,6 +1,7 @@
 package org.e2immu.language.inspection.api.util;
 
 import org.e2immu.annotation.Fluent;
+import org.e2immu.annotation.Modified;
 import org.e2immu.annotation.method.GetSet;
 import org.e2immu.language.cst.api.expression.AnnotationExpression;
 import org.e2immu.language.cst.api.expression.VariableExpression;
@@ -30,40 +31,76 @@ public class GetSetUtil {
         this.runtime = runtime;
     }
 
-    public void createSyntheticFieldsCorrespondingToGetSetAnnotation(TypeInfo typeInfo) {
+    private final static String modifiedAnnotation = Modified.class.getCanonicalName();
+    private final static String GET_SET_ANNOTATION = GetSet.class.getCanonicalName();
+
+
+    public void createSyntheticFields(TypeInfo typeInfo) {
         TypeInfo.Builder builder = typeInfo.builder();
         builder.methods().stream().filter(MethodInfo::isAbstract).forEach(mi -> {
-            AnnotationExpression getSet = mi.annotations().stream()
-                    .filter(ae -> ae.typeInfo().fullyQualifiedName().equals(GetSet.class.getCanonicalName()))
-                    .findFirst().orElse(null);
-            if (getSet != null && !mi.isFactoryMethod() && !getSet.extractBoolean("equivalent")) {
-                String fieldName;
-                String proposed = getSet.extractString("value", "");
-                if (!proposed.isBlank()) {
-                    fieldName = proposed.trim();
-                } else {
-                    fieldName = GetSetHelper.fieldName(mi.name());
+            mi.annotations().forEach(ae -> {
+                if (modifiedAnnotation.equals(ae.typeInfo().fullyQualifiedName())) {
+                    modifiedComponents(typeInfo, mi, ae);
                 }
-                FieldInfo fieldInfo = builder.fields().stream().filter(f -> fieldName.equals(f.name())).findFirst().orElse(null);
-                FieldInfo getSetField;
-                boolean setter = mi.isVoid() || isComputeFluent(mi);
-                int parameterIndexOfIndex = parameterIndexOfIndex(mi, setter);
-                if (fieldInfo == null) {
-                    LOGGER.debug("Create synthetic field for {}, named {}", mi, fieldName);
-                    ParameterizedType type = extractFieldType(mi, setter, parameterIndexOfIndex);
-                    FieldInfo syntheticField = runtime.newFieldInfo(fieldName, false, type, typeInfo);
-                    syntheticField.builder().setSynthetic(true)
-                            .addFieldModifier(runtime.fieldModifierPrivate())
-                            .computeAccess()
-                            .commit();
-                    builder.addField(syntheticField);
-                    getSetField = syntheticField;
-                } else {
-                    getSetField = fieldInfo;
+                if (GET_SET_ANNOTATION.equals(ae.typeInfo().fullyQualifiedName())) {
+                    getSet(typeInfo, mi, ae);
                 }
-                runtime.setGetSetField(mi, getSetField, setter, parameterIndexOfIndex);
-            }
+            });
         });
+    }
+
+    private void modifiedComponents(TypeInfo typeInfo, MethodInfo mi, AnnotationExpression modified) {
+        String fieldName = modified.extractString("value", "");
+        if (!fieldName.isBlank()) {
+            FieldInfo fieldInfo = typeInfo.builder().fields().stream()
+                    .filter(f -> fieldName.equals(f.name())).findFirst().orElse(null);
+            FieldInfo component;
+            if (fieldInfo == null) {
+                LOGGER.debug("Create synthetic field for {}, named {}", mi, fieldName);
+                FieldInfo syntheticField = runtime.newFieldInfo(fieldName, false,
+                        runtime.objectParameterizedType(), typeInfo);
+                syntheticField.builder().setSynthetic(true)
+                        .addFieldModifier(runtime.fieldModifierPrivate())
+                        .computeAccess()
+                        .commit();
+                typeInfo.builder().addField(syntheticField);
+                component = syntheticField;
+            } else {
+                component = fieldInfo;
+            }
+            runtime.setModificationComponent(mi, component);
+        }
+    }
+
+    private void getSet(TypeInfo typeInfo, MethodInfo mi, AnnotationExpression getSet) {
+        if (!mi.isFactoryMethod() && !getSet.extractBoolean("equivalent")) {
+            String fieldName;
+            String proposed = getSet.extractString("value", "");
+            if (!proposed.isBlank()) {
+                fieldName = proposed.trim();
+            } else {
+                fieldName = GetSetHelper.fieldName(mi.name());
+            }
+            FieldInfo fieldInfo = typeInfo.builder().fields().stream()
+                    .filter(f -> fieldName.equals(f.name())).findFirst().orElse(null);
+            FieldInfo getSetField;
+            boolean setter = mi.isVoid() || isComputeFluent(mi);
+            int parameterIndexOfIndex = parameterIndexOfIndex(mi, setter);
+            if (fieldInfo == null) {
+                LOGGER.debug("Create synthetic field for {}, named {}", mi, fieldName);
+                ParameterizedType type = extractFieldType(mi, setter, parameterIndexOfIndex);
+                FieldInfo syntheticField = runtime.newFieldInfo(fieldName, false, type, typeInfo);
+                syntheticField.builder().setSynthetic(true)
+                        .addFieldModifier(runtime.fieldModifierPrivate())
+                        .computeAccess()
+                        .commit();
+                typeInfo.builder().addField(syntheticField);
+                getSetField = syntheticField;
+            } else {
+                getSetField = fieldInfo;
+            }
+            runtime.setGetSetField(mi, getSetField, setter, parameterIndexOfIndex);
+        }
     }
 
     public static boolean isComputeFluent(MethodInfo mi) {
