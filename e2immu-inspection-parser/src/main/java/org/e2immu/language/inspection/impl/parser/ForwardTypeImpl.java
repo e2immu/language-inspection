@@ -16,7 +16,7 @@ public record ForwardTypeImpl(ParameterizedType type, boolean erasure, TypeParam
         if (type == null || type.isVoid()) return null;
         MethodTypeParameterMap sam = genericsHelper.findSingleAbstractMethodOfInterface(type, false);
         if (sam != null) {
-            return sam.expand(runtime, primaryType, type.initialTypeParameterMap(runtime));
+            return sam.expand(runtime, primaryType, type.initialTypeParameterMap());
         }
         return null;
     }

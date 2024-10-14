@@ -32,7 +32,7 @@ public class ListMethodAndConstructorCandidates {
 
     public Map<MethodTypeParameterMap, Integer> resolveConstructorInvocation(TypeInfo startingPoint,
                                                                              int parametersPresented) {
-        ParameterizedType type = startingPoint.asParameterizedType(runtime);
+        ParameterizedType type = startingPoint.asParameterizedType();
         return resolveConstructor(type, type, parametersPresented, Map.of());
     }
 
@@ -159,7 +159,7 @@ public class ListMethodAndConstructorCandidates {
             boolean onlyStatic = staticOnly || typeInfo.isStatic();
             if (onlyStatic && scopeNature != ScopeNature.INSTANCE ||
                 !onlyStatic && scopeNature != ScopeNature.STATIC) {
-                ParameterizedType enclosingType = typeInfo.compilationUnitOrEnclosingType().getRight().asParameterizedType(runtime);
+                ParameterizedType enclosingType = typeInfo.compilationUnitOrEnclosingType().getRight().asParameterizedType();
                 recursivelyResolveOverloadedMethods(enclosingType, methodName, parametersPresented, decrementWhenNotStatic,
                         joinMaps(typeMap, enclosingType), result, visited, visitedStatic,
                         onlyStatic, scopeNature, distance + numInterfaces);
@@ -171,7 +171,7 @@ public class ListMethodAndConstructorCandidates {
     private Map<NamedType, ParameterizedType> joinMaps(Map<NamedType, ParameterizedType> previous,
                                                        ParameterizedType target) {
         HashMap<NamedType, ParameterizedType> res = new HashMap<>(previous);
-        res.putAll(target.initialTypeParameterMap(runtime));
+        res.putAll(target.initialTypeParameterMap());
         return res;
     }
 
@@ -241,7 +241,7 @@ public class ListMethodAndConstructorCandidates {
             if (objectIsImplicit() || methodInfo.isStatic() || scopeIsThis) {
                 TypeInfo exact = methodInfo.typeInfo();
                 if (methodInfo.isStatic()) {
-                    return runtime.newTypeExpression(exact.asParameterizedType(runtime), runtime.diamondNo());
+                    return runtime.newTypeExpression(exact.asParameterizedType(), runtime.diamondNo());
                 }
                 TypeInfo typeInfo;
                 boolean writeSuper;
@@ -262,7 +262,7 @@ public class ListMethodAndConstructorCandidates {
                     writeSuper = false;
                     explicitlyWriteType = exact;
                 }
-                Variable thisVariable = runtime.newThis(typeInfo, explicitlyWriteType, writeSuper);
+                Variable thisVariable = runtime.newThis(typeInfo.asParameterizedType(), explicitlyWriteType, writeSuper);
                 return runtime.newVariableExpression(thisVariable);
             }
             return expression;
@@ -288,7 +288,7 @@ public class ListMethodAndConstructorCandidates {
             scopeType = scope.parameterizedType();
             scopeNature = scope instanceof TypeExpression ? ScopeNature.STATIC : ScopeNature.INSTANCE;
         }
-        Map<NamedType, ParameterizedType> scopeTypeMap = scopeType.initialTypeParameterMap(runtime);
+        Map<NamedType, ParameterizedType> scopeTypeMap = scopeType.initialTypeParameterMap();
         return new Scope(scope, scopeType, scopeNature, new TypeParameterMap(scopeTypeMap));
     }
 

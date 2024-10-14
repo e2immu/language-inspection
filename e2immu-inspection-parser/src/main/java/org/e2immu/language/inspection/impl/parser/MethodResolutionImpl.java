@@ -131,7 +131,7 @@ public class MethodResolutionImpl implements MethodResolution {
         ListMethodAndConstructorCandidates list = new ListMethodAndConstructorCandidates(runtime,
                 context.typeContext().importMap());
         Map<NamedType, ParameterizedType> typeMap = expectedConcreteType == null ? Map.of() :
-                expectedConcreteType.initialTypeParameterMap(runtime);
+                expectedConcreteType.initialTypeParameterMap();
         TypeParameterMap typeParameterMap = new TypeParameterMap(typeMap);
         Map<MethodTypeParameterMap, Integer> candidates = list.resolveConstructor(formalType, expectedConcreteType,
                 unparsedArguments.size(), typeMap);
@@ -306,7 +306,7 @@ public class MethodResolutionImpl implements MethodResolution {
         TypeParameterMap merged;
         if (scopeType != null && !methodType.equals(scopeType)) {
             // method is defined in a super-type, so we need an additional translation
-            ParameterizedType superType = methodType.asParameterizedType(runtime);
+            ParameterizedType superType = methodType.asParameterizedType();
             Map<NamedType, ParameterizedType> sm = genericsHelper.mapInTermsOfParametersOfSuperType(scopeType, superType);
             merged = sm == null ? map1 : map1.merge(new TypeParameterMap(sm));
         } else {
@@ -467,10 +467,10 @@ public class MethodResolutionImpl implements MethodResolution {
                 positionsToDo.add(i);
             } else {
                 newParameterExpressions[i] = e;
-                Map<NamedType, ParameterizedType> learned = e.parameterizedType().initialTypeParameterMap(runtime);
+                Map<NamedType, ParameterizedType> learned = e.parameterizedType().initialTypeParameterMap();
                 ParameterizedType formal = i < parameters.size() ? parameters.get(i).parameterizedType() :
                         parameters.get(parameters.size() - 1).parameterizedType().copyWithOneFewerArrays();
-                Map<NamedType, ParameterizedType> inMethod = formal.forwardTypeParameterMap(runtime);
+                Map<NamedType, ParameterizedType> inMethod = formal.forwardTypeParameterMap();
                 Map<NamedType, ParameterizedType> combined = genericsHelper.combineMaps(learned, inMethod);
                 if (!combined.isEmpty()) {
                     cumulative = cumulative.merge(new TypeParameterMap(combined));
@@ -494,14 +494,14 @@ public class MethodResolutionImpl implements MethodResolution {
             assert !containsErasedExpressions(reParsed);
             newParameterExpressions[i] = reParsed;
 
-            Map<NamedType, ParameterizedType> learned = reParsed.parameterizedType().initialTypeParameterMap(runtime);
+            Map<NamedType, ParameterizedType> learned = reParsed.parameterizedType().initialTypeParameterMap();
             if (!learned.isEmpty()) {
                 cumulative = cumulative.merge(new TypeParameterMap(learned));
             }
             ParameterInfo pi = parameters.get(Math.min(i, parameters.size() - 1));
             if (pi.parameterizedType().hasTypeParameters()) {
                 // try to reconcile the type parameters with the ones in reParsed, see Lambda_16
-                Map<NamedType, ParameterizedType> forward = pi.parameterizedType().forwardTypeParameterMap(runtime);
+                Map<NamedType, ParameterizedType> forward = pi.parameterizedType().forwardTypeParameterMap();
                 if (!forward.isEmpty()) {
                     cumulative = cumulative.merge(new TypeParameterMap(forward));
                 }
@@ -539,10 +539,10 @@ public class MethodResolutionImpl implements MethodResolution {
                 Set<ParameterizedType> erasureTypes = erasureTypes(expression);
                 if (!erasureTypes.isEmpty()) {
                     for (ParameterizedType pt : erasureTypes) {
-                        map.putAll(pt.initialTypeParameterMap(runtime));
+                        map.putAll(pt.initialTypeParameterMap());
                     }
                 } else {
-                    map.putAll(expression.parameterizedType().initialTypeParameterMap(runtime));
+                    map.putAll(expression.parameterizedType().initialTypeParameterMap());
                 }
                 // we now have R as #2 in Collector mapped to Set<T>, and we need to replace that by the
                 // actual type parameter of the formal type of parameterInfo
@@ -814,7 +814,7 @@ public class MethodResolutionImpl implements MethodResolution {
             return new ForwardTypeImpl(translated, false, extra);
         }
         Set<TypeParameter> typeParameters = parameterType.extractTypeParameters();
-        Map<NamedType, ParameterizedType> outsideMap = outsideContext.initialTypeParameterMap(runtime);
+        Map<NamedType, ParameterizedType> outsideMap = outsideContext.initialTypeParameterMap();
         if (typeParameters.isEmpty() || outsideMap.isEmpty()) {
             if (outsideMap.isEmpty()) {
                 /* here we test whether the return type of the method is a method type parameter. If so,
@@ -865,7 +865,7 @@ public class MethodResolutionImpl implements MethodResolution {
     private TypeParameter tryToFindTypeTypeParameter(MethodTypeParameterMap method,
                                                      TypeParameter methodTypeParameter) {
         ParameterizedType formalReturnType = method.getConcreteReturnType(runtime);
-        Map<NamedType, ParameterizedType> map = formalReturnType.initialTypeParameterMap(runtime);
+        Map<NamedType, ParameterizedType> map = formalReturnType.initialTypeParameterMap();
         // map points from E as 0 in List to E as 0 in List.of()
         return map.entrySet().stream().filter(e -> methodTypeParameter.equals(e.getValue().typeParameter()))
                 .map(e -> (TypeParameter) e.getKey()).findFirst().orElse(null);
@@ -1013,10 +1013,10 @@ public class MethodResolutionImpl implements MethodResolution {
             if (parameterizedType.arrays() > 0) {
                 return arrayConstruction(comments, source, parameterizedType);
             }
-            Map<NamedType, ParameterizedType> typeMap = parameterizedType.initialTypeParameterMap(runtime);
+            Map<NamedType, ParameterizedType> typeMap = parameterizedType.initialTypeParameterMap();
             methodCandidates = list.resolveConstructor(parameterizedType, parameterizedType, parametersPresented, typeMap);
         } else {
-            Map<NamedType, ParameterizedType> typeMap = parameterizedType.initialTypeParameterMap(runtime);
+            Map<NamedType, ParameterizedType> typeMap = parameterizedType.initialTypeParameterMap();
             ListMethodAndConstructorCandidates.ScopeNature scopeNature = scopeIsAType
                     ? ListMethodAndConstructorCandidates.ScopeNature.STATIC
                     : ListMethodAndConstructorCandidates.ScopeNature.INSTANCE;
@@ -1038,7 +1038,7 @@ public class MethodResolutionImpl implements MethodResolution {
         }
         MethodTypeParameterMap method = sorted.get(0);
         MethodInfo methodInfo = method.methodInfo();
-        ParameterizedType formalMethodType = methodInfo.typeInfo().asParameterizedType(runtime);
+        ParameterizedType formalMethodType = methodInfo.typeInfo().asParameterizedType();
 
         List<ParameterizedType> types = inputTypes(formalMethodType, method, parametersPresented);
 
@@ -1082,12 +1082,12 @@ public class MethodResolutionImpl implements MethodResolution {
                 return Either.right(e);
             }
             methodCandidates = list.resolveConstructor(parameterizedType, parameterizedType,
-                    IGNORE_PARAMETER_NUMBERS, parameterizedType.initialTypeParameterMap(runtime));
+                    IGNORE_PARAMETER_NUMBERS, parameterizedType.initialTypeParameterMap());
         } else {
             methodCandidates = new HashMap<>();
             list.recursivelyResolveOverloadedMethods(parameterizedType,
                     methodName, IGNORE_PARAMETER_NUMBERS, false,
-                    parameterizedType.initialTypeParameterMap(runtime), methodCandidates,
+                    parameterizedType.initialTypeParameterMap(), methodCandidates,
                     ListMethodAndConstructorCandidates.ScopeNature.INSTANCE);
         }
         if (methodCandidates.isEmpty()) {
@@ -1178,7 +1178,7 @@ public class MethodResolutionImpl implements MethodResolution {
         MethodInfo methodInfo = mt.methodInfo();
         int param = scopeIsAType && !constructor && !methodInfo.isStatic() ? index - 1 : index;
         if (param == -1) {
-            return methodInfo.typeInfo().asParameterizedType(runtime);
+            return methodInfo.typeInfo().asParameterizedType();
         }
         return methodInfo.parameters().get(param).parameterizedType();
     }

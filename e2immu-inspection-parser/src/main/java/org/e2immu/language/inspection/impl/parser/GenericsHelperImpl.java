@@ -57,7 +57,7 @@ public record GenericsHelperImpl(Runtime runtime) implements GenericsHelper {
          */
         Map<NamedType, ParameterizedType> map;
         if (theMethod.typeInfo().equals(parameterizedType.typeInfo())) {
-            map = parameterizedType.initialTypeParameterMap(runtime);
+            map = parameterizedType.initialTypeParameterMap();
         } else {
             map = makeTypeParameterMap(theMethod, parameterizedType, new HashSet<>());
             assert map != null; // the method must be somewhere in the hierarchy
@@ -70,12 +70,12 @@ public record GenericsHelperImpl(Runtime runtime) implements GenericsHelper {
                                                                    Set<TypeInfo> visited) {
         if (visited.add(here.typeInfo())) {
             if (here.typeInfo().equals(methodInfo.typeInfo())) {
-                return here.initialTypeParameterMap(runtime);
+                return here.initialTypeParameterMap();
             }
             for (ParameterizedType superType : here.typeInfo().interfacesImplemented()) {
                 Map<NamedType, ParameterizedType> map = makeTypeParameterMap(methodInfo, superType, visited);
                 if (map != null) {
-                    Map<NamedType, ParameterizedType> concreteHere = here.initialTypeParameterMap(runtime);
+                    Map<NamedType, ParameterizedType> concreteHere = here.initialTypeParameterMap();
                     Map<NamedType, ParameterizedType> newMap = new HashMap<>();
                     for (Map.Entry<NamedType, ParameterizedType> e : map.entrySet()) {
                         ParameterizedType newValue;
@@ -139,11 +139,11 @@ public record GenericsHelperImpl(Runtime runtime) implements GenericsHelper {
             return translationMapForFunctionalInterfaces(formalType, concreteType, concreteTypeIsAssignableToThis);
         }
 
-        Map<NamedType, ParameterizedType> mapOfConcreteType = concreteType.initialTypeParameterMap(runtime);
+        Map<NamedType, ParameterizedType> mapOfConcreteType = concreteType.initialTypeParameterMap();
         Map<NamedType, ParameterizedType> formalMap;
         if (formalType.typeInfo() == concreteType.typeInfo()) {
             // see Lambda_8 Stream<R>, R from flatmap -> Stream<T>
-            formalMap = formalType.forwardTypeParameterMap(runtime);
+            formalMap = formalType.forwardTypeParameterMap();
         } else if (concreteTypeIsAssignableToThis) {
             // this is the super type (Set), concrete type is the subtype (HashSet)
             formalMap = mapInTermsOfParametersOfSuperType(concreteType.typeInfo(), formalType);
@@ -205,24 +205,24 @@ public record GenericsHelperImpl(Runtime runtime) implements GenericsHelper {
         assert superType.typeInfo() != ti;
         if (ti.parentClass() != null) {
             if (ti.parentClass().typeInfo() == superType.typeInfo()) {
-                Map<NamedType, ParameterizedType> forward = superType.forwardTypeParameterMap(runtime);
-                Map<NamedType, ParameterizedType> formal = ti.parentClass().initialTypeParameterMap(runtime);
+                Map<NamedType, ParameterizedType> forward = superType.forwardTypeParameterMap();
+                Map<NamedType, ParameterizedType> formal = ti.parentClass().initialTypeParameterMap();
                 return combineMaps(forward, formal);
             }
             Map<NamedType, ParameterizedType> map = mapInTermsOfParametersOfSuperType(ti.parentClass().typeInfo(), superType);
             if (map != null) {
-                return combineMaps(ti.parentClass().initialTypeParameterMap(runtime), map);
+                return combineMaps(ti.parentClass().initialTypeParameterMap(), map);
             }
         }
         for (ParameterizedType implementedInterface : ti.interfacesImplemented()) {
             if (implementedInterface.typeInfo() == superType.typeInfo()) {
-                Map<NamedType, ParameterizedType> forward = superType.forwardTypeParameterMap(runtime);
-                Map<NamedType, ParameterizedType> formal = implementedInterface.initialTypeParameterMap(runtime);
+                Map<NamedType, ParameterizedType> forward = superType.forwardTypeParameterMap();
+                Map<NamedType, ParameterizedType> formal = implementedInterface.initialTypeParameterMap();
                 return combineMaps(formal, forward);
             }
             Map<NamedType, ParameterizedType> map = mapInTermsOfParametersOfSuperType(implementedInterface.typeInfo(), superType);
             if (map != null) {
-                return combineMaps(implementedInterface.initialTypeParameterMap(runtime), map);
+                return combineMaps(implementedInterface.initialTypeParameterMap(), map);
             }
         }
         return null; // not in this branch of the recursion
@@ -235,22 +235,22 @@ public record GenericsHelperImpl(Runtime runtime) implements GenericsHelper {
         assert superType.typeInfo() != ti;
         if (ti.parentClass() != null) {
             if (ti.parentClass().typeInfo() == superType.typeInfo()) {
-                return ti.parentClass().forwardTypeParameterMap(runtime);
+                return ti.parentClass().forwardTypeParameterMap();
             }
             Map<NamedType, ParameterizedType> map = mapInTermsOfParametersOfSubType(ti.parentClass().typeInfo(),
                     superType);
             if (map != null) {
-                return combineMaps(map, ti.parentClass().forwardTypeParameterMap(runtime));
+                return combineMaps(map, ti.parentClass().forwardTypeParameterMap());
             }
         }
         for (ParameterizedType implementedInterface : ti.interfacesImplemented()) {
             if (implementedInterface.typeInfo() == superType.typeInfo()) {
-                return implementedInterface.forwardTypeParameterMap(runtime);
+                return implementedInterface.forwardTypeParameterMap();
             }
             Map<NamedType, ParameterizedType> map = mapInTermsOfParametersOfSubType(implementedInterface.typeInfo(),
                     superType);
             if (map != null) {
-                return combineMaps(map, implementedInterface.forwardTypeParameterMap(runtime));
+                return combineMaps(map, implementedInterface.forwardTypeParameterMap());
             }
         }
         return null; // not in this branch of the recursion

@@ -221,13 +221,13 @@ class MethodTypeParameterMapImpl implements MethodTypeParameterMap {
             NamedType f2cFrom = sam.returnType().typeParameter();
             ParameterizedType f2cTo = actualMethod.returnType();
             ParameterizedType ctTo = concreteTypes.get(f2cFrom);
-            match(runtime, f2cFrom, f2cTo, ctTo, result);
+            match(runtime, f2cTo, ctTo, result);
         }
         if (!actualMethod.isStatic() && !functionType.typeParameters().isEmpty()) {
             NamedType f2cFrom = functionType.typeParameters().get(0);
-            ParameterizedType f2cTo = actualMethod.typeInfo().asParameterizedType(runtime);
+            ParameterizedType f2cTo = actualMethod.typeInfo().asParameterizedType();
             ParameterizedType ctTo = concreteTypes.get(f2cFrom);
-            match(runtime, f2cFrom, f2cTo, ctTo, result);
+            match(runtime, f2cTo, ctTo, result);
         }
         // TODO for-loop: make an equivalent with more type parameters MethodReference_2
         return result;
@@ -239,10 +239,12 @@ class MethodTypeParameterMapImpl implements MethodTypeParameterMap {
     ctTo = ArrayList<LinkedList<String>>
 
      */
-    private void match(Runtime runtime, NamedType f2cFrom, ParameterizedType f2cTo,
-                       ParameterizedType ctTo, Map<NamedType, ParameterizedType> result) {
+    private void match(Runtime runtime,
+                       ParameterizedType f2cTo,
+                       ParameterizedType ctTo,
+                       Map<NamedType, ParameterizedType> result) {
         if (f2cTo.isAssignableFrom(runtime, ctTo)) {
-            ParameterizedType concreteSuperType = ctTo.concreteSuperType(runtime, f2cTo);
+            ParameterizedType concreteSuperType = ctTo.concreteSuperType(f2cTo);
             int i = 0;
             for (ParameterizedType pt : f2cTo.parameters()) {
                 if (pt.isTypeParameter()) {
