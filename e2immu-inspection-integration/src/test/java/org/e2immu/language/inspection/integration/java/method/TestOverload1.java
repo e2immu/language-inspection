@@ -43,20 +43,12 @@ public class TestOverload1 extends CommonTest {
         {
             MethodInfo test1 = typeInfo.findUniqueMethod("test1", 1);
             Statement s0 = test1.methodBody().statements().get(0);
-            if (s0 instanceof ExpressionAsStatement eas) {
-                if (eas.expression() instanceof MethodCall mc) {
-                    assertSame(add1, mc.methodInfo());
-                } else fail();
-            } else fail();
+            assertSame(add1, mc(s0).methodInfo());
         }
         {
             MethodInfo test2 = typeInfo.findUniqueMethod("test2", 1);
             Statement s0 = test2.methodBody().statements().get(0);
-            if (s0 instanceof ExpressionAsStatement eas) {
-                if (eas.expression() instanceof MethodCall mc) {
-                    assertSame(add2, mc.methodInfo());
-                } else fail();
-            } else fail();
+            assertSame(add2, mc(s0).methodInfo());
         }
     }
 
@@ -83,20 +75,12 @@ public class TestOverload1 extends CommonTest {
         {
             MethodInfo test1 = typeInfo.findUniqueMethod("test1", 2);
             Statement s0 = test1.methodBody().statements().get(0);
-            if (s0 instanceof ExpressionAsStatement eas) {
-                if (eas.expression() instanceof MethodCall mc) {
-                    assertEquals("java.security.MessageDigest.update(byte)", mc.methodInfo().fullyQualifiedName());
-                } else fail();
-            } else fail();
+            assertEquals("java.security.MessageDigest.update(byte)", mc(s0).methodInfo().fullyQualifiedName());
         }
         {
             MethodInfo test2 = typeInfo.findUniqueMethod("test2", 2);
             Statement s0 = test2.methodBody().statements().get(0);
-            if (s0 instanceof ExpressionAsStatement eas) {
-                if (eas.expression() instanceof MethodCall mc) {
-                    assertEquals("java.security.MessageDigest.update(byte[])", mc.methodInfo().fullyQualifiedName());
-                } else fail();
-            } else fail();
+            assertEquals("java.security.MessageDigest.update(byte[])", mc(s0).methodInfo().fullyQualifiedName());
         }
     }
 

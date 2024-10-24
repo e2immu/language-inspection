@@ -973,7 +973,11 @@ public class MethodResolutionImpl implements MethodResolution {
             if (e instanceof ErasedExpression erasedExpression) {
                 set.addAll(erasedExpression.erasureTypes());
             }
-            return true;
+            /*
+            See TestOverload1,3: if the ErasedExpression is hidden inside the scope of a variable, it should not
+            appear as a possibility in "set".
+             */
+            return !(e instanceof VariableExpression);
         });
         return Set.copyOf(set);
     }
