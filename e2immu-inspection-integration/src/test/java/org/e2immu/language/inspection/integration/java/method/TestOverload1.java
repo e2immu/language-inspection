@@ -1,0 +1,174 @@
+package org.e2immu.language.inspection.integration.java.method;
+
+import org.e2immu.language.cst.api.expression.BinaryOperator;
+import org.e2immu.language.cst.api.expression.MethodCall;
+import org.e2immu.language.cst.api.info.MethodInfo;
+import org.e2immu.language.cst.api.info.TypeInfo;
+import org.e2immu.language.cst.api.statement.Block;
+import org.e2immu.language.cst.api.statement.ExpressionAsStatement;
+import org.e2immu.language.cst.api.statement.ReturnStatement;
+import org.e2immu.language.cst.api.statement.Statement;
+import org.e2immu.language.inspection.integration.java.CommonTest;
+import org.intellij.lang.annotations.Language;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+public class TestOverload1 extends CommonTest {
+
+    @Language("java")
+    private static final String INPUT1 = """
+            package a.b;
+            public class X {
+                public static void add(byte b) {}
+                private static void add(byte[] bs) {}
+            
+                static void test1(byte b) {
+                   add(b);
+                }
+                static void test2(byte[] bs) {
+                   add(bs);
+                }
+            }
+            """;
+
+    @Test
+    public void test() {
+        TypeInfo typeInfo = javaInspector.parse(INPUT1);
+        MethodInfo add1 = typeInfo.methods().get(0);
+        assertTrue(add1.isPubliclyAccessible());
+        MethodInfo add2 = typeInfo.methods().get(1);
+        assertFalse(add2.isPubliclyAccessible());
+
+        {
+            MethodInfo test1 = typeInfo.findUniqueMethod("test1", 1);
+            Statement s0 = test1.methodBody().statements().get(0);
+            if (s0 instanceof ExpressionAsStatement eas) {
+                if (eas.expression() instanceof MethodCall mc) {
+                    assertSame(add1, mc.methodInfo());
+                } else fail();
+            } else fail();
+        }
+        {
+            MethodInfo test2 = typeInfo.findUniqueMethod("test2", 1);
+            Statement s0 = test2.methodBody().statements().get(0);
+            if (s0 instanceof ExpressionAsStatement eas) {
+                if (eas.expression() instanceof MethodCall mc) {
+                    assertSame(add2, mc.methodInfo());
+                } else fail();
+            } else fail();
+        }
+    }
+
+    @Language("java")
+    private static final String INPUT2 = """
+            package a.b;
+            import java.security.MessageDigest;
+            public class X {
+            
+                static void test1(MessageDigest md, byte b) {
+                   md.update(b);
+                }
+            
+                static void test2(MessageDigest md, byte[] bs) {
+                   md.update(bs);
+                }
+            }
+            """;
+
+    @Test
+    public void test2() {
+        TypeInfo typeInfo = javaInspector.parse(INPUT2);
+
+        {
+            MethodInfo test1 = typeInfo.findUniqueMethod("test1", 2);
+            Statement s0 = test1.methodBody().statements().get(0);
+            if (s0 instanceof ExpressionAsStatement eas) {
+                if (eas.expression() instanceof MethodCall mc) {
+                    assertEquals("java.security.MessageDigest.update(byte)", mc.methodInfo().fullyQualifiedName());
+                } else fail();
+            } else fail();
+        }
+        {
+            MethodInfo test2 = typeInfo.findUniqueMethod("test2", 2);
+            Statement s0 = test2.methodBody().statements().get(0);
+            if (s0 instanceof ExpressionAsStatement eas) {
+                if (eas.expression() instanceof MethodCall mc) {
+                    assertEquals("java.security.MessageDigest.update(byte[])", mc.methodInfo().fullyQualifiedName());
+                } else fail();
+            } else fail();
+        }
+    }
+
+
+    @Language("java")
+    private static final String INPUT3 = """
+            package a.b;
+            import java.security.MessageDigest;
+            public class X {
+                static byte[] getBytes() { return new byte[] { 1, 2}; }
+                static byte getByte() { return 1; }
+            
+                static void test1(MessageDigest md) {
+                   md.update(getByte());
+                }
+            
+                static void test2(MessageDigest md) {
+                   md.update(getBytes());
+                }
+            
+                static void test3(MessageDigest md, String s) {
+                   md.update(s.getBytes());
+                }
+            
+                static void test4(MessageDigest md, String s) {
+                   md.update(s.getBytes()[0]);
+                }
+            
+                static void test5(MessageDigest md, String s) {
+                   byte b = s.getBytes()[0];
+                   md.update(b);
+                }
+            }
+            """;
+
+    private static MethodCall mc(Statement s) {
+        if (s instanceof ExpressionAsStatement eas) {
+            if (eas.expression() instanceof MethodCall mc) {
+                return mc;
+            }
+        }
+        throw new UnsupportedOperationException();
+    }
+
+    @Test
+    public void test3() {
+        TypeInfo typeInfo = javaInspector.parse(INPUT3);
+
+        {
+            MethodInfo test1 = typeInfo.findUniqueMethod("test1", 1);
+            Statement s0 = test1.methodBody().statements().get(0);
+            assertEquals("java.security.MessageDigest.update(byte)", mc(s0).methodInfo().fullyQualifiedName());
+        }
+        {
+            MethodInfo test2 = typeInfo.findUniqueMethod("test2", 1);
+            Statement s0 = test2.methodBody().statements().get(0);
+            assertEquals("java.security.MessageDigest.update(byte[])", mc(s0).methodInfo().fullyQualifiedName());
+        }
+        {
+            MethodInfo test3 = typeInfo.findUniqueMethod("test3", 2);
+            Statement s0 = test3.methodBody().statements().get(0);
+            assertEquals("java.security.MessageDigest.update(byte[])", mc(s0).methodInfo().fullyQualifiedName());
+        }
+        {
+            MethodInfo test4 = typeInfo.findUniqueMethod("test4", 2);
+            Statement s0 = test4.methodBody().statements().get(0);
+            assertEquals("java.security.MessageDigest.update(byte)", mc(s0).methodInfo().fullyQualifiedName());
+        }
+        {
+            MethodInfo test5 = typeInfo.findUniqueMethod("test5", 2);
+            Statement s1 = test5.methodBody().statements().get(1);
+            assertEquals("java.security.MessageDigest.update(byte)", mc(s1).methodInfo().fullyQualifiedName());
+        }
+    }
+}

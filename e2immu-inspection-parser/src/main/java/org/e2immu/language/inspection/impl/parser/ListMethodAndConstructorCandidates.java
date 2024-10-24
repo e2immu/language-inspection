@@ -30,12 +30,6 @@ public class ListMethodAndConstructorCandidates {
         this.runtime = runtime;
     }
 
-    public Map<MethodTypeParameterMap, Integer> resolveConstructorInvocation(TypeInfo startingPoint,
-                                                                             int parametersPresented) {
-        ParameterizedType type = startingPoint.asParameterizedType();
-        return resolveConstructor(type, type, parametersPresented, Map.of());
-    }
-
     public static final int IGNORE_PARAMETER_NUMBERS = -1;
 
     public Map<MethodTypeParameterMap, Integer> resolveConstructor(ParameterizedType formalType,
@@ -117,8 +111,7 @@ public class ListMethodAndConstructorCandidates {
                                                     Set<TypeInfo> visited,
                                                     Set<TypeInfo> visitedStatic,
                                                     int distance) {
-        boolean shallowAnalysis = false;//FIXME
-        typeInfo.methodStream()//TypeInspection.Methods.THIS_TYPE_ONLY_EXCLUDE_FIELD_SAM)
+        typeInfo.methodStream()
                 .filter(m -> m.name().equals(methodName))
                 .filter(m -> !staticOnly || m.isStatic())
                 .filter(m -> parametersPresented == IGNORE_PARAMETER_NUMBERS ||
@@ -126,12 +119,7 @@ public class ListMethodAndConstructorCandidates {
                                                              (!m.isStatic() && decrementWhenNotStatic ? -1 : 0)))
                 .forEach(m -> {
                     MethodTypeParameterMap mt = new MethodTypeParameterMapImpl(m, typeMap);
-                    int score = distance
-                                // add a penalty for shallowly analysed, non-public methods
-                                // See the java.lang.StringBuilder AbstractStringBuilder CharSequence length() problem
-                                + (shallowAnalysis && !m.isPubliclyAccessible() ? 100 : 0)
-                                // see e.g. MethodCall_70, where we must choose between a static and instance method
-                                + (m.isStatic() && scopeNature == ScopeNature.INSTANCE ? 100 : 0);
+                    int score = distance + (m.isStatic() && scopeNature == ScopeNature.INSTANCE ? 100 : 0);
                     result.merge(mt, score, Integer::min);
                 });
 
@@ -203,13 +191,12 @@ public class ListMethodAndConstructorCandidates {
             } else {
                 typeInfo = pt.typeInfo();
             }
-        } else if(typeOfObject.typeInfo().isPrimitiveExcludingVoid() && typeOfObject.arrays()>0) {
+        } else if (typeOfObject.typeInfo().isPrimitiveExcludingVoid() && typeOfObject.arrays() > 0) {
             typeInfo = runtime.objectTypeInfo();
         } else {
             typeInfo = typeOfObject.typeInfo();
         }
         assert typeInfo != null;
-        // FIXME ensure that typeInfo's inspection is done, if this is bytecode inspection
         return List.of(typeInfo);
     }
 

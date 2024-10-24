@@ -1,7 +1,6 @@
 package org.e2immu.language.inspection.integration.java.method;
 
 import org.e2immu.language.cst.api.expression.BinaryOperator;
-import org.e2immu.language.cst.api.expression.Equals;
 import org.e2immu.language.cst.api.expression.MethodCall;
 import org.e2immu.language.cst.api.info.MethodInfo;
 import org.e2immu.language.cst.api.info.TypeInfo;
@@ -15,7 +14,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-public class TestOverload extends CommonTest {
+public class TestOverload0 extends CommonTest {
 
     @Language("java")
     private static final String INPUT1 = """

@@ -299,7 +299,7 @@ public class MethodResolutionImpl implements MethodResolution {
     private ParameterizedType erasureReturnType(MethodTypeParameterMap mc, FilterResult filterResult,
                                                 ListMethodAndConstructorCandidates.Scope scope) {
         MethodInfo candidate = mc.methodInfo();
-        TypeParameterMap map0 = filterResult.typeParameterMap(runtime, candidate);
+        TypeParameterMap map0 = filterResult.typeParameterMap(candidate);
         TypeParameterMap map1 = map0.merge(scope.typeParameterMap());
         TypeInfo methodType = candidate.typeInfo();
         TypeInfo scopeType = scope.type().bestTypeInfo();
@@ -336,7 +336,7 @@ public class MethodResolutionImpl implements MethodResolution {
             evaluatedExpressions.put(i++, evaluated);
         }
 
-        FilterResult filterResult = filterCandidatesByParameters(methodCandidates, evaluatedExpressions, extra, false);
+        FilterResult filterResult = filterCandidatesByParameters(methodCandidates, evaluatedExpressions, extra);
 
         // now we need to ensure that there is only 1 method left, but, there can be overloads and
         // methods with implicit type conversions, varargs, etc. etc.
@@ -524,8 +524,7 @@ public class MethodResolutionImpl implements MethodResolution {
                                 Map<MethodInfo, Integer> compatibilityScore) {
 
         // See Lambda_6, Lambda_13: connect type of evaluated argument result to formal parameter type
-        public TypeParameterMap typeParameterMap(Runtime runtime,
-                                                 MethodInfo candidate) {
+        public TypeParameterMap typeParameterMap(MethodInfo candidate) {
             Map<NamedType, ParameterizedType> result = new HashMap<>();
             int i = 0;
             for (ParameterInfo parameterInfo : candidate.parameters()) {
@@ -581,11 +580,9 @@ public class MethodResolutionImpl implements MethodResolution {
         }
     }
 
-
     private FilterResult filterCandidatesByParameters(Map<MethodTypeParameterMap, Integer> methodCandidates,
                                                       Map<Integer, Expression> evaluatedExpressions,
-                                                      TypeParameterMap typeParameterMap,
-                                                      boolean explain) {
+                                                      TypeParameterMap typeParameterMap) {
         Map<Integer, Set<ParameterizedType>> acceptedErasedTypes =
                 evaluatedExpressions.entrySet().stream().collect(Collectors.toUnmodifiableMap(Map.Entry::getKey, e ->
                         erasureTypes(e.getValue()).stream()
@@ -626,7 +623,7 @@ public class MethodResolutionImpl implements MethodResolution {
                             if (isUnboundMethodTypeParameter(actualType) && actualType.arrays() == arrayType.arrays()) {
                                 compatible = 5;
                             } else {
-                                compatible = callIsAssignableFrom(actualType, arrayType, explain);
+                                compatible = callIsAssignableFrom(actualType, arrayType);
                             }
                             if (compatible >= 0 && (bestCompatible == Integer.MIN_VALUE || compatible < bestCompatible)) {
                                 bestCompatible = compatible;
@@ -668,7 +665,7 @@ public class MethodResolutionImpl implements MethodResolution {
                                 } else {
                                     // note: always assignable! array penalties easily go into the 100's so 1000 seems safe
                                     ParameterizedType objectPt = runtime.objectParameterizedType();
-                                    int c = callIsAssignableFrom(formalTypeReplaced, objectPt, explain);
+                                    int c = callIsAssignableFrom(formalTypeReplaced, objectPt);
                                     assert c >= 0;
                                     // See MethodCall_66, resp. _74 for the '-' and the '1000'
                                     compatible = varargsPenalty + 1000 - c;
@@ -679,10 +676,10 @@ public class MethodResolutionImpl implements MethodResolution {
                                  Map.get(e.getKey()) call in MethodCall_37 shows the opposite direction; so we do Max.
                                  Feels even more like a hack.
                                  */
-                                compatible = Math.max(callIsAssignableFrom(formalTypeReplaced, actualTypeReplaced, explain),
-                                        callIsAssignableFrom(actualTypeReplaced, formalTypeReplaced, explain));
+                                compatible = Math.max(callIsAssignableFrom(formalTypeReplaced, actualTypeReplaced),
+                                        callIsAssignableFrom(actualTypeReplaced, formalTypeReplaced));
                             } else {
-                                int c = callIsAssignableFrom(actualTypeReplaced, formalTypeReplaced, explain);
+                                int c = callIsAssignableFrom(actualTypeReplaced, formalTypeReplaced);
                                 compatible = c < 0 ? c : varargsPenalty + c;
                             }
 
@@ -775,8 +772,8 @@ public class MethodResolutionImpl implements MethodResolution {
         if (methodCandidates.size() > 1) {
             Comparator<MethodTypeParameterMap> comparator =
                     (m1, m2) -> {
-                        boolean m1Accessible = m1.methodInfo().hasBeenAnalyzed();
-                        boolean m2Accessible = m2.methodInfo().hasBeenAnalyzed();
+                        boolean m1Accessible = m1.methodInfo().isPubliclyAccessible();
+                        boolean m2Accessible = m2.methodInfo().isPubliclyAccessible();
                         if (m1Accessible && !m2Accessible) return -1;
                         if (m2Accessible && !m1Accessible) return 1;
                         return 0; // don't know what to prioritize
@@ -937,7 +934,7 @@ public class MethodResolutionImpl implements MethodResolution {
     private int compatibleParameter(Expression evaluatedExpression, ParameterizedType typeOfParameter) {
         Set<ParameterizedType> erasureTypes = erasureTypes(evaluatedExpression);
         if (!erasureTypes.isEmpty()) {
-            return erasureTypes.stream().mapToInt(type -> callIsAssignableFrom(type, typeOfParameter, false))
+            return erasureTypes.stream().mapToInt(type -> callIsAssignableFrom(type, typeOfParameter))
                     .reduce(notAssignable, (v0, v1) -> {
                         if (v0 < 0) return v1;
                         if (v1 < 0) return v0;
@@ -949,15 +946,11 @@ public class MethodResolutionImpl implements MethodResolution {
          are allowed in a reverse way (expect List<String>, accept List<T> with T a type parameter of the method,
          as long as T <- String).
         */
-        return callIsAssignableFrom(evaluatedExpression.parameterizedType(), typeOfParameter, false);
+        return callIsAssignableFrom(evaluatedExpression.parameterizedType(), typeOfParameter);
     }
 
-    private int callIsAssignableFrom(ParameterizedType actualType, ParameterizedType typeOfParameter, boolean explain) {
-        int value = runtime.isAssignableFromCovariantErasure(typeOfParameter, actualType);
-        if (explain) {
-            LOGGER.error("{} <- {} = {}", typeOfParameter, actualType, value);
-        }
-        return value;
+    private int callIsAssignableFrom(ParameterizedType actualType, ParameterizedType typeOfParameter) {
+        return runtime.isAssignableFromCovariantErasure(typeOfParameter, actualType);
     }
 
     private static boolean containsErasedExpressions(Expression start) {
