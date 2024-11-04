@@ -38,14 +38,19 @@ public class GetSetUtil {
     public void createSyntheticFields(TypeInfo typeInfo) {
         TypeInfo.Builder builder = typeInfo.builder();
         builder.methods().stream().filter(MethodInfo::isAbstract).forEach(mi -> {
-            mi.annotations().forEach(ae -> {
-                if (modifiedAnnotation.equals(ae.typeInfo().fullyQualifiedName())) {
-                    modifiedComponents(typeInfo, mi, ae);
-                }
-                if (GET_SET_ANNOTATION.equals(ae.typeInfo().fullyQualifiedName())) {
-                    getSet(typeInfo, mi, ae);
-                }
-            });
+            String miFqn = mi.fullyQualifiedName();
+            if ("java.util.List.get(int)".equals(miFqn) || "java.util.List.set(int,E)".equals(miFqn)) {
+                getSet(typeInfo, mi, false, "list");
+            } else {
+                mi.annotations().forEach(ae -> {
+                    if (modifiedAnnotation.equals(ae.typeInfo().fullyQualifiedName())) {
+                        modifiedComponents(typeInfo, mi, ae);
+                    }
+                    if (GET_SET_ANNOTATION.equals(ae.typeInfo().fullyQualifiedName())) {
+                        getSet(typeInfo, mi, ae);
+                    }
+                });
+            }
         });
     }
 
@@ -73,9 +78,12 @@ public class GetSetUtil {
     }
 
     private void getSet(TypeInfo typeInfo, MethodInfo mi, AnnotationExpression getSet) {
-        if (!mi.isFactoryMethod() && !getSet.extractBoolean("equivalent")) {
+        getSet(typeInfo, mi, getSet.extractBoolean("equivalent"), getSet.extractString("value", ""));
+    }
+
+    private void getSet(TypeInfo typeInfo, MethodInfo mi, boolean equivalent, String proposed) {
+        if (!mi.isFactoryMethod() && !equivalent) {
             String fieldName;
-            String proposed = getSet.extractString("value", "");
             if (!proposed.isBlank()) {
                 fieldName = proposed.trim();
             } else {
