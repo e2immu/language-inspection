@@ -40,7 +40,7 @@ public class GetSetUtil {
         builder.methods().stream().filter(MethodInfo::isAbstract).forEach(mi -> {
             String miFqn = mi.fullyQualifiedName();
             if ("java.util.List.get(int)".equals(miFqn) || "java.util.List.set(int,E)".equals(miFqn)) {
-                getSet(typeInfo, mi, false, "list");
+                getSet(typeInfo, mi, false, "_synthetic_list");
             } else {
                 mi.annotations().forEach(ae -> {
                     if (modifiedAnnotation.equals(ae.typeInfo().fullyQualifiedName())) {
