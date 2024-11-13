@@ -10,7 +10,6 @@ import org.e2immu.language.cst.api.info.TypeInfo;
 import org.e2immu.language.cst.api.statement.ExpressionAsStatement;
 import org.e2immu.language.cst.api.statement.Statement;
 import org.e2immu.language.cst.api.translate.TranslationMap;
-import org.e2immu.language.cst.api.type.TypeParameter;
 import org.e2immu.language.cst.api.variable.FieldReference;
 import org.e2immu.language.inspection.integration.java.CommonTest;
 import org.intellij.lang.annotations.Language;
@@ -65,7 +64,6 @@ public class TestTranslateAnonymousType extends CommonTest {
 
         TranslationMap tm = javaInspector.runtime().newTranslationMapBuilder()
                 .setClearAnalysis(true)
-                .setRecurseIntoScopeVariables(true)
                 .put(frContinue, frSiblings)
                 .build();
 
