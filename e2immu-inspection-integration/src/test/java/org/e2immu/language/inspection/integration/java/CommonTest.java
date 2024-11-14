@@ -30,6 +30,7 @@ public abstract class CommonTest {
                 .addSources("src/test/java")
                 .addRestrictSourceToPackages("org.e2immu.language.inspection.integration.java.importhelper.")
                 .addClassPath(InputConfigurationImpl.DEFAULT_CLASSPATH)
+                .addClassPath("jmods/java.sql.jmod")
                 .addClassPath(JAR_WITH_PATH_PREFIX + "org/junit/jupiter/api")
                 .addClassPath(JAR_WITH_PATH_PREFIX + "org/apiguardian/api")
                 .addClassPath(JAR_WITH_PATH_PREFIX + "org/junit/platform/commons")
