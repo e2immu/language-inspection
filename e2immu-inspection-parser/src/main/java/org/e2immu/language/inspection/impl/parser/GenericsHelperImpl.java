@@ -267,6 +267,7 @@ public record GenericsHelperImpl(Runtime runtime) implements GenericsHelper {
         private TypeInfo enclosingType;
         private Expression expression;
         private Source source;
+        private Source sourceForStatement;
         private final List<Comment> comments = new ArrayList<>();
         private final List<AnnotationExpression> annotations = new ArrayList<>();
         private ParameterizedType forwardType;
@@ -304,6 +305,12 @@ public record GenericsHelperImpl(Runtime runtime) implements GenericsHelper {
             return this;
         }
 
+        @Override
+        public ExpressionBuilder setSourceForStatement(Source source) {
+            this.sourceForStatement = source;
+            return this;
+        }
+
         private static final Pattern ANON = Pattern.compile("\\$(\\d+)");
 
         @Override
@@ -337,7 +344,7 @@ public record GenericsHelperImpl(Runtime runtime) implements GenericsHelper {
             Expression tExpression = expression.translate(tmBuilder.build());
 
             Statement returnStatement = runtime.newReturnBuilder()
-                    .setSource(expression.source())
+                    .setSource(sourceForStatement)
                     .setExpression(tExpression)
                     .build();
             Block methodBody = runtime.newBlockBuilder().addStatement(returnStatement).build();

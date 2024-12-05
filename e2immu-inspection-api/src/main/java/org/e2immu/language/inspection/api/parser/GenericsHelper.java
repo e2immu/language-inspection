@@ -3,6 +3,7 @@ package org.e2immu.language.inspection.api.parser;
 import org.e2immu.annotation.Fluent;
 import org.e2immu.language.cst.api.analysis.Property;
 import org.e2immu.language.cst.api.element.Element;
+import org.e2immu.language.cst.api.element.Source;
 import org.e2immu.language.cst.api.expression.Expression;
 import org.e2immu.language.cst.api.expression.Lambda;
 import org.e2immu.language.cst.api.info.MethodInfo;
@@ -64,6 +65,9 @@ public interface GenericsHelper {
 
         @Fluent
         ExpressionBuilder setForwardType(ParameterizedType forwardType);
+
+        @Fluent
+        ExpressionBuilder setSourceForStatement(Source source);
 
         Lambda build();
     }
