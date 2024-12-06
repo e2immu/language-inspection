@@ -349,7 +349,7 @@ public record GenericsHelperImpl(Runtime runtime) implements GenericsHelper {
                     .build();
             Block methodBody = runtime.newBlockBuilder().addStatement(returnStatement).build();
 
-            miBuilder.setAccess(runtime.accessPrivate());
+            miBuilder.setAccess(runtime.accessPublic());
             miBuilder.setSynthetic(true);
             miBuilder.setMethodBody(methodBody);
             miBuilder.setReturnType(concreteReturnType);
