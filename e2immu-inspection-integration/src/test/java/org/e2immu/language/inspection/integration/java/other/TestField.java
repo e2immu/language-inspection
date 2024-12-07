@@ -6,8 +6,7 @@ import org.e2immu.language.inspection.integration.java.CommonTest;
 import org.intellij.lang.annotations.Language;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class TestField extends CommonTest {
 
@@ -35,7 +34,7 @@ public class TestField extends CommonTest {
         assertEquals("List.of()", intList1.initializer().toString());
         FieldInfo intList2 = typeInfo.fields().get(2);
         assertEquals("Type java.util.List<Integer>", intList2.type().toString());
-        assertNull(intList2.initializer());
+        assertTrue(intList2.initializer().isEmpty());
         FieldInfo intList3 = typeInfo.fields().get(3);
         assertEquals("Type java.util.List<Integer>", intList2.type().toString());
         assertEquals("null", intList3.initializer().toString());

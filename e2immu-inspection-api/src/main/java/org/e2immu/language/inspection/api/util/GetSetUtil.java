@@ -64,7 +64,9 @@ public class GetSetUtil {
                 LOGGER.debug("Create synthetic field for {}, named {}", mi, fieldName);
                 FieldInfo syntheticField = runtime.newFieldInfo(fieldName, false,
                         runtime.objectParameterizedType(), typeInfo);
-                syntheticField.builder().setSynthetic(true)
+                syntheticField.builder()
+                        .setSynthetic(true)
+                        .setInitializer(runtime.newEmptyExpression())
                         .addFieldModifier(runtime.fieldModifierPrivate())
                         .computeAccess()
                         .commit();
@@ -98,7 +100,9 @@ public class GetSetUtil {
                 LOGGER.debug("Create synthetic field for {}, named {}", mi, fieldName);
                 ParameterizedType type = extractFieldType(mi, setter, parameterIndexOfIndex);
                 FieldInfo syntheticField = runtime.newFieldInfo(fieldName, false, type, typeInfo);
-                syntheticField.builder().setSynthetic(true)
+                syntheticField.builder()
+                        .setSynthetic(true)
+                        .setInitializer(runtime.newEmptyExpression())
                         .addFieldModifier(runtime.fieldModifierPrivate())
                         .computeAccess()
                         .commit();
