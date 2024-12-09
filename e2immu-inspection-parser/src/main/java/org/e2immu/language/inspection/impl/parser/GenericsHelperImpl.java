@@ -349,11 +349,12 @@ public record GenericsHelperImpl(Runtime runtime) implements GenericsHelper {
                     .build();
             Block methodBody = runtime.newBlockBuilder().addStatement(returnStatement).build();
 
-            miBuilder.setAccess(runtime.accessPublic());
-            miBuilder.setSynthetic(true);
-            miBuilder.setMethodBody(methodBody);
-            miBuilder.setReturnType(concreteReturnType);
-            miBuilder.commit();
+            miBuilder.setAccess(runtime.accessPublic())
+                    .setSynthetic(true)
+                    .setSource(source)
+                    .setMethodBody(methodBody)
+                    .setReturnType(concreteReturnType)
+                    .commit();
 
             List<ParameterizedType> types = methodInfo.parameters().stream().map(ParameterInfo::parameterizedType).toList();
             ParameterizedType functionalType = singleAbstractMethod.inferFunctionalType(runtime, types, concreteReturnType);
@@ -362,6 +363,7 @@ public record GenericsHelperImpl(Runtime runtime) implements GenericsHelper {
                     .addMethod(methodInfo)
                     .addInterfaceImplemented(functionalType)
                     .setEnclosingMethod(enclosingMethod)
+                    .setSource(source)
                     .commit();
 
             List<Lambda.OutputVariant> outputVariants = methodInfo.parameters()
