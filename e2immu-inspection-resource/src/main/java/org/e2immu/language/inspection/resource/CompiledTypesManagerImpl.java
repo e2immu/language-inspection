@@ -137,4 +137,14 @@ public class CompiledTypesManagerImpl implements CompiledTypesManager {
     public List<TypeInfo> typesLoaded() {
         return typeMap.values().stream().sorted(Comparator.comparing(TypeInfo::fullyQualifiedName)).toList();
     }
+
+    @Override
+    public Collection<TypeInfo> primaryTypesInPackage(String packageName) {
+        String[] packages = packageName.split("\\.");
+        List<TypeInfo> result = new ArrayList<>();
+        typeTrie.visit(packages, (array, list) -> list.stream()
+                .filter(ti -> ti.isPrimaryType() && packageName.equals(ti.packageName()))
+                .forEach(result::add));
+        return List.copyOf(result);
+    }
 }

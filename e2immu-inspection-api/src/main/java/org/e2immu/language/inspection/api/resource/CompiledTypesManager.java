@@ -67,6 +67,8 @@ public interface CompiledTypesManager {
         throw new UnsupportedOperationException();
     }
 
+    default Collection<TypeInfo> primaryTypesInPackage(String packageName) { throw new UnsupportedOperationException(); }
+
     default void setLazyInspection(TypeInfo typeInfo) {
         // do nothing
     }

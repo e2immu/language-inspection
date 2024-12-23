@@ -1,6 +1,7 @@
 package org.e2immu.language.inspection.api.integration;
 
 
+import org.e2immu.language.cst.api.info.ImportComputer;
 import org.e2immu.language.cst.api.info.TypeInfo;
 import org.e2immu.language.cst.api.runtime.Runtime;
 import org.e2immu.language.inspection.api.parser.SourceTypes;
@@ -16,6 +17,8 @@ import java.util.List;
 
  */
 public interface JavaInspector {
+
+    ImportComputer importComputer(int i);
 
     void initialize(InputConfiguration inputConfiguration) throws IOException;
 
