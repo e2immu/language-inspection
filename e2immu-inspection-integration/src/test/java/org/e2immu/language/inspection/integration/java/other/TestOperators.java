@@ -83,7 +83,7 @@ public class TestOperators extends CommonTest {
     }
 
     private Expression eval(MethodInfo method1, int i) {
-        return javaInspector.runtime().sortAndSimplify(method1.methodBody().statements().get(i).expression());
+        return javaInspector.runtime().sortAndSimplify(true, method1.methodBody().statements().get(i).expression());
     }
 
     interface M {
