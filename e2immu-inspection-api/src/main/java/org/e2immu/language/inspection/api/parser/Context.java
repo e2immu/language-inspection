@@ -1,6 +1,7 @@
 package org.e2immu.language.inspection.api.parser;
 
 import org.e2immu.language.cst.api.element.CompilationUnit;
+import org.e2immu.language.cst.api.element.DetailedSources;
 import org.e2immu.language.cst.api.info.FieldInfo;
 import org.e2immu.language.cst.api.info.Info;
 import org.e2immu.language.cst.api.info.MethodInfo;
@@ -67,4 +68,6 @@ public interface Context {
     ParseHelper parseHelper();
 
     GenericsHelper genericsHelper();
+
+    DetailedSources.Builder newDetailedSourcesBuilder();
 }

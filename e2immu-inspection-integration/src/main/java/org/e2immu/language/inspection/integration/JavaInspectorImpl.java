@@ -212,7 +212,7 @@ public class JavaInspectorImpl implements JavaInspector {
     }
 
     @Override
-    public List<TypeInfo> parseReturnAll(String input) {
+    public List<TypeInfo> parseReturnAll(String input, boolean detailedSources) {
         Summary failFastSummary = new SummaryImpl(true);
         try {
             URI uri = new URI("input");
@@ -220,16 +220,16 @@ public class JavaInspectorImpl implements JavaInspector {
                 JavaParser parser = new JavaParser(input);
                 parser.setParserTolerant(false);
                 return parser;
-            });
+            }, detailedSources);
         } catch (URISyntaxException e) {
             throw new RuntimeException(e);
         }
     }
 
-    private List<TypeInfo> internalParse(Summary summary, URI uri, Supplier<JavaParser> parser) {
+    private List<TypeInfo> internalParse(Summary summary, URI uri, Supplier<JavaParser> parser, boolean detailedSources) {
         Resolver resolver = new ResolverImpl(runtime.computeMethodOverrides(), new ParseHelperImpl(runtime));
         TypeContextImpl typeContext = new TypeContextImpl(compiledTypesManager, sourceTypeMap);
-        Context rootContext = ContextImpl.create(runtime, summary, resolver, typeContext);
+        Context rootContext = ContextImpl.create(runtime, summary, resolver, typeContext, detailedSources);
         ScanCompilationUnit scanCompilationUnit = new ScanCompilationUnit(summary, runtime);
 
         ScanCompilationUnit.ScanResult sr = scanCompilationUnit.scan(uri, parser.get().CompilationUnit());
@@ -243,7 +243,7 @@ public class JavaInspectorImpl implements JavaInspector {
     }
 
     @Override
-    public Summary parse(URI uri) {
+    public Summary parse(URI uri, boolean detailedSources) {
         Summary summary = new SummaryImpl(true); // once stable, change to false
 
         try (InputStreamReader isr = new InputStreamReader(uri.toURL().openStream(), StandardCharsets.UTF_8);
@@ -255,7 +255,7 @@ public class JavaInspectorImpl implements JavaInspector {
                 JavaParser parser = new JavaParser(sourceCode);
                 parser.setParserTolerant(false);
                 return parser;
-            });
+            }, detailedSources);
         } catch (IOException io) {
             LOGGER.error("Caught IO exception", io);
 
@@ -268,11 +268,11 @@ public class JavaInspectorImpl implements JavaInspector {
     }
 
     @Override
-    public Summary parse(boolean failFast) {
+    public Summary parse(boolean failFast, boolean detailedSources) {
         Summary summary = new SummaryImpl(true); // once stable, change to false
         Resolver resolver = new ResolverImpl(runtime.computeMethodOverrides(), new ParseHelperImpl(runtime));
         TypeContextImpl typeContext = new TypeContextImpl(compiledTypesManager, sourceTypeMap);
-        Context rootContext = ContextImpl.create(runtime, summary, resolver, typeContext);
+        Context rootContext = ContextImpl.create(runtime, summary, resolver, typeContext, detailedSources);
 
         // PHASE 1: scanning all the types, call CongoCC parser
 

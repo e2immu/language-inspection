@@ -26,16 +26,28 @@ public interface JavaInspector {
 
     void preload(String thePackage);
 
-    Summary parse(boolean failFast);
+    default Summary parse(boolean failFast) {
+        return parse(failFast, false);
+    }
+
+    Summary parse(boolean failFast, boolean detailedSources);
 
     // only for testing, after general parse()
     TypeInfo parse(String input);
 
-    // only for testing, after general parse();
-    Summary parse(URI typeInfo);
+    default Summary parse(URI typeInfo) {
+        return parse(typeInfo, false);
+    }
 
     // only for testing, after general parse();
-    List<TypeInfo> parseReturnAll(String input);
+    Summary parse(URI typeInfo, boolean detailedSources);
+
+    default List<TypeInfo> parseReturnAll(String input) {
+        return parseReturnAll(input, false);
+    }
+
+    // only for testing, after general parse();
+    List<TypeInfo> parseReturnAll(String input, boolean detailedSources);
 
     Runtime runtime();
 
