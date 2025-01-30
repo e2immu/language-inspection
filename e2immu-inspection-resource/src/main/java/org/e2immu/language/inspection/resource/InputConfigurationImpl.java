@@ -19,7 +19,6 @@ public record InputConfigurationImpl(List<String> sources,
                                      List<String> testClassPathParts,
                                      List<String> testRuntimeClassPathParts,
                                      List<String> excludeFromClasspath,
-                                     Map<String, String> sourcesByKeyForTestProtocol,
                                      String alternativeJREDirectory,
                                      Charset sourceEncoding,
                                      List<String> dependencies,
@@ -54,7 +53,6 @@ public record InputConfigurationImpl(List<String> sources,
         private final List<String> testClassPathParts = new ArrayList<>();
         private final List<String> testRuntimeClassPathParts = new ArrayList<>();
         private final List<String> excludeFromClasspath = new ArrayList<>();
-        private final Map<String, String> sourcesByKeyForTestProtocol = new HashMap<>();
 
         // result of dependency analysis: group:artifactId:version:configuration
         private final List<String> dependencies = new ArrayList<>();
@@ -77,18 +75,11 @@ public record InputConfigurationImpl(List<String> sources,
                     List.copyOf(testClassPathParts),
                     List.copyOf(testRuntimeClassPathParts),
                     List.copyOf(excludeFromClasspath),
-                    Map.copyOf(sourcesByKeyForTestProtocol),
                     alternativeJREDirectory,
                     sourceCharset,
                     List.copyOf(dependencies),
                     infoLogClasspath
             );
-        }
-
-        @Override
-        public Builder addKeyForSourceTestProtocol(String key, String source) {
-            sourcesByKeyForTestProtocol.put(key, source);
-            return this;
         }
 
         @Override

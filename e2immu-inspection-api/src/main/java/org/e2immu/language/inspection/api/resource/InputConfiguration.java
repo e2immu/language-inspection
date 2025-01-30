@@ -14,8 +14,6 @@ public interface InputConfiguration {
 
     List<String> restrictSourceToPackages();
 
-    Map<String, String> sourcesByKeyForTestProtocol();
-
     List<String> testSources();
 
     List<String> restrictTestSourceToPackages();
@@ -76,9 +74,6 @@ public interface InputConfiguration {
 
         @Fluent
         Builder setInfoLogClasspath(boolean infoLogClasspath);
-
-        @Fluent
-        Builder addKeyForSourceTestProtocol(String key, String source);
 
         InputConfiguration build();
     }

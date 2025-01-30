@@ -12,6 +12,7 @@ import org.e2immu.language.inspection.api.resource.InputConfiguration;
 import java.io.IOException;
 import java.net.URI;
 import java.util.List;
+import java.util.Map;
 
 /*
 
@@ -30,7 +31,11 @@ public interface JavaInspector {
         return parse(failFast, false);
     }
 
-    Summary parse(boolean failFast, boolean detailedSources);
+    default Summary parse(boolean failFast, boolean detailedSources) {
+        return parse(failFast, detailedSources, Map.of());
+    }
+
+    Summary parse(boolean failFast, boolean detailedSources, Map<String, String> sourcesByTestProtocolURIString);
 
     // only for testing, after general parse()
     TypeInfo parse(String input);
