@@ -40,6 +40,8 @@ public interface Resources {
 
     Map<String, Integer> addJarFromClassPath(String prefix) throws IOException;
 
+    void addTestProtocol(URI testProtocol);
+
     int addJar(URL jarUrl) throws IOException;
 
     int addJmod(URL url) throws IOException;

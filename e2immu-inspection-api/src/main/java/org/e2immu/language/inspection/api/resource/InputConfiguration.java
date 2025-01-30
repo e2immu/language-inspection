@@ -4,6 +4,7 @@ import org.e2immu.annotation.Fluent;
 
 import java.nio.charset.Charset;
 import java.util.List;
+import java.util.Map;
 
 public interface InputConfiguration {
 
@@ -12,6 +13,8 @@ public interface InputConfiguration {
     List<String> sources();
 
     List<String> restrictSourceToPackages();
+
+    Map<String, String> sourcesByKeyForTestProtocol();
 
     List<String> testSources();
 
@@ -73,6 +76,9 @@ public interface InputConfiguration {
 
         @Fluent
         Builder setInfoLogClasspath(boolean infoLogClasspath);
+
+        @Fluent
+        Builder addKeyForSourceTestProtocol(String key, String source);
 
         InputConfiguration build();
     }

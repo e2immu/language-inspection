@@ -110,6 +110,15 @@ public class ResourcesImpl implements Resources {
 
     private static final Pattern JAR_FILE = Pattern.compile("/([^/]+\\.jar)");
 
+    @Override
+    public void addTestProtocol(URI testProtocol) {
+        String s = testProtocol.toString();
+        String packageName = s.substring(s.indexOf(':') + 1, s.indexOf('/'));
+        String[] split = packageName.split("\\.");
+        split[split.length - 1] = split[split.length - 1] + ".java";
+        data.add(split, testProtocol);
+    }
+
     /**
      * Add a jar to the trie
      *

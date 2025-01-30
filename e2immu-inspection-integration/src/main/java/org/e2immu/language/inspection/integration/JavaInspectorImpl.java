@@ -21,13 +21,8 @@ import org.parsers.java.JavaParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.StringWriter;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.net.URL;
+import java.io.*;
+import java.net.*;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -63,7 +58,8 @@ public class JavaInspectorImpl implements JavaInspector {
      * jar:file:/Users/bnaudts/.gradle/caches/modules-2/files-2.1/com.google.guava/guava/28.1-jre/b0e91dcb6a44ffb6221b5027e12a5cb34b841145/guava-28.1-jre.jar!/
      */
     public static final String JAR_WITH_PATH_PREFIX = "jar-on-classpath:";
-    public static final String JAR_WITH_PATH_PREFIX_DOUBLE_COLON = "jar-on-classpath::";
+    public static final String TEST_PROTOCOL = "testprotocol";
+    public static final String TEST_PROTOCOL_PREFIX = TEST_PROTOCOL + ":";
 
     @Override
     public void initialize(InputConfiguration inputConfiguration) throws IOException {
@@ -94,7 +90,63 @@ public class JavaInspectorImpl implements JavaInspector {
                 inputConfiguration.restrictSourceToPackages(), "source path");
         testURIs = computeSourceURIs(testSourcePath,
                 inputConfiguration.restrictTestSourceToPackages(), "test source path");
+
+        if (!inputConfiguration.sourcesByKeyForTestProtocol().isEmpty()) {
+            CustomURL customURL = new CustomURL(inputConfiguration.sourcesByKeyForTestProtocol());
+            URL.setURLStreamHandlerFactory(customURL.new CustomURLStreamHandlerFactory());
+        }
     }
+
+    private record CustomURL(Map<String, String> sourcesByKey) {
+
+        class CustomURLConnection extends URLConnection {
+                private final String key;
+
+                protected CustomURLConnection(URL url) {
+                    super(url);
+                    String s = url.toString();
+                    this.key = s.substring(s.indexOf('/') + 1);
+                }
+
+                @Override
+                public void connect() {
+                    // we need not do anything
+                }
+
+                @Override
+                public InputStream getInputStream() {
+                    return new ByteArrayInputStream(sourcesByKey.get(key).getBytes(StandardCharsets.UTF_8));
+                }
+            }
+
+            class CustomURLStreamHandler extends URLStreamHandler {
+                @Override
+                protected URLConnection openConnection(URL u) {
+                    return new CustomURLConnection(u);
+                }
+
+                @Override
+                protected void parseURL(URL u, String spec, int start, int limit) {
+                    super.parseURL(u, spec, start, limit);
+                }
+
+                @Override
+                protected void setURL(URL u, String protocol, String host, int port, String authority,
+                                      String userInfo, String path, String query, String ref) {
+                    super.setURL(u, protocol, host, port, authority, userInfo, path, query, ref);
+                }
+            }
+
+            class CustomURLStreamHandlerFactory implements URLStreamHandlerFactory {
+                @Override
+                public URLStreamHandler createURLStreamHandler(String protocol) {
+                    if (JavaInspectorImpl.TEST_PROTOCOL.equals(protocol)) {
+                        return new CustomURLStreamHandler();
+                    }
+                    return null;
+                }
+            }
+        }
 
     private static List<String> classPathAsList(InputConfiguration inputConfiguration) {
         Stream<String> compileCp = inputConfiguration.classPathParts().stream();
@@ -190,6 +242,12 @@ public class JavaInspectorImpl implements JavaInspector {
                     LOGGER.debug("Added {} entries for jmod {}", entries, part);
                 } catch (IOException e) {
                     LOGGER.error("{} part '{}' ignored: IOException {}", msg, part, e.getMessage());
+                }
+            } else if (part.startsWith(TEST_PROTOCOL_PREFIX)) {
+                try {
+                    resources.addTestProtocol(new URI(part));
+                } catch (URISyntaxException e) {
+                    LOGGER.error("Illegal test protocol {}", part);
                 }
             } else {
                 File directory = new File(part);
