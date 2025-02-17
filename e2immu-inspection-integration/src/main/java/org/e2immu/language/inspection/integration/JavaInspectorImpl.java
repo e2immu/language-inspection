@@ -187,6 +187,11 @@ public class JavaInspectorImpl implements JavaInspector {
                 e = resources.addDirectoryFromFileSystem(part, new File(part));
             }
             if (!e.exceptions().isEmpty()) {
+                int cnt = 1;
+                for(Exception exception: e.exceptions()) {
+                    LOGGER.error("Exception {}: ", cnt, exception);
+                    ++cnt;
+                }
                 throw new IOException("Caught " + e.exceptions().size() + " exception(s) while processing " + msg);
             }
             addToInputPaths(e);

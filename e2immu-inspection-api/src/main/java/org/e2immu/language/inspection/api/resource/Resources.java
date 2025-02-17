@@ -16,7 +16,11 @@ public interface Resources {
 
     InputPathEntry addDirectoryFromFileSystem(String originalInput, File file);
 
-    class JarNotFoundException extends RuntimeException {}
+    class JarNotFoundException extends RuntimeException {
+        public JarNotFoundException(String msg) {
+            super(msg);
+        }
+    }
 
     InputPathEntry addJarFromClassPath(String packagePrefix) throws IOException;
 

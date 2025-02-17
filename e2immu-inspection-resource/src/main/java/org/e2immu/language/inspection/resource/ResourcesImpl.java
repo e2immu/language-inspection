@@ -101,7 +101,21 @@ public class ResourcesImpl implements Resources {
                 URL strippedURL = new URL(strippedUrlString);
                 LOGGER.debug("Stripped URL is {}", strippedURL);
                 if ("jar".equals(strippedURL.getProtocol())) {
-                    return addJar(prefix, strippedURL);
+                    InputPathEntry entry = addJar(prefix, strippedURL);
+                    if (computeHashes) {
+                        try {
+                            assert urlString.startsWith("jar:file:");
+                            String f = urlString.substring(9, bangSlash);
+                            File file = new File(f);
+                            LOGGER.debug("File is {}", file.getAbsolutePath());
+                            String hash = md5HashString(file);
+                            return entry.withHash(hash);
+                        } catch (IOException | NoSuchAlgorithmException e) {
+                            LOGGER.error("Caught exception in addJarFromClassPath, {}", prefix, e);
+                            return entry.withException(e);
+                        }
+                    }
+                    return entry;
                 }
                 Exception e = new MalformedURLException("Protocol not implemented in URL: " + strippedURL.getProtocol());
                 return new InputPathEntryImpl.Builder(prefix).addException(e).build();
@@ -109,7 +123,7 @@ public class ResourcesImpl implements Resources {
         } catch (IOException ioe) {
             return new InputPathEntryImpl.Builder(prefix).addException(ioe).build();
         }
-        return new InputPathEntryImpl.Builder(prefix).addException(new JarNotFoundException()).build();
+        return new InputPathEntryImpl.Builder(prefix).addException(new JarNotFoundException(prefix)).build();
     }
 
     private static final Pattern JAR_FILE = Pattern.compile("/([^/]+\\.jar)");
@@ -176,6 +190,7 @@ public class ResourcesImpl implements Resources {
                                   URL jarUrl,
                                   Predicate<JarEntry> filter,
                                   Function<JarEntry, String> realNameFunction) {
+        LOGGER.debug("AddJar: {}", jarUrl);
         InputPathEntryImpl.Builder builder = new InputPathEntryImpl.Builder(originalInput);
         try {
             builder.setURI(jarUrl.toURI());
@@ -190,7 +205,7 @@ public class ResourcesImpl implements Resources {
             jarFile.stream().filter(filter).forEach(je -> {
                 String realName = realNameFunction.apply(je);
                 LOGGER.trace("Adding {}", realName);
-                String[] split = je.getRealName().split("/");
+                String[] split = realName.split("/");
                 try {
                     URI fullUrl = new URL(jarUrl, je.getRealName()).toURI();
                     data.add(split, fullUrl);
@@ -250,8 +265,8 @@ public class ResourcesImpl implements Resources {
         } else {
             jre = altJREDirectory;
         }
-        if (!jre.endsWith("/")) return new File(jre + "/");
-        return new File(jre);
+        String jreWithSlash = jre.endsWith("/") ? jre : jre + "/";
+        return new File(jreWithSlash + part);
     }
 
     @Override
