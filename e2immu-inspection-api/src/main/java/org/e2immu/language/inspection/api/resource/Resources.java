@@ -12,21 +12,34 @@ import java.util.function.BiConsumer;
 
 public interface Resources {
 
+    // convert input strings to resources represented by URIs; return InputPathEntry summary.
+
+    InputPathEntry addDirectoryFromFileSystem(String originalInput, File file);
+
+    class JarNotFoundException extends RuntimeException {}
+
+    InputPathEntry addJarFromClassPath(String packagePrefix) throws IOException;
+
+    InputPathEntry addTestProtocol(String testProtocol);
+
+    InputPathEntry addJarFromFileSystem(String originalInput);
+
+    InputPathEntry addJar(String originalInput, URL jarUrl);
+
+    InputPathEntry addJmodFromFileSystem(String originalInput, String alternativeJRELocation);
+
+    InputPathEntry addJmod(String originalInput, URL jmodUrl);
+
     static String stripDotClass(String path) {
         if (path.endsWith(".class")) return path.substring(0, path.length() - 6);
         return path;
     }
 
-    void addDirectoryFromFileSystem(File base);
+    // work with input URIs
 
     String pathToFqn(String name);
 
     SourceFile sourceFileOfType(TypeInfo subType, String s);
-
-    record JarSize(int entries, int bytes) {
-    }
-
-    Map<String, Resources.JarSize> getJarSizes();
 
     void visit(String[] prefix, BiConsumer<String[], List<URI>> visitor);
 
@@ -37,14 +50,6 @@ public interface Resources {
     void expandLeaves(String path, String extension, BiConsumer<String[], List<URI>> visitor);
 
     List<URI> expandURLs(String extension);
-
-    Map<String, Integer> addJarFromClassPath(String prefix) throws IOException;
-
-    void addTestProtocol(URI testProtocol);
-
-    int addJar(URL jarUrl) throws IOException;
-
-    int addJmod(URL url) throws IOException;
 
     SourceFile fqnToPath(String fqn, String s);
 

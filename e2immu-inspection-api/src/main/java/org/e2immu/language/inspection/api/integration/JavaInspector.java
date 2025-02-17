@@ -8,6 +8,7 @@ import org.e2immu.language.inspection.api.parser.SourceTypes;
 import org.e2immu.language.inspection.api.parser.Summary;
 import org.e2immu.language.inspection.api.resource.CompiledTypesManager;
 import org.e2immu.language.inspection.api.resource.InputConfiguration;
+import org.e2immu.language.inspection.api.resource.InputPathEntry;
 
 import java.io.IOException;
 import java.net.URI;
@@ -18,6 +19,8 @@ import java.util.Map;
 
  */
 public interface JavaInspector {
+
+    Map<String, List<InputPathEntry>> packageToInputPath();
 
     ImportComputer importComputer(int i);
 

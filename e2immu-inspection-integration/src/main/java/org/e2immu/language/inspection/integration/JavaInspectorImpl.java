@@ -44,8 +44,8 @@ public class JavaInspectorImpl implements JavaInspector {
     private List<URI> testURIs;
     private final SourceTypeMapImpl sourceTypeMap = new SourceTypeMapImpl();
     private CompiledTypesManager compiledTypesManager;
+    private final Map<String, List<InputPathEntry>> packageToInputPath = new HashMap<>();
 
-    private static boolean setStreamHandlerFactory;
     private static final Logger LOGGER = LoggerFactory.getLogger(JavaInspector.class);
 
     /**
@@ -59,6 +59,7 @@ public class JavaInspectorImpl implements JavaInspector {
      * jar:file:/Users/bnaudts/.gradle/caches/modules-2/files-2.1/com.google.guava/guava/28.1-jre/b0e91dcb6a44ffb6221b5027e12a5cb34b841145/guava-28.1-jre.jar!/
      */
     public static final String JAR_WITH_PATH_PREFIX = "jar-on-classpath:";
+    public static final String JAR_WITH_PATH_PREFIX_DOUBLE_COLON = "jar-on-classpath::";
     public static final String TEST_PROTOCOL = "testprotocol";
     public static final String TEST_PROTOCOL_PREFIX = TEST_PROTOCOL + ":";
 
@@ -71,7 +72,8 @@ public class JavaInspectorImpl implements JavaInspector {
                 LOGGER.info("Classpath entry: {}", cp);
             }
         }
-        Resources classPath = assemblePath(inputConfiguration, true, "Classpath", classPathAsList);
+        boolean loadHashes = true; // TODO
+        Resources classPath = assemblePath(inputConfiguration, true, "Classpath", loadHashes, classPathAsList);
         CompiledTypesManagerImpl ctm = new CompiledTypesManagerImpl(classPath);
         runtime = new RuntimeWithCompiledTypesManager(ctm);
         ByteCodeInspector byteCodeInspector = new ByteCodeInspectorImpl(runtime, ctm);
@@ -82,10 +84,10 @@ public class JavaInspectorImpl implements JavaInspector {
             preload(packageName);
         }
 
-        Resources sourcePath = assemblePath(inputConfiguration, false, "Source path",
+        Resources sourcePath = assemblePath(inputConfiguration, false, "Source path", loadHashes,
                 inputConfiguration.sources());
         Resources testSourcePath = assemblePath(inputConfiguration, false, "Test source path",
-                inputConfiguration.testSources());
+                loadHashes, inputConfiguration.testSources());
 
         sourceURIs = computeSourceURIs(sourcePath,
                 inputConfiguration.restrictSourceToPackages(), "source path");
@@ -155,57 +157,47 @@ public class JavaInspectorImpl implements JavaInspector {
         compiledTypesManager.loadByteCodeQueue();
     }
 
-    private static Resources assemblePath(InputConfiguration configuration,
-                                          boolean isClassPath,
-                                          String msg,
-                                          List<String> parts) throws IOException {
-        Resources resources = new ResourcesImpl();
+    private Resources assemblePath(InputConfiguration configuration,
+                                   boolean isClassPath,
+                                   String msg,
+                                   boolean loadHashes,
+                                   List<String> parts) throws IOException {
+        Resources resources = new ResourcesImpl(loadHashes);
         if (isClassPath) {
-            Map<String, Integer> entriesAdded = resources.addJarFromClassPath("org/e2immu/annotation");
-            if (entriesAdded.size() != 1 || entriesAdded.values().stream().findFirst().orElseThrow() < 10) {
-                throw new RuntimeException("? expected 1 jar, at least 10 entries; got " + entriesAdded.size());
+            InputPathEntry externalSupport = resources.addJarFromClassPath("org/e2immu/annotation");
+            if (!externalSupport.exceptions().isEmpty()) {
+                throw new RuntimeException("Unable to load e2immu external support jar");
             }
+            if (externalSupport.typeCount() < 10) {
+                throw new RuntimeException("Expected at least 10 entries; got " + externalSupport.typeCount());
+            }
+            addToInputPaths(externalSupport);
         }
         for (String part : parts) {
+            InputPathEntry e;
             if (part.startsWith(JAR_WITH_PATH_PREFIX)) {
-                Map<String, Integer> entriesAdded = resources.addJarFromClassPath(part.substring(JAR_WITH_PATH_PREFIX.length()));
-                LOGGER.debug("Found {} jar(s) on classpath for {}", entriesAdded.size(), part);
-                entriesAdded.forEach((p, n) -> LOGGER.debug("  ... added {} entries for jar {}", n, p));
+                e = resources.addJarFromClassPath(part.substring(JAR_WITH_PATH_PREFIX.length()));
             } else if (part.endsWith(".jar")) {
-                try {
-                    // "jar:file:build/libs/equivalent.jar!/"
-                    URL url = new URL("jar:file:" + part + "!/");
-                    int entries = resources.addJar(url);
-                    LOGGER.debug("Added {} entries for jar {}", entries, part);
-                } catch (IOException e) {
-                    LOGGER.error("{} part '{}' ignored: IOException {}", msg, part, e.getMessage());
-                }
+                e = resources.addJarFromFileSystem(part);
             } else if (part.endsWith(".jmod")) {
-                try {
-                    URL url = ResourcesImpl.constructJModURL(part, configuration.alternativeJREDirectory());
-                    int entries = resources.addJmod(url);
-                    LOGGER.debug("Added {} entries for jmod {}", entries, part);
-                } catch (IOException e) {
-                    LOGGER.error("{} part '{}' ignored: IOException {}", msg, part, e.getMessage());
-                }
+                e = resources.addJmodFromFileSystem(part, configuration.alternativeJREDirectory());
             } else if (part.startsWith(TEST_PROTOCOL_PREFIX)) {
-                try {
-                    resources.addTestProtocol(new URI(part));
-                } catch (URISyntaxException e) {
-                    LOGGER.error("Illegal test protocol {}", part);
-                }
+                e = resources.addTestProtocol(part);
             } else {
-                File directory = new File(part);
-                if (directory.isDirectory()) {
-                    String what = isClassPath ? "classpath" : "source path";
-                    LOGGER.info("Adding {} to " + what, directory.getAbsolutePath());
-                    resources.addDirectoryFromFileSystem(directory);
-                } else {
-                    LOGGER.error("{} part '{}' is not a .jar file, and not a directory: ignored", msg, part);
-                }
+                e = resources.addDirectoryFromFileSystem(part, new File(part));
             }
+            if (!e.exceptions().isEmpty()) {
+                throw new IOException("Caught " + e.exceptions().size() + " exception(s) while processing " + msg);
+            }
+            addToInputPaths(e);
         }
         return resources;
+    }
+
+    private void addToInputPaths(InputPathEntry entry) {
+        for (String packageName : entry.packages()) {
+            packageToInputPath.computeIfAbsent(packageName, n -> new ArrayList<>()).add(entry);
+        }
     }
 
     // used for testing
@@ -350,6 +342,11 @@ public class JavaInspectorImpl implements JavaInspector {
     @Override
     public List<URI> testURIs() {
         return testURIs;
+    }
+
+    @Override
+    public Map<String, List<InputPathEntry>> packageToInputPath() {
+        return packageToInputPath;
     }
 
     @Override
