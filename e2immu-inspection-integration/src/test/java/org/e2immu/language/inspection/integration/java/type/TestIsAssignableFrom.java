@@ -4,6 +4,7 @@ import org.e2immu.language.cst.api.info.TypeInfo;
 import org.e2immu.language.cst.api.runtime.Runtime;
 import org.e2immu.language.cst.api.type.ParameterizedType;
 import org.e2immu.language.inspection.integration.java.CommonTest;
+import org.intellij.lang.annotations.Language;
 import org.junit.jupiter.api.Test;
 
 import java.io.Closeable;
@@ -30,5 +31,23 @@ public class TestIsAssignableFrom extends CommonTest {
         // there is, however, special code in HiddenContentSelector to deal with the 'transfer'
         // from array base to type parameter
         assertFalse(iterableCloseable.isAssignableFrom(runtime, closeableArray));
+    }
+    @Language("java")
+    public static final String INPUT2 = """
+            package a.b;
+            class X {
+                 interface Parent<T extends Parent<?>> {
+                }
+                interface Child extends Parent<Child> {
+                }
+            }
+            """;
+
+    @Test
+    public void test2() {
+        TypeInfo X = javaInspector.parse(INPUT2);
+        TypeInfo parent = X.findSubType("Parent");
+        TypeInfo child = X.findSubType("Child");
+        assertTrue(parent.asParameterizedType().isAssignableFrom(javaInspector.runtime(), child.asParameterizedType()));
     }
 }

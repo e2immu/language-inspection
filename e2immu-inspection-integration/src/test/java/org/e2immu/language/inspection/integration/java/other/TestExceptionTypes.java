@@ -54,8 +54,9 @@ public class TestExceptionTypes extends CommonTest {
                 import java.net.MalformedURLException;
                 import java.net.URL;
                 class X {
-                    static HttpURLConnection openConnection(String baseURL, String queryString) throws MalformedURLException,
-                        IOException{
+                    static HttpURLConnection openConnection(String baseURL, String queryString) throws 
+                        MalformedURLException,
+                        IOException {
                         final StringBuilder buff = new StringBuilder();
                         buff.append(baseURL);
                         if(queryString != null) { buff.append("?"); buff.append(queryString); }
@@ -64,15 +65,6 @@ public class TestExceptionTypes extends CommonTest {
                     }
                 }
                 """;
-        assertEquals(expected, printType(x));
-    }
-
-
-    protected String printType(TypeInfo newType) {
-        OutputBuilder ob = newType.print(javaInspector.runtime().qualificationQualifyFromPrimaryType(), true);
-        String javaDebug = ob.generateJavaForDebugging();
-        System.out.println(javaDebug);
-        Formatter formatter = new FormatterImpl(javaInspector.runtime(), new FormattingOptionsImpl.Builder().build());
-        return formatter.write(ob);
+        assertEquals(expected, javaInspector.print2(x));
     }
 }

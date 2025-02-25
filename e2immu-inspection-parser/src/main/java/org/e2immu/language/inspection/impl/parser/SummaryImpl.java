@@ -22,7 +22,7 @@ public class SummaryImpl implements Summary {
     }
 
     @Override
-    public Collection<TypeInfo> types() {
+    public Set<TypeInfo> types() {
         return types.keySet();
     }
 
