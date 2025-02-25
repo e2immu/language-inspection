@@ -35,7 +35,20 @@ public class TestTextBlockFormatting extends CommonTest {
         TextBlock tb = (TextBlock) lvc.localVariable().assignmentExpression();
         assertNotNull(tb.textBlockFormatting());
         String s = javaInspector.print2(X);
-        assertEquals("", s);
+        @Language("java")
+        String expect = """
+            package a.b;
+            public class X {
+                public void method() {
+                    String s = \"""
+                            abc\\
+                            def
+                            123
+                            \""";
+                }
+            }
+            """;
+        assertEquals(expect, s);
     }
 
 }
