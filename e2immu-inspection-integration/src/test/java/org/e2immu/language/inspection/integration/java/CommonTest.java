@@ -10,6 +10,7 @@ import org.e2immu.language.cst.api.runtime.Runtime;
 import org.e2immu.language.cst.impl.info.TypePrinter;
 import org.e2immu.language.cst.print.FormatterImpl;
 import org.e2immu.language.cst.print.FormattingOptionsImpl;
+import org.e2immu.language.cst.print.formatter2.Formatter2Impl;
 import org.e2immu.language.inspection.api.integration.JavaInspector;
 import org.e2immu.language.inspection.api.resource.InputConfiguration;
 import org.e2immu.language.inspection.integration.JavaInspectorImpl;
@@ -49,13 +50,5 @@ public abstract class CommonTest {
                 .build();
         javaInspector.initialize(inputConfiguration);
         javaInspector.parse(true);
-    }
-
-    protected String printType(TypeInfo newType) {
-        Runtime runtime = javaInspector.runtime();
-        OutputBuilder ob = new TypePrinter(newType).print(javaInspector.importComputer(4),
-                runtime.qualificationQualifyFromPrimaryType(null), true);
-        Formatter formatter = new FormatterImpl(runtime, new FormattingOptionsImpl.Builder().build());
-        return formatter.write(ob);
     }
 }

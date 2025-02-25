@@ -4,8 +4,13 @@ import org.e2immu.bytecode.java.asm.ByteCodeInspectorImpl;
 import org.e2immu.language.cst.api.element.CompilationUnit;
 import org.e2immu.language.cst.api.info.ImportComputer;
 import org.e2immu.language.cst.api.info.TypeInfo;
+import org.e2immu.language.cst.api.output.Formatter;
+import org.e2immu.language.cst.api.output.OutputBuilder;
 import org.e2immu.language.cst.api.runtime.Runtime;
 import org.e2immu.language.cst.impl.info.ImportComputerImpl;
+import org.e2immu.language.cst.impl.info.TypePrinter;
+import org.e2immu.language.cst.print.FormattingOptionsImpl;
+import org.e2immu.language.cst.print.formatter2.Formatter2Impl;
 import org.e2immu.language.inspection.api.integration.JavaInspector;
 import org.e2immu.language.inspection.api.parser.Context;
 import org.e2immu.language.inspection.api.parser.Resolver;
@@ -359,6 +364,14 @@ public class JavaInspectorImpl implements JavaInspector {
             if (!st.isEmpty()) return st;
             return compiledTypesManager.primaryTypesInPackage(packageName);
         });
+    }
+
+    @Override
+    public String print2(TypeInfo typeInfo) {
+        OutputBuilder ob = new TypePrinter(typeInfo).print(importComputer(4),
+                runtime.qualificationQualifyFromPrimaryType(null), true);
+        Formatter formatter = new Formatter2Impl(runtime, new FormattingOptionsImpl.Builder().build());
+        return formatter.write(ob);
     }
 }
 

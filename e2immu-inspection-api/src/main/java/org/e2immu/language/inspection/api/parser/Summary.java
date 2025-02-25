@@ -4,6 +4,7 @@ import org.e2immu.language.cst.api.info.TypeInfo;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 
 public interface Summary {
 
@@ -44,7 +45,7 @@ public interface Summary {
 
     List<Throwable> parserErrors();
 
-    Collection<TypeInfo> types();
+    Set<TypeInfo> types();
 
     TypeInfo firstType();
 }

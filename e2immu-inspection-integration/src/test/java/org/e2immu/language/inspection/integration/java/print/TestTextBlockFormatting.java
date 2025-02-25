@@ -34,7 +34,7 @@ public class TestTextBlockFormatting extends CommonTest {
         LocalVariableCreation lvc  = (LocalVariableCreation)  methodInfo.methodBody().statements().get(0);
         TextBlock tb = (TextBlock) lvc.localVariable().assignmentExpression();
         assertNotNull(tb.textBlockFormatting());
-        String s = printType(X);
+        String s = javaInspector.print2(X);
         assertEquals("", s);
     }
 

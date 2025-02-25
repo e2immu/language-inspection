@@ -54,6 +54,8 @@ public interface JavaInspector {
     // only for testing, after general parse();
     List<TypeInfo> parseReturnAll(String input, boolean detailedSources);
 
+    String print2(TypeInfo typeInfo);
+
     Runtime runtime();
 
     CompiledTypesManager compiledTypesManager();

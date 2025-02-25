@@ -64,15 +64,6 @@ public class TestExceptionTypes extends CommonTest {
                     }
                 }
                 """;
-        assertEquals(expected, printType(x));
-    }
-
-
-    protected String printType(TypeInfo newType) {
-        OutputBuilder ob = newType.print(javaInspector.runtime().qualificationQualifyFromPrimaryType(), true);
-        String javaDebug = ob.generateJavaForDebugging();
-        System.out.println(javaDebug);
-        Formatter formatter = new FormatterImpl(javaInspector.runtime(), new FormattingOptionsImpl.Builder().build());
-        return formatter.write(ob);
+        assertEquals(expected, javaInspector.print2(x));
     }
 }

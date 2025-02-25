@@ -29,18 +29,12 @@ public class TestTypeQualification extends CommonTest {
     public static final String OUTPUT1 = """
             package a.b;
             import java.util.Date;
-            class X { public java.sql.Date method(Date date) { return new java.sql.Date(date.getTime()); } }
+             class X { public java.sql.Date method(Date date) { return new java.sql.Date(date.getTime()); } }
             """;
 
     @Test
     public void test1() {
         TypeInfo X = javaInspector.parse(INPUT1);
-        assertEquals(OUTPUT1, printType(X));
-    }
-
-    protected String printType(TypeInfo newType) {
-        OutputBuilder ob = newType.print(javaInspector.runtime().qualificationQualifyFromPrimaryType(null), true);
-        Formatter formatter = new FormatterImpl(javaInspector.runtime(), new FormattingOptionsImpl.Builder().build());
-        return formatter.write(ob);
+        assertEquals(OUTPUT1, javaInspector.print2(X));
     }
 }
