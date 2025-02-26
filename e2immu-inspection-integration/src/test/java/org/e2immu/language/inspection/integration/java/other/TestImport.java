@@ -48,7 +48,7 @@ public class TestImport extends CommonTest {
     public void test0() {
         TypeInfo typeInfo = javaInspector.parse(INPUT0);
         Qualification qualification = javaInspector.runtime().qualificationQualifyFromPrimaryType();
-        OutputBuilder ob = new TypePrinter(typeInfo).print(new ImportComputerImpl(), qualification, true);
+        OutputBuilder ob = new TypePrinter(typeInfo, false).print(new ImportComputerImpl(), qualification, true);
         Formatter formatter = new FormatterImpl(javaInspector.runtime(), FormattingOptionsImpl.DEFAULT);
         String s = formatter.write(ob);
 

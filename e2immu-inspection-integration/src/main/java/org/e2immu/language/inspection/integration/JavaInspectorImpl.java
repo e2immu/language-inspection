@@ -368,7 +368,7 @@ public class JavaInspectorImpl implements JavaInspector {
 
     @Override
     public String print2(TypeInfo typeInfo) {
-        OutputBuilder ob = new TypePrinter(typeInfo).print(importComputer(4),
+        OutputBuilder ob = new TypePrinter(typeInfo, true).print(importComputer(4),
                 runtime.qualificationQualifyFromPrimaryType(null), true);
         Formatter formatter = new Formatter2Impl(runtime, new FormattingOptionsImpl.Builder().build());
         return formatter.write(ob);

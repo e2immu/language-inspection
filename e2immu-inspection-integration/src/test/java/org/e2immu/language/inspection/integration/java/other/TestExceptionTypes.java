@@ -40,7 +40,7 @@ public class TestExceptionTypes extends CommonTest {
     public void test1() {
         TypeInfo x = javaInspector.parse(INPUT1);
         MethodInfo mi = x.findUniqueMethod("openConnection", 2);
-        MethodPrinter mp = new MethodPrinter(mi);
+        MethodPrinter mp = new MethodPrinter(mi.typeInfo(), mi, true);
         assertEquals("""
                 static HttpURLConnection openConnection(String baseURL,String queryString) throws MalformedURLException,IOException{\
                 final StringBuilder buff=new StringBuilder();buff.append(baseURL);if(queryString!=null){buff.append("?");\
@@ -54,6 +54,7 @@ public class TestExceptionTypes extends CommonTest {
                 import java.net.MalformedURLException;
                 import java.net.URL;
                 class X {
+
                     static HttpURLConnection openConnection(String baseURL, String queryString) throws 
                         MalformedURLException,
                         IOException {

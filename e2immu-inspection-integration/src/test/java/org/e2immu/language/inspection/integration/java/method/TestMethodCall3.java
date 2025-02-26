@@ -99,7 +99,7 @@ public class TestMethodCall3 extends CommonTest {
     public void test1() {
         TypeInfo typeInfo = javaInspector.parse(INPUT1);
         Qualification qualification = javaInspector.runtime().qualificationQualifyFromPrimaryType();
-        OutputBuilder ob = new TypePrinter(typeInfo).print(new ImportComputerImpl(), qualification, true);
+        OutputBuilder ob = new TypePrinter(typeInfo, false).print(new ImportComputerImpl(), qualification, true);
         Formatter formatter = new FormatterImpl(javaInspector.runtime(), FormattingOptionsImpl.DEFAULT);
         String s = formatter.write(ob);
 
