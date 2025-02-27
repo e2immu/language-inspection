@@ -31,7 +31,7 @@ public class TestCastAndMemberAccess extends CommonTest {
 
         ParameterizedType objectArray = r.objectParameterizedType().copyWithArrays(1);
         LocalVariable v = r.newLocalVariable("v", objectArray);
-        DependentVariable v0 = r.newDependentVariable(v, r.objectParameterizedType(), r.intZero());
+        DependentVariable v0 = r.newDependentVariable(r.newVariableExpression(v), r.intZero(), r.objectParameterizedType());
         assertEquals("v[0]", v0.toString());
         VariableExpression veV0 = r.newVariableExpression(v0);
         Source src = r.newParserSource(null, "-", 0, 0, 1, 1);

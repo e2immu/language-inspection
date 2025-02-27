@@ -1,5 +1,6 @@
 package org.e2immu.language.inspection.impl.parser;
 
+import org.e2immu.language.cst.api.element.Source;
 import org.e2immu.language.cst.api.expression.Expression;
 import org.e2immu.language.cst.api.expression.TypeExpression;
 import org.e2immu.language.cst.api.info.MethodInfo;
@@ -215,6 +216,7 @@ public class ListMethodAndConstructorCandidates {
                                          HierarchyHelper hierarchyHelper,
                                          MethodInfo methodInfo,
                                          boolean scopeIsThis,
+                                         Source source,
                                          TypeInfo enclosingType) {
         /*
          in 3 situations, we compute (or potentially correct) the scope.
@@ -228,13 +230,16 @@ public class ListMethodAndConstructorCandidates {
             if (objectIsImplicit() || methodInfo.isStatic() || scopeIsThis) {
                 TypeInfo exact = methodInfo.typeInfo();
                 if (methodInfo.isStatic()) {
-                    return runtime.newTypeExpression(exact.asParameterizedType(), runtime.diamondNo());
+                    return runtime.newTypeExpressionBuilder()
+                            .setParameterizedType(exact.asParameterizedType())
+                            .setDiamond(runtime.diamondNo())
+                            .setSource(source)
+                            .build();
                 }
                 TypeInfo typeInfo;
                 boolean writeSuper;
                 TypeInfo explicitlyWriteType;
-                if (enclosingType == exact
-                    || exact.isJavaLangObject()) {
+                if (enclosingType == exact || exact.isJavaLangObject()) {
                     //? See TestTypeParameter,5, "super"      || hierarchyHelper.recursivelyImplements(enclosingType, exact.fullyQualifiedName()) != null) {
                     typeInfo = enclosingType; // the same type
                     writeSuper = false;
@@ -250,7 +255,7 @@ public class ListMethodAndConstructorCandidates {
                     explicitlyWriteType = exact;
                 }
                 Variable thisVariable = runtime.newThis(typeInfo.asParameterizedType(), explicitlyWriteType, writeSuper);
-                return runtime.newVariableExpression(thisVariable);
+                return runtime.newVariableExpressionBuilder().setVariable(thisVariable).setSource(source).build();
             }
             return expression;
         }
