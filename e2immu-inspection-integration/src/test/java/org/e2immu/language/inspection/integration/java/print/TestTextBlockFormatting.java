@@ -39,7 +39,6 @@ public class TestTextBlockFormatting extends CommonTest {
         String expect = """
             package a.b;
             public class X {
-
                 public void method() {
                     String s = \"""
                             abc\\

@@ -54,7 +54,6 @@ public class TestExceptionTypes extends CommonTest {
                 import java.net.MalformedURLException;
                 import java.net.URL;
                 class X {
-
                     static HttpURLConnection openConnection(String baseURL, String queryString) throws 
                         MalformedURLException,
                         IOException {
