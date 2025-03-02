@@ -49,8 +49,6 @@ public class JavaInspectorImpl implements JavaInspector {
     private List<URI> testURIs;
     private final SourceTypeMapImpl sourceTypeMap = new SourceTypeMapImpl();
     private CompiledTypesManager compiledTypesManager;
-
-    private static boolean setStreamHandlerFactory;
     private static final Logger LOGGER = LoggerFactory.getLogger(JavaInspector.class);
 
     /**
@@ -66,6 +64,37 @@ public class JavaInspectorImpl implements JavaInspector {
     public static final String JAR_WITH_PATH_PREFIX = "jar-on-classpath:";
     public static final String TEST_PROTOCOL = "testprotocol";
     public static final String TEST_PROTOCOL_PREFIX = TEST_PROTOCOL + ":";
+    public static final ParseOptions FAIL_FAST = new ParseOptions(true, false,
+            false);
+
+    public static class ParseOptionsBuilder implements JavaInspector.ParseOptionsBuilder {
+        private boolean failFast;
+        private boolean detailedSources;
+        private boolean allowCreationOfStubTypes;
+
+        @Override
+        public JavaInspector.ParseOptionsBuilder setFailFast(boolean failFast) {
+            this.failFast = failFast;
+            return this;
+        }
+
+        @Override
+        public JavaInspector.ParseOptionsBuilder setDetailedSources(boolean detailedSources) {
+            this.detailedSources = detailedSources;
+            return this;
+        }
+
+        @Override
+        public JavaInspector.ParseOptionsBuilder setAllowCreationOfStubTypes(boolean allowCreationOfStubTypes) {
+            this.allowCreationOfStubTypes = allowCreationOfStubTypes;
+            return this;
+        }
+
+        @Override
+        public ParseOptions build() {
+            return new ParseOptions(failFast, detailedSources, allowCreationOfStubTypes);
+        }
+    }
 
     @Override
     public void initialize(InputConfiguration inputConfiguration) throws IOException {
@@ -215,12 +244,17 @@ public class JavaInspectorImpl implements JavaInspector {
 
     // used for testing
     @Override
-    public TypeInfo parse(String input) {
-        return parseReturnAll(input).get(0);
+    public TypeInfo parse(String input, ParseOptions parseOptions) {
+        return parseReturnAll(input, parseOptions).get(0);
     }
 
     @Override
-    public List<TypeInfo> parseReturnAll(String input, boolean detailedSources) {
+    public TypeInfo parse(String input) {
+        return parseReturnAll(input, FAIL_FAST).get(0);
+    }
+
+    @Override
+    public List<TypeInfo> parseReturnAll(String input, ParseOptions parseOptions) {
         Summary failFastSummary = new SummaryImpl(true);
         try {
             URI uri = new URI("input");
@@ -228,16 +262,18 @@ public class JavaInspectorImpl implements JavaInspector {
                 JavaParser parser = new JavaParser(input);
                 parser.setParserTolerant(false);
                 return parser;
-            }, detailedSources);
+            }, parseOptions);
         } catch (URISyntaxException e) {
             throw new RuntimeException(e);
         }
     }
 
-    private List<TypeInfo> internalParse(Summary summary, URI uri, Supplier<JavaParser> parser, boolean detailedSources) {
+    private List<TypeInfo> internalParse(Summary summary, URI uri, Supplier<JavaParser> parser, ParseOptions parseOptions) {
         Resolver resolver = new ResolverImpl(runtime.computeMethodOverrides(), new ParseHelperImpl(runtime));
-        TypeContextImpl typeContext = new TypeContextImpl(compiledTypesManager, sourceTypeMap);
-        Context rootContext = ContextImpl.create(runtime, summary, resolver, typeContext, detailedSources);
+        TypeContextImpl typeContext = new TypeContextImpl(runtime, compiledTypesManager, sourceTypeMap,
+                parseOptions.allowCreationOfStubTypes());
+        Context rootContext = ContextImpl.create(runtime, summary, resolver, typeContext,
+                parseOptions.detailedSources());
         ScanCompilationUnit scanCompilationUnit = new ScanCompilationUnit(summary, runtime);
 
         ScanCompilationUnit.ScanResult sr = scanCompilationUnit.scan(uri, parser.get().CompilationUnit());
@@ -251,7 +287,7 @@ public class JavaInspectorImpl implements JavaInspector {
     }
 
     @Override
-    public Summary parse(URI uri, boolean detailedSources) {
+    public Summary parse(URI uri, ParseOptions parseOptions) {
         Summary summary = new SummaryImpl(true); // once stable, change to false
 
         try (InputStreamReader isr = makeInputStreamReader(uri); StringWriter sw = new StringWriter()) {
@@ -262,7 +298,7 @@ public class JavaInspectorImpl implements JavaInspector {
                 JavaParser parser = new JavaParser(sourceCode);
                 parser.setParserTolerant(false);
                 return parser;
-            }, detailedSources);
+            }, parseOptions);
         } catch (IOException io) {
             LOGGER.error("Caught IO exception", io);
 
@@ -279,11 +315,18 @@ public class JavaInspectorImpl implements JavaInspector {
     }
 
     @Override
-    public Summary parse(boolean failFast, boolean detailedSources, Map<String, String> sourcesByTestProtocolURIString) {
+    public Summary parse(ParseOptions parseOptions) {
+        return parse(Map.of(), parseOptions);
+    }
+
+    @Override
+    public Summary parse(Map<String, String> sourcesByTestProtocolURIString, ParseOptions parseOptions) {
         Summary summary = new SummaryImpl(true); // once stable, change to false
         Resolver resolver = new ResolverImpl(runtime.computeMethodOverrides(), new ParseHelperImpl(runtime));
-        TypeContextImpl typeContext = new TypeContextImpl(compiledTypesManager, sourceTypeMap);
-        Context rootContext = ContextImpl.create(runtime, summary, resolver, typeContext, detailedSources);
+        TypeContextImpl typeContext = new TypeContextImpl(runtime, compiledTypesManager, sourceTypeMap,
+                parseOptions.allowCreationOfStubTypes());
+        Context rootContext = ContextImpl.create(runtime, summary, resolver, typeContext,
+                parseOptions.detailedSources());
 
         // PHASE 1: scanning all the types, call CongoCC parser
 

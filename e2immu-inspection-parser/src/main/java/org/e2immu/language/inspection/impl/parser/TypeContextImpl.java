@@ -27,12 +27,14 @@ import java.util.stream.Stream;
 public class TypeContextImpl implements TypeContext {
     private static final Logger LOGGER = LoggerFactory.getLogger(TypeContextImpl.class);
 
-    private record Data(CompiledTypesManager compiledTypesManager,
+    private record Data(Runtime runtime,
+                        CompiledTypesManager compiledTypesManager,
                         SourceTypeMap sourceTypeMap,
                         StaticImportMap staticImportMap,
-                        CompilationUnit compilationUnit) {
+                        CompilationUnit compilationUnit,
+                        boolean allowCreationOfStubTypes) {
         Data withCompilationUnit(CompilationUnit cu) {
-            return new Data(compiledTypesManager, sourceTypeMap, new StaticImportMapImpl(), cu);
+            return new Data(runtime, compiledTypesManager, sourceTypeMap, new StaticImportMapImpl(), cu, allowCreationOfStubTypes);
         }
     }
 
@@ -43,8 +45,10 @@ public class TypeContextImpl implements TypeContext {
     /*
     the packageInfo should already contain all the types of the current package
      */
-    public TypeContextImpl(CompiledTypesManager compiledTypesManager, SourceTypeMap sourceTypeMap) {
-        this(null, new Data(compiledTypesManager, sourceTypeMap, null, null));
+    public TypeContextImpl(Runtime runtime, CompiledTypesManager compiledTypesManager, SourceTypeMap sourceTypeMap,
+                           boolean allowCreationOfStubTypes) {
+        this(null, new Data(runtime, compiledTypesManager, sourceTypeMap, null,
+                null, allowCreationOfStubTypes));
     }
 
     private TypeContextImpl(TypeContextImpl parentContext, Data data) {
@@ -181,7 +185,21 @@ public class TypeContextImpl implements TypeContext {
         TypeInfo typeInfo = data.compiledTypesManager.getOrLoad(fullyQualifiedName);
         if (typeInfo != null) {
             data.compiledTypesManager.ensureInspection(typeInfo);
+            return typeInfo;
         }
+        return null;
+    }
+
+    /*
+     we have no idea whether the name is fully qualified, partially qualified... we can try
+     the import statements, but they can contain *'s or be incomplete.
+     */
+    private TypeInfo createStubType(String name) {
+        int lastDot = name.lastIndexOf('.');
+        String simpleName = lastDot < 0 ? name : name.substring(lastDot + 1);
+        CompilationUnit compilationUnitStub = data.runtime.newCompilationUnitStub();
+        TypeInfo typeInfo = data.runtime.newTypeInfo(compilationUnitStub, simpleName);
+        typeInfo.builder().setTypeNature(data.runtime.typeNatureStub());
         return typeInfo;
     }
 
@@ -213,10 +231,14 @@ public class TypeContextImpl implements TypeContext {
         }
 
         NamedType javaLang = data.compiledTypesManager.get("java.lang." + name);
-        if (complain && javaLang == null) {
+        if (javaLang != null) return javaLang;
+        if (data.allowCreationOfStubTypes) {
+            return createStubType(name);
+        }
+        if (complain) {
             throw new UnsupportedOperationException("Cannot find type " + name);
         }
-        return javaLang;
+        return null;
     }
 
     private TypeInfo subTypeOfRelated(TypeInfo typeInfo, String name) {

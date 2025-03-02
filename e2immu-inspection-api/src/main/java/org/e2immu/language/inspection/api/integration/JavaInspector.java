@@ -4,7 +4,6 @@ package org.e2immu.language.inspection.api.integration;
 import org.e2immu.language.cst.api.info.ImportComputer;
 import org.e2immu.language.cst.api.info.TypeInfo;
 import org.e2immu.language.cst.api.runtime.Runtime;
-import org.e2immu.language.inspection.api.parser.SourceTypes;
 import org.e2immu.language.inspection.api.parser.Summary;
 import org.e2immu.language.inspection.api.resource.CompiledTypesManager;
 import org.e2immu.language.inspection.api.resource.InputConfiguration;
@@ -19,6 +18,20 @@ import java.util.Map;
  */
 public interface JavaInspector {
 
+    record ParseOptions(boolean failFast, boolean detailedSources, boolean allowCreationOfStubTypes) {
+    }
+
+    interface ParseOptionsBuilder {
+
+        ParseOptionsBuilder setFailFast(boolean failFast);
+
+        ParseOptionsBuilder setDetailedSources(boolean detailedSources);
+
+        ParseOptionsBuilder setAllowCreationOfStubTypes(boolean allowCreationOfStubTypes);
+
+        ParseOptions build();
+    }
+
     ImportComputer importComputer(int i);
 
     void initialize(InputConfiguration inputConfiguration) throws IOException;
@@ -27,32 +40,23 @@ public interface JavaInspector {
 
     void preload(String thePackage);
 
-    default Summary parse(boolean failFast) {
-        return parse(failFast, false);
-    }
+    // main parse method, from sources specified in InputConfiguration
+    Summary parse(ParseOptions parseOptions);
 
-    default Summary parse(boolean failFast, boolean detailedSources) {
-        return parse(failFast, detailedSources, Map.of());
-    }
+    // only for testing
+    Summary parse(Map<String, String> sourcesByTestProtocolURIString, ParseOptions parseOptions);
 
-    Summary parse(boolean failFast, boolean detailedSources, Map<String, String> sourcesByTestProtocolURIString);
-
-    // only for testing, after general parse()
+    // only for testing, uses FAIL_FAST default
     TypeInfo parse(String input);
 
-    default Summary parse(URI typeInfo) {
-        return parse(typeInfo, false);
-    }
+    // only for testing, after general parse()
+    TypeInfo parse(String input, ParseOptions parseOptions);
 
     // only for testing, after general parse();
-    Summary parse(URI typeInfo, boolean detailedSources);
-
-    default List<TypeInfo> parseReturnAll(String input) {
-        return parseReturnAll(input, false);
-    }
+    Summary parse(URI typeInfo, ParseOptions parseOptions);
 
     // only for testing, after general parse();
-    List<TypeInfo> parseReturnAll(String input, boolean detailedSources);
+    List<TypeInfo> parseReturnAll(String input, ParseOptions parseOptions);
 
     String print2(TypeInfo typeInfo);
 
