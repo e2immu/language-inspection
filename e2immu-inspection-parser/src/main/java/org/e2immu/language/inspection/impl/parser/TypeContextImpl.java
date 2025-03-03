@@ -27,14 +27,22 @@ import java.util.stream.Stream;
 public class TypeContextImpl implements TypeContext {
     private static final Logger LOGGER = LoggerFactory.getLogger(TypeContextImpl.class);
 
+    private record StubTypeMap(Map<String, TypeInfo> map) {
+    }
+
     private record Data(Runtime runtime,
                         CompiledTypesManager compiledTypesManager,
                         SourceTypeMap sourceTypeMap,
                         StaticImportMap staticImportMap,
                         CompilationUnit compilationUnit,
-                        boolean allowCreationOfStubTypes) {
+                        StubTypeMap stubTypeMap) {
+
+        public boolean allowCreationOfStubTypes() {
+            return stubTypeMap != null;
+        }
+
         Data withCompilationUnit(CompilationUnit cu) {
-            return new Data(runtime, compiledTypesManager, sourceTypeMap, new StaticImportMapImpl(), cu, allowCreationOfStubTypes);
+            return new Data(runtime, compiledTypesManager, sourceTypeMap, new StaticImportMapImpl(), cu, stubTypeMap);
         }
     }
 
@@ -48,7 +56,7 @@ public class TypeContextImpl implements TypeContext {
     public TypeContextImpl(Runtime runtime, CompiledTypesManager compiledTypesManager, SourceTypeMap sourceTypeMap,
                            boolean allowCreationOfStubTypes) {
         this(null, new Data(runtime, compiledTypesManager, sourceTypeMap, null,
-                null, allowCreationOfStubTypes));
+                null, allowCreationOfStubTypes ? new StubTypeMap(new HashMap<>()) : null));
     }
 
     private TypeContextImpl(TypeContextImpl parentContext, Data data) {
@@ -194,13 +202,30 @@ public class TypeContextImpl implements TypeContext {
      we have no idea whether the name is fully qualified, partially qualified... we can try
      the import statements, but they can contain *'s or be incomplete.
      */
-    private TypeInfo createStubType(String name) {
+    private TypeInfo getOrCreateStubType(String name) {
+        TypeInfo inMap = data.stubTypeMap.map.get(name);
+        if (inMap != null) return inMap;
         int lastDot = name.lastIndexOf('.');
         String simpleName = lastDot < 0 ? name : name.substring(lastDot + 1);
-        CompilationUnit compilationUnitStub = data.runtime.newCompilationUnitStub();
+        String candidatePackageName = tryToDeducePackageName(name);
+        CompilationUnit compilationUnitStub = data.runtime.newCompilationUnitStub(candidatePackageName);
         TypeInfo typeInfo = data.runtime.newTypeInfo(compilationUnitStub, simpleName);
         typeInfo.builder().setTypeNature(data.runtime.typeNatureStub());
+        data.stubTypeMap.map.put(name, typeInfo);
         return typeInfo;
+    }
+
+    private String tryToDeducePackageName(String name) {
+        return data.compilationUnit.importStatements().stream().filter(is ->
+                        !is.isStatic() && is.importString().endsWith(name))
+                .map(is -> {
+                    int dot = is.importString().lastIndexOf('.');
+                    return dot < 0 ? "" : is.importString().substring(0, dot);
+                })
+                .findFirst().orElseGet(() -> {
+                    int dot = name.lastIndexOf('.');
+                    return dot < 0 ? "" : name.substring(0, dot);
+                });
     }
 
     @Override
@@ -232,8 +257,8 @@ public class TypeContextImpl implements TypeContext {
 
         NamedType javaLang = data.compiledTypesManager.get("java.lang." + name);
         if (javaLang != null) return javaLang;
-        if (data.allowCreationOfStubTypes) {
-            return createStubType(name);
+        if (data.allowCreationOfStubTypes()) {
+            return getOrCreateStubType(name);
         }
         if (complain) {
             throw new UnsupportedOperationException("Cannot find type " + name);
