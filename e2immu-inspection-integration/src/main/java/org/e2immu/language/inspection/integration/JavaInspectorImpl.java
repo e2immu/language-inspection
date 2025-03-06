@@ -112,7 +112,7 @@ public class JavaInspectorImpl implements JavaInspector {
         ctm.setByteCodeInspector(byteCodeInspector);
         this.compiledTypesManager = ctm;
 
-        for (String packageName : new String[]{"org.e2immu.annotation", "java.lang", "java.util.function"}) {
+        for (String packageName : new String[]{"java.lang", "java.util.function"}) {
             preload(packageName);
         }
 
