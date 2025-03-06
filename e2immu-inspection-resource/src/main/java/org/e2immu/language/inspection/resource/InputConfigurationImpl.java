@@ -9,6 +9,7 @@ import java.io.File;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
+import java.util.stream.Stream;
 
 public record InputConfigurationImpl(List<String> sources,
                                      List<String> restrictSourceToPackages,
@@ -31,6 +32,15 @@ public record InputConfigurationImpl(List<String> sources,
     public static final String DEFAULT_CLASSPATH_STRING = String.join(File.pathSeparator, DEFAULT_CLASSPATH);
 
     static final String NL_TAB = "\n    ";
+
+    @Override
+    public InputConfiguration withClassPathParts(String... classPathParts) {
+        List<String> combinedClassPathParts = Stream.concat(this.classPathParts.stream(), Arrays.stream(classPathParts))
+                .toList();
+        return new InputConfigurationImpl(sources, restrictSourceToPackages, testSources, restrictTestSourceToPackages,
+                combinedClassPathParts, runtimeClassPathParts, testClassPathParts, testRuntimeClassPathParts,
+                excludeFromClasspath, alternativeJREDirectory, sourceEncoding, dependencies, infoLogClasspath);
+    }
 
     @Override
     public String toString() {

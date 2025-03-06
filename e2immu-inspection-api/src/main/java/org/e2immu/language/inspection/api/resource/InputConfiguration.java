@@ -34,6 +34,8 @@ public interface InputConfiguration {
 
     List<String> dependencies();
 
+    InputConfiguration withClassPathParts(String... classPathParts);
+
     interface Builder {
 
         @Fluent
