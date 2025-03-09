@@ -24,12 +24,23 @@ public record InputConfigurationImpl(List<String> sources,
                                      Charset sourceEncoding,
                                      List<String> dependencies,
                                      boolean infoLogClasspath) implements InputConfiguration {
-    public static final String DEFAULT_SOURCE_DIRS = "src/main/java";
-    public static final String DEFAULT_TEST_SOURCE_DIRS = "src/test/java";
 
-    public static final String[] DEFAULT_CLASSPATH = {"build/classes/java/main", "jmods/java.base.jmod",
-            "jmods/java.xml.jmod", "jmods/java.net.http.jmod"};
-    public static final String DEFAULT_CLASSPATH_STRING = String.join(File.pathSeparator, DEFAULT_CLASSPATH);
+    public static final String MAVEN_MAIN = "src/main/java";
+    public static final String MAVEN_TEST = "src/test/java";
+    public static final String GRADLE_BUIlD = "build/classes/java/main";
+
+    public static final String[] DEFAULT_MODULES = {
+            "jmods/java.base.jmod",
+            "jmods/java.datatransfer.jmod",
+            "jmods/java.desktop.jmod",
+            "jmods/java.logging.jmod",
+            "jmods/java.net.http.jmod",
+            "jmods/java.sql.jmod",
+            "jmods/java.xml.jmod",
+    };
+
+    public static final String[] GRADLE_DEFAULT = Stream.concat(Stream.of(GRADLE_BUIlD),
+            Arrays.stream(DEFAULT_MODULES)).toArray(String[]::new);
 
     static final String NL_TAB = "\n    ";
 

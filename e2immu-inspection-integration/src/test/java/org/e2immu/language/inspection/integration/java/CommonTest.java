@@ -27,10 +27,10 @@ public abstract class CommonTest {
     public void beforeEach() throws IOException {
         javaInspector = new JavaInspectorImpl();
         InputConfiguration inputConfiguration = new InputConfigurationImpl.Builder()
-                .addSources("src/test/java")
+                .addSources(InputConfigurationImpl.MAVEN_TEST)
                 .addRestrictSourceToPackages("org.e2immu.language.inspection.integration.java.importhelper.")
-                .addClassPath(InputConfigurationImpl.DEFAULT_CLASSPATH)
-                .addClassPath("jmods/java.sql.jmod")
+                .addClassPath(InputConfigurationImpl.GRADLE_DEFAULT)
+                // NOTE: no access to ToolChain here; this is rather exceptional
                 .addClassPath(JAR_WITH_PATH_PREFIX + "org/junit/jupiter/api")
                 .addClassPath(JAR_WITH_PATH_PREFIX + "org/apiguardian/api")
                 .addClassPath(JAR_WITH_PATH_PREFIX + "org/junit/platform/commons")
