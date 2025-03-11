@@ -36,7 +36,7 @@ public class TestLambda extends CommonTest {
             && mc.parameterExpressions().get(0) instanceof Lambda lambda) {
             MethodInfo mi = lambda.methodInfo();
             TypeInfo ti = mi.typeInfo();
-            assertEquals("C.$1", ti.fullyQualifiedName());
+            assertEquals("C.$0", ti.fullyQualifiedName());
             assertEquals(1, ti.interfacesImplemented().size());
             assertEquals("java.util.function.Predicate<String>", ti.interfacesImplemented().get(0).fullyQualifiedName());
         } else fail();

@@ -13,8 +13,6 @@ import org.e2immu.language.cst.api.type.ParameterizedType;
 import java.util.Map;
 
 public interface Context {
-    AnonymousTypeCounters anonymousTypeCounters();
-
     VariableContext dependentVariableContext();
 
     ForwardType emptyForwardType();

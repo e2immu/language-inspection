@@ -434,9 +434,9 @@ public class TestConstructor extends CommonTest {
         if (map.initializer() instanceof ConstructorCall cc) {
             assertNotNull(cc.anonymousClass());
             assertEquals("Type java.util.HashMap<String,String>", cc.anonymousClass().parentClass().toString());
-            assertEquals("org.e2immu.analyser.resolver.testexample.Constructor_12DoubleBrace.$1", cc.anonymousClass().fullyQualifiedName());
+            assertEquals("org.e2immu.analyser.resolver.testexample.Constructor_12DoubleBrace.$0", cc.anonymousClass().fullyQualifiedName());
             MethodInfo constructor = cc.anonymousClass().findConstructor(0);
-            assertEquals("org.e2immu.analyser.resolver.testexample.Constructor_12DoubleBrace.$1.<init>()", constructor.fullyQualifiedName());
+            assertEquals("org.e2immu.analyser.resolver.testexample.Constructor_12DoubleBrace.$0.<init>()", constructor.fullyQualifiedName());
         } else fail();
     }
 

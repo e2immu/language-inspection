@@ -315,13 +315,7 @@ public record GenericsHelperImpl(Runtime runtime) implements GenericsHelper {
 
         @Override
         public Lambda build() {
-            int typeIndex = enclosingType.subTypes().stream().mapToInt(st -> {
-                Matcher m = ANON.matcher(st.simpleName());
-                if (m.matches()) {
-                    return Integer.parseInt(m.group(1));
-                }
-                return -1;
-            }).max().orElse(-1) + 1;
+            int typeIndex = enclosingType.builder().getAndIncrementAnonymousTypes();
             TypeInfo anonymousType = runtime.newAnonymousType(enclosingType, typeIndex);
             anonymousType.builder()
                     .setAccess(runtime.accessPrivate())
@@ -363,6 +357,7 @@ public record GenericsHelperImpl(Runtime runtime) implements GenericsHelper {
                     .addMethod(methodInfo)
                     .addInterfaceImplemented(functionalType)
                     .setEnclosingMethod(enclosingMethod)
+                    .setSingleAbstractMethod(methodInfo)
                     .setSource(source)
                     .commit();
 

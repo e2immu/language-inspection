@@ -73,7 +73,7 @@ public class TestTranslateAnonymousType extends CommonTest {
             MethodCall xMc = (MethodCall) xEas.expression();
             ConstructorCall xCc = (ConstructorCall) xMc.parameterExpressions().get(3);
             TypeInfo xAnon = xCc.anonymousClass();
-            assertEquals("a.b.X.$1", xAnon.fullyQualifiedName());
+            assertEquals("a.b.X.$0", xAnon.fullyQualifiedName());
             assertSame(X, xAnon.compilationUnitOrEnclosingType().getRight());
             MethodInfo xPre = xAnon.findUniqueMethod("preVisitDirectory", 2);
             ParameterInfo xPreDir = xPre.parameters().get(0);
@@ -88,7 +88,7 @@ public class TestTranslateAnonymousType extends CommonTest {
             MethodCall tMc = (MethodCall) tEas.expression();
             ConstructorCall tCc = (ConstructorCall) tMc.parameterExpressions().get(3);
             TypeInfo tAnon = tCc.anonymousClass();
-            assertEquals("a.b.X.$1", tAnon.fullyQualifiedName());
+            assertEquals("a.b.X.$0", tAnon.fullyQualifiedName());
             assertSame(translated, tAnon.compilationUnitOrEnclosingType().getRight());
             MethodInfo tPre = tAnon.findUniqueMethod("preVisitDirectory", 2);
             ParameterInfo tPreDir = tPre.parameters().get(0);

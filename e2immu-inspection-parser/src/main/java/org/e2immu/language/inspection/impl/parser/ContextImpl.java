@@ -121,12 +121,6 @@ public class ContextImpl implements Context {
         return data.summary;
     }
 
-
-    @Override
-    public AnonymousTypeCounters anonymousTypeCounters() {
-        return anonymousTypeCounters;
-    }
-
     @Override
     public VariableContext dependentVariableContext() {
         return variableContext.newVariableContext();
