@@ -48,4 +48,7 @@ public interface Summary {
     Set<TypeInfo> types();
 
     TypeInfo firstType();
+
+    TypeInfo getTypeByFqn(String canonicalName);
+
 }

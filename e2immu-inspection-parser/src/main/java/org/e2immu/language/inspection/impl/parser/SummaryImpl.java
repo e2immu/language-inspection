@@ -32,6 +32,12 @@ public class SummaryImpl implements Summary {
     }
 
     @Override
+    public TypeInfo getTypeByFqn(String fqn) {
+        return types.keySet().stream().filter(ti -> fqn.equals(ti.fullyQualifiedName()))
+                .findFirst().orElse(null);
+    }
+
+    @Override
     public void addMethod(boolean success) {
         if (success) ++methodsSuccess;
         else ++methodsWithErrors;
