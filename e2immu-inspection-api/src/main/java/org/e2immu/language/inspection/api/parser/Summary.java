@@ -6,6 +6,10 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 
+/*
+When parsing is successful, switch to ParseResult.
+
+ */
 public interface Summary {
 
     boolean haveErrors();
@@ -47,8 +51,6 @@ public interface Summary {
 
     Set<TypeInfo> types();
 
-    TypeInfo firstType();
-
-    TypeInfo getTypeByFqn(String canonicalName);
+    ParseResult parseResult();
 
 }

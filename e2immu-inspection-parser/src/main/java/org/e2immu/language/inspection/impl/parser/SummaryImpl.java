@@ -1,6 +1,7 @@
 package org.e2immu.language.inspection.impl.parser;
 
 import org.e2immu.language.cst.api.info.TypeInfo;
+import org.e2immu.language.inspection.api.parser.ParseResult;
 import org.e2immu.language.inspection.api.parser.Summary;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,14 +28,11 @@ public class SummaryImpl implements Summary {
     }
 
     @Override
-    public TypeInfo firstType() {
-        return types.keySet().stream().findFirst().orElseThrow();
-    }
-
-    @Override
-    public TypeInfo getTypeByFqn(String fqn) {
-        return types.keySet().stream().filter(ti -> fqn.equals(ti.fullyQualifiedName()))
-                .findFirst().orElse(null);
+    public ParseResult parseResult() {
+        if (haveErrors()) {
+            throw new UnsupportedOperationException("Can only switch to ParseResult when there are no parse errors");
+        }
+        return new ParseResultImpl(types.keySet());
     }
 
     @Override
@@ -50,8 +48,7 @@ public class SummaryImpl implements Summary {
 
     @Override
     public void addParserError(Throwable parserError) {
-        parserError.printStackTrace();
-        LOGGER.error("Register parser error: {}", parserError.getMessage());
+        LOGGER.error("Register parser error", parserError);
         this.parserErrors.add(parserError);
         if (failFast) {
             throw new Summary.FailFastException("Failing with parser error: " + parserError.getMessage());
