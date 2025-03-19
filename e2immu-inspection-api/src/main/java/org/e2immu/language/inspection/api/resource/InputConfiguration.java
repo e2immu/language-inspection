@@ -5,6 +5,7 @@ import org.e2immu.annotation.Fluent;
 import java.nio.charset.Charset;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 
 public interface InputConfiguration {
 
@@ -78,5 +79,11 @@ public interface InputConfiguration {
         Builder setInfoLogClasspath(boolean infoLogClasspath);
 
         InputConfiguration build();
+    }
+
+    default List<String> allClassPathParts() {
+        return Stream.concat(Stream.concat(Stream.concat(classPathParts().stream(),
+                        testClassPathParts().stream()), runtimeClassPathParts().stream()),
+                testRuntimeClassPathParts().stream()).distinct().toList();
     }
 }
