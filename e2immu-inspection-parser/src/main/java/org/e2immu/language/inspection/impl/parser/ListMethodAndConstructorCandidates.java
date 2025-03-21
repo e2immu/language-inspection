@@ -219,7 +219,8 @@ public class ListMethodAndConstructorCandidates {
                                          boolean scopeIsThis,
                                          Source source,
                                          Context context,
-                                         TypeInfo enclosingType) {
+                                         TypeInfo enclosingType,
+                                         boolean scopeIsImplicit) {
         /*
          in 3 situations, we compute (or potentially correct) the scope.
          In the case of a static method, we always replace by the class containing the method.
@@ -233,7 +234,7 @@ public class ListMethodAndConstructorCandidates {
                 TypeInfo exact = methodInfo.typeInfo();
                 if (methodInfo.isStatic()) {
                     DetailedSources.Builder detailedSourcesBuilder = context.newDetailedSourcesBuilder();
-                    if (detailedSourcesBuilder != null) {
+                    if (!scopeIsImplicit && detailedSourcesBuilder != null) {
                         detailedSourcesBuilder.put(exact, source);
                     }
                     return runtime.newTypeExpressionBuilder()
