@@ -252,7 +252,7 @@ public class MethodResolutionImpl implements MethodResolution {
 
         boolean scopeIsThis = scope.expression() instanceof VariableExpression ve && ve.variable() instanceof This;
         Expression newScope = scope.ensureExplicit(runtime, hierarchyHelper, candidate.method.methodInfo(),
-                scopeIsThis, source, context.enclosingType());
+                scopeIsThis, source, context, context.enclosingType());
         ParameterizedType returnType = candidate.returnType(runtime, context.enclosingType().primaryType(), extra);
         LOGGER.debug("Concrete return type of {} is {}", methodName, returnType.detailedString());
 
