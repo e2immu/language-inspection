@@ -276,7 +276,8 @@ public class JavaInspectorImpl implements JavaInspector {
                 parseOptions.detailedSources());
         ScanCompilationUnit scanCompilationUnit = new ScanCompilationUnit(summary, runtime);
 
-        ScanCompilationUnit.ScanResult sr = scanCompilationUnit.scan(uri, parser.get().CompilationUnit());
+        ScanCompilationUnit.ScanResult sr = scanCompilationUnit.scan(uri, parser.get().CompilationUnit(),
+                parseOptions.detailedSources());
         sourceTypeMap.putAll(sr.sourceTypes());
         CompilationUnit cu = sr.compilationUnit();
 
@@ -337,13 +338,13 @@ public class JavaInspectorImpl implements JavaInspector {
             String uriString = uri.toString();
             if (uriString.startsWith(TEST_PROTOCOL_PREFIX)) {
                 String source = sourcesByTestProtocolURIString.get(uriString);
-                parseSourceString(uri, source, summary, list);
+                parseSourceString(uri, source, summary, list, parseOptions.detailedSources());
             } else {
                 try (InputStreamReader isr = makeInputStreamReader(uri); StringWriter sw = new StringWriter()) {
                     isr.transferTo(sw);
                     String sourceCode = sw.toString();
 
-                    parseSourceString(uri, sourceCode, summary, list);
+                    parseSourceString(uri, sourceCode, summary, list, parseOptions.detailedSources());
                 } catch (IOException io) {
                     LOGGER.error("Caught IO exception", io);
                     summary.addParserError(io);
@@ -366,14 +367,15 @@ public class JavaInspectorImpl implements JavaInspector {
         return summary;
     }
 
-    private void parseSourceString(URI uri, String sourceCode, Summary summary, List<URICompilationUnit> list) {
+    private void parseSourceString(URI uri, String sourceCode, Summary summary, List<URICompilationUnit> list,
+                                   boolean addDetailedSources) {
         JavaParser parser = new JavaParser(sourceCode);
         parser.setParserTolerant(false);
 
         ScanCompilationUnit scanCompilationUnit = new ScanCompilationUnit(summary, runtime);
         org.parsers.java.ast.CompilationUnit cu = parser.CompilationUnit();
         LOGGER.debug("Scanning {}", uri);
-        ScanCompilationUnit.ScanResult sr = scanCompilationUnit.scan(uri, cu);
+        ScanCompilationUnit.ScanResult sr = scanCompilationUnit.scan(uri, cu, addDetailedSources);
         sourceTypeMap.putAll(sr.sourceTypes());
         CompilationUnit compilationUnit = sr.compilationUnit();
         URICompilationUnit uc = new URICompilationUnit(uri, cu, compilationUnit);
