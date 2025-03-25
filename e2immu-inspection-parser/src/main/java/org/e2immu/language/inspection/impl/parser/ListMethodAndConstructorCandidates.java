@@ -217,31 +217,31 @@ public class ListMethodAndConstructorCandidates {
                                          HierarchyHelper hierarchyHelper,
                                          MethodInfo methodInfo,
                                          boolean scopeIsThis,
-                                         Source source,
                                          Context context,
                                          TypeInfo enclosingType,
-                                         boolean scopeIsImplicit) {
-        /*
-         in 3 situations, we compute (or potentially correct) the scope.
-         In the case of a static method, we always replace by the class containing the method.
-         In the case of this: we use the type of the current class in case of extension, but not in case of sub-typing,
-         because we have to be able to indicate that we're reading the correct "this" in the VariableAccess report.
-         In case of parent-child, we activate the "super" boolean.
-         See e.g. Lambda_15.
-         IMPROVE! https://github.com/e2immu/e2immu/issues/60
-         */
+                                         Source unparsedScopeSource) {
+            /*
+             in 3 situations, we compute (or potentially correct) the scope.
+             In the case of a static method, we always replace by the class containing the method.
+             In the case of this: we use the type of the current class in case of extension, but not in case of sub-typing,
+             because we have to be able to indicate that we're reading the correct "this" in the VariableAccess report.
+             In case of parent-child, we activate the "super" boolean.
+             See e.g. Lambda_15.
+             IMPROVE! https://github.com/e2immu/e2immu/issues/60
+             */
             if (objectIsImplicit() || methodInfo.isStatic() || scopeIsThis) {
                 TypeInfo exact = methodInfo.typeInfo();
                 if (methodInfo.isStatic()) {
                     DetailedSources.Builder detailedSourcesBuilder = context.newDetailedSourcesBuilder();
-                    if (!scopeIsImplicit && detailedSourcesBuilder != null) {
-                        detailedSourcesBuilder.put(exact, source);
+                    if (unparsedScopeSource != null && detailedSourcesBuilder != null) {
+                        detailedSourcesBuilder.put(exact, unparsedScopeSource);
                     }
                     return runtime.newTypeExpressionBuilder()
                             .setParameterizedType(exact.asParameterizedType())
                             .setDiamond(runtime.diamondNo())
-                            .setSource(detailedSourcesBuilder == null ? source
-                                    : source.withDetailedSources(detailedSourcesBuilder.build()))
+                            .setSource(detailedSourcesBuilder == null || unparsedScopeSource == null
+                                    ? unparsedScopeSource
+                                    : unparsedScopeSource.withDetailedSources(detailedSourcesBuilder.build()))
                             .build();
                 }
                 TypeInfo typeInfo;
@@ -262,8 +262,10 @@ public class ListMethodAndConstructorCandidates {
                     writeSuper = false;
                     explicitlyWriteType = exact;
                 }
-                Variable thisVariable = runtime.newThis(typeInfo.asParameterizedType(), explicitlyWriteType, writeSuper);
-                return runtime.newVariableExpressionBuilder().setVariable(thisVariable).setSource(source).build();
+                Variable thisVariable = runtime.newThis(typeInfo.asParameterizedType(),
+                        explicitlyWriteType, writeSuper);
+                return runtime.newVariableExpressionBuilder().setVariable(thisVariable)
+                        .setSource(unparsedScopeSource).build();
             }
             return expression;
         }

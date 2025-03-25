@@ -68,4 +68,9 @@ public class ParseResultImpl implements ParseResult {
         }
         throw new RuntimeException("Cannot find method with fqn '" + methodFqn + "'");
     }
+
+    @Override
+    public Map<String, Set<TypeInfo>> primaryTypesPerPackage() {
+        return primaryTypesOfPackage;
+    }
 }

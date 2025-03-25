@@ -62,7 +62,6 @@ public class JavaInspectorImpl implements JavaInspector {
      * jar:file:/Users/bnaudts/.gradle/caches/modules-2/files-2.1/com.google.guava/guava/28.1-jre/b0e91dcb6a44ffb6221b5027e12a5cb34b841145/guava-28.1-jre.jar!/
      */
     public static final String JAR_WITH_PATH_PREFIX = "jar-on-classpath:";
-    public static final String TEST_PROTOCOL = "testprotocol";
     public static final String TEST_PROTOCOL_PREFIX = TEST_PROTOCOL + ":";
     public static final ParseOptions FAIL_FAST = new ParseOptions(true, false,
             false);

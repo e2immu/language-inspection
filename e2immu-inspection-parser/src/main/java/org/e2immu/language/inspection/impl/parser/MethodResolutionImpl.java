@@ -122,6 +122,7 @@ public class MethodResolutionImpl implements MethodResolution {
                                          ParameterizedType expectedConcreteType,
                                          Diamond diamond,
                                          Object unparsedObject,
+                                         Source unparsedObjectSource,
                                          List<Object> unparsedArguments,
                                          List<ParameterizedType> methodTypeArguments,
                                          boolean complain) {
@@ -228,6 +229,7 @@ public class MethodResolutionImpl implements MethodResolution {
                                     ForwardType forwardType,
                                     String methodName,
                                     Object unparsedScope,
+                                    Source unparsedScopeSource,
                                     List<Object> unparsedArguments) {
         // we must create it here, because the importMap only exists once we're parsing a compilation unit
         ListMethodAndConstructorCandidates list = new ListMethodAndConstructorCandidates(runtime,
@@ -252,7 +254,7 @@ public class MethodResolutionImpl implements MethodResolution {
 
         boolean scopeIsThis = scope.expression() instanceof VariableExpression ve && ve.variable() instanceof This;
         Expression newScope = scope.ensureExplicit(runtime, hierarchyHelper, candidate.method.methodInfo(),
-                scopeIsThis, source, context, context.enclosingType(), unparsedScope == null);
+                scopeIsThis, context, context.enclosingType(), unparsedScopeSource);
         ParameterizedType returnType = candidate.returnType(runtime, context.enclosingType().primaryType(), extra);
         LOGGER.debug("Concrete return type of {} is {}", methodName, returnType.detailedString());
 

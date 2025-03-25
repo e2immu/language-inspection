@@ -28,13 +28,17 @@ public interface MethodResolution {
                                   ParameterizedType expectedConcreteType,
                                   Diamond diamond,
                                   Object unparsedObject,
+                                  Source unparsedObjectSource,
                                   List<Object> unparsedArguments,
                                   List<ParameterizedType> methodTypeArguments,
                                   boolean complain);
 
     Expression resolveMethod(Context context, List<Comment> comments, Source source, String index,
                              ForwardType forwardType,
-                             String methodName, Object unparsedObject, List<Object> unparsedArguments);
+                             String methodName,
+                             Object unparsedObject,
+                             Source unparsedObjectSource,
+                             List<Object> unparsedArguments);
 
     Expression resolveMethodReference(Context context, List<Comment> comments, Source source, String index,
                                       ForwardType forwardType,
