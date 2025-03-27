@@ -1,6 +1,7 @@
 package org.e2immu.language.inspection.impl.parser;
 
 import org.e2immu.language.cst.api.element.Comment;
+import org.e2immu.language.cst.api.element.DetailedSources;
 import org.e2immu.language.cst.api.element.Source;
 import org.e2immu.language.cst.api.expression.Expression;
 import org.e2immu.language.cst.api.expression.MethodReference;
@@ -225,6 +226,7 @@ public class MethodResolutionImpl implements MethodResolution {
     public Expression resolveMethod(Context context,
                                     List<Comment> comments,
                                     Source source,
+                                    Source sourceOfName,
                                     String index,
                                     ForwardType forwardType,
                                     String methodName,
@@ -250,19 +252,26 @@ public class MethodResolutionImpl implements MethodResolution {
         if (candidate == null) {
             throw new Summary.ParseException(context.info(), "Failed to find a unique method candidate");
         }
-        LOGGER.debug("Resulting method is {}", candidate.method.methodInfo());
+        MethodInfo resolvedMethod = candidate.method.methodInfo();
+        LOGGER.debug("Resulting method is {}", resolvedMethod);
 
         boolean scopeIsThis = scope.expression() instanceof VariableExpression ve && ve.variable() instanceof This;
-        Expression newScope = scope.ensureExplicit(runtime, hierarchyHelper, candidate.method.methodInfo(),
+        Expression newScope = scope.ensureExplicit(runtime, hierarchyHelper, resolvedMethod,
                 scopeIsThis, context, context.enclosingType(), unparsedScopeSource);
         ParameterizedType returnType = candidate.returnType(runtime, context.enclosingType().primaryType(), extra);
         LOGGER.debug("Concrete return type of {} is {}", methodName, returnType.detailedString());
 
+        DetailedSources.Builder detailedSourcesBuilder = context.newDetailedSourcesBuilder();
+        if(detailedSourcesBuilder != null) {
+            detailedSourcesBuilder.put(resolvedMethod.name(), sourceOfName);
+        }
         return runtime.newMethodCallBuilder()
-                .setSource(source).addComments(comments)
+                .setSource(detailedSourcesBuilder != null
+                        ? source.withDetailedSources(detailedSourcesBuilder.build()) : source)
+                .addComments(comments)
                 .setObjectIsImplicit(scope.objectIsImplicit())
                 .setObject(newScope)
-                .setMethodInfo(candidate.method.methodInfo())
+                .setMethodInfo(resolvedMethod)
                 .setConcreteReturnType(returnType)
                 .setParameterExpressions(candidate.newParameterExpressions).build();
     }

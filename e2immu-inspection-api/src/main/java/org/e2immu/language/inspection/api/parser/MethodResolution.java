@@ -1,6 +1,7 @@
 package org.e2immu.language.inspection.api.parser;
 
 import org.e2immu.language.cst.api.element.Comment;
+import org.e2immu.language.cst.api.element.DetailedSources;
 import org.e2immu.language.cst.api.element.Source;
 import org.e2immu.language.cst.api.expression.Expression;
 import org.e2immu.language.cst.api.expression.MethodReference;
@@ -33,7 +34,11 @@ public interface MethodResolution {
                                   List<ParameterizedType> methodTypeArguments,
                                   boolean complain);
 
-    Expression resolveMethod(Context context, List<Comment> comments, Source source, String index,
+    Expression resolveMethod(Context context,
+                             List<Comment> comments,
+                             Source source,
+                             Source sourceOfName,
+                             String index,
                              ForwardType forwardType,
                              String methodName,
                              Object unparsedObject,

@@ -232,6 +232,7 @@ public class ListMethodAndConstructorCandidates {
             if (objectIsImplicit() || methodInfo.isStatic() || scopeIsThis) {
                 TypeInfo exact = methodInfo.typeInfo();
                 if (methodInfo.isStatic()) {
+                    // every TypeExpression should have its TypeInfo in the detailed sources, if required.
                     DetailedSources.Builder detailedSourcesBuilder = context.newDetailedSourcesBuilder();
                     if (unparsedScopeSource != null && detailedSourcesBuilder != null) {
                         detailedSourcesBuilder.put(exact, unparsedScopeSource);
