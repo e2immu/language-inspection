@@ -1,7 +1,14 @@
 package org.e2immu.language.inspection.integration.java.other;
 
+import org.e2immu.language.cst.api.element.DetailedSources;
+import org.e2immu.language.cst.api.expression.Assignment;
+import org.e2immu.language.cst.api.expression.VariableExpression;
 import org.e2immu.language.cst.api.info.FieldInfo;
+import org.e2immu.language.cst.api.info.MethodInfo;
 import org.e2immu.language.cst.api.info.TypeInfo;
+import org.e2immu.language.cst.api.statement.ExpressionAsStatement;
+import org.e2immu.language.cst.api.variable.FieldReference;
+import org.e2immu.language.cst.api.variable.This;
 import org.e2immu.language.inspection.integration.java.CommonTest;
 import org.intellij.lang.annotations.Language;
 import org.junit.jupiter.api.Test;
@@ -10,6 +17,30 @@ import static org.junit.jupiter.api.Assertions.*;
 
 public class TestField extends CommonTest {
 
+
+    @Language("java")
+    private static final String INPUT1 = """
+            package a.b;
+            class C {
+                public final String s;
+                C(String s) {
+                    this.s = s;
+                }
+            }
+            """;
+
+    @Test
+    public void test1() {
+        TypeInfo typeInfo = javaInspector.parse(INPUT1);
+        assertEquals("C", typeInfo.simpleName());
+        MethodInfo C = typeInfo.findConstructor(1);
+        ExpressionAsStatement c0 = (ExpressionAsStatement) C.methodBody().statements().get(0);
+        Assignment a = (Assignment) c0.expression();
+        VariableExpression ve = (VariableExpression) ((FieldReference) a.variableTarget()).scope();
+        assertEquals("5-9:5-12", ve.source().compact2());
+        DetailedSources ds = ve.source().detailedSources();
+        assertNull(ds);
+    }
 
     @Language("java")
     private static final String INPUT2 = """
