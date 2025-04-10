@@ -3,12 +3,15 @@ package org.e2immu.language.inspection.impl.parser;
 
 import org.e2immu.language.cst.api.expression.Expression;
 import org.e2immu.language.cst.api.info.*;
-import org.e2immu.language.inspection.api.parser.*;
-
+import org.e2immu.language.inspection.api.parser.Context;
+import org.e2immu.language.inspection.api.parser.ForwardType;
+import org.e2immu.language.inspection.api.parser.ParseHelper;
+import org.e2immu.language.inspection.api.parser.Resolver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.*;
+import java.util.LinkedList;
+import java.util.List;
 
 public class ResolverImpl implements Resolver {
     private static final Logger LOGGER = LoggerFactory.getLogger(Resolver.class);
@@ -32,6 +35,7 @@ public class ResolverImpl implements Resolver {
 
     private final List<Todo> todos = new LinkedList<>();
     private final List<TypeInfo.Builder> types = new LinkedList<>();
+    private final List<MethodInfo> recordAccessors = new LinkedList<>();
 
     public Resolver newEmpty() {
         return new ResolverImpl(computeMethodOverrides, parseHelper);
@@ -40,6 +44,11 @@ public class ResolverImpl implements Resolver {
     public void add(Info info, Info.Builder<?> infoBuilder, ForwardType forwardType, Object eci, Object expression,
                     Context context) {
         todos.add(new Todo(info, infoBuilder, forwardType, eci, expression, context));
+    }
+
+    @Override
+    public void addRecordAccessor(MethodInfo accessor) {
+        recordAccessors.add(accessor);
     }
 
     @Override
@@ -71,6 +80,10 @@ public class ResolverImpl implements Resolver {
                 todo.context.summary().addType(todo.context.enclosingType().primaryType(), success);
                 todo.context.summary().addMethod(success);
             } else throw new UnsupportedOperationException("In java, we cannot have expressions in other places");
+        }
+        for (MethodInfo accessor : recordAccessors) {
+            accessor.builder().addOverrides(computeMethodOverrides.overrides(accessor));
+            accessor.builder().commit();
         }
         for (TypeInfo.Builder builder : types) {
             builder.commit();
