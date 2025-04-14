@@ -402,8 +402,8 @@ public class JavaInspectorImpl implements JavaInspector {
     }
 
     @Override
-    public ImportComputer importComputer(int i) {
-        return new ImportComputerImpl(i, packageName -> {
+    public ImportComputer importComputer(int minStar) {
+        return new ImportComputerImpl(minStar, packageName -> {
             List<TypeInfo> st = sourceTypeMap.primaryTypesInPackage(packageName);
             if (!st.isEmpty()) return st;
             return compiledTypesManager.primaryTypesInPackage(packageName);

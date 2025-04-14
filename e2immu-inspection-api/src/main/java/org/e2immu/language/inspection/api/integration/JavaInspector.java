@@ -34,7 +34,7 @@ public interface JavaInspector {
         ParseOptions build();
     }
 
-    ImportComputer importComputer(int i);
+    ImportComputer importComputer(int minStar);
 
     void initialize(InputConfiguration inputConfiguration) throws IOException;
 
