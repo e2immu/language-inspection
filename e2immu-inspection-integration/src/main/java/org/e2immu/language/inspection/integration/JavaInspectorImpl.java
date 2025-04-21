@@ -7,8 +7,6 @@ import org.e2immu.language.cst.api.info.TypeInfo;
 import org.e2immu.language.cst.api.output.Formatter;
 import org.e2immu.language.cst.api.output.OutputBuilder;
 import org.e2immu.language.cst.api.runtime.Runtime;
-import org.e2immu.language.cst.impl.info.ImportComputerImpl;
-import org.e2immu.language.cst.impl.info.TypePrinter;
 import org.e2immu.language.cst.print.FormattingOptionsImpl;
 import org.e2immu.language.cst.print.formatter2.Formatter2Impl;
 import org.e2immu.language.inspection.api.integration.JavaInspector;
@@ -403,7 +401,7 @@ public class JavaInspectorImpl implements JavaInspector {
 
     @Override
     public ImportComputer importComputer(int minStar) {
-        return new ImportComputerImpl(minStar, packageName -> {
+        return runtime.newImportComputer(minStar, packageName -> {
             List<TypeInfo> st = sourceTypeMap.primaryTypesInPackage(packageName);
             if (!st.isEmpty()) return st;
             return compiledTypesManager.primaryTypesInPackage(packageName);
@@ -412,7 +410,7 @@ public class JavaInspectorImpl implements JavaInspector {
 
     @Override
     public String print2(TypeInfo typeInfo) {
-        OutputBuilder ob = new TypePrinter(typeInfo, true).print(importComputer(4),
+        OutputBuilder ob = runtime.newTypePrinter(typeInfo, true).print(importComputer(4),
                 runtime.qualificationQualifyFromPrimaryType(null), true);
         Formatter formatter = new Formatter2Impl(runtime, new FormattingOptionsImpl.Builder().build());
         return formatter.write(ob);

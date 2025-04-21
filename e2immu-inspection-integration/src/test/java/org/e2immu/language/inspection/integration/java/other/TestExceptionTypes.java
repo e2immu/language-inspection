@@ -1,10 +1,11 @@
 package org.e2immu.language.inspection.integration.java.other;
 
 import org.e2immu.language.cst.api.info.MethodInfo;
+import org.e2immu.language.cst.api.info.MethodPrinter;
 import org.e2immu.language.cst.api.info.TypeInfo;
 import org.e2immu.language.cst.api.output.Formatter;
 import org.e2immu.language.cst.api.output.OutputBuilder;
-import org.e2immu.language.cst.impl.info.MethodPrinter;
+import org.e2immu.language.cst.impl.info.MethodPrinterImpl;
 import org.e2immu.language.cst.print.FormatterImpl;
 import org.e2immu.language.cst.print.FormattingOptionsImpl;
 import org.e2immu.language.inspection.integration.java.CommonTest;
@@ -40,7 +41,7 @@ public class TestExceptionTypes extends CommonTest {
     public void test1() {
         TypeInfo x = javaInspector.parse(INPUT1);
         MethodInfo mi = x.findUniqueMethod("openConnection", 2);
-        MethodPrinter mp = new MethodPrinter(mi.typeInfo(), mi, true);
+        MethodPrinter mp = new MethodPrinterImpl(mi.typeInfo(), mi, true);
         assertEquals("""
                 static HttpURLConnection openConnection(String baseURL,String queryString) throws MalformedURLException,IOException{\
                 final StringBuilder buff=new StringBuilder();buff.append(baseURL);if(queryString!=null){buff.append("?");\
