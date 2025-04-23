@@ -14,7 +14,11 @@ computed from a Summary object
  */
 public interface ParseResult {
 
-    MethodInfo findMethod(String methodFqn);
+    default MethodInfo findMethod(String methodFqn) {
+        return findMethod(methodFqn, true);
+    }
+
+    MethodInfo findMethod(String methodFqn, boolean complain);
 
     TypeInfo findType(String typeFqn);
 

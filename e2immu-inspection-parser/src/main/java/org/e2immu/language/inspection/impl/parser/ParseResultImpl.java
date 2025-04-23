@@ -58,15 +58,19 @@ public class ParseResultImpl implements ParseResult {
     private static final Pattern METHOD = Pattern.compile("([^(]+)\\.[^(.]+\\(.+");
 
     @Override
-    public MethodInfo findMethod(String methodFqn) {
+    public MethodInfo findMethod(String methodFqn, boolean complain) {
         Matcher m = METHOD.matcher(methodFqn);
         if (m.matches()) {
             String typeFqn = m.group(1);
             TypeInfo typeInfo = findType(typeFqn);
-            return typeInfo.methodStream().filter(mi -> mi.fullyQualifiedName().equals(methodFqn))
-                    .findFirst().orElseThrow();
+            MethodInfo methodInfo = typeInfo.methodStream().filter(mi -> mi.fullyQualifiedName().equals(methodFqn))
+                    .findFirst().orElse(null);
+            if (methodInfo != null) return methodInfo;
         }
-        throw new RuntimeException("Cannot find method with fqn '" + methodFqn + "'");
+        if (complain) {
+            throw new RuntimeException("Cannot find method with fqn '" + methodFqn + "'");
+        }
+        return null;
     }
 
     @Override
