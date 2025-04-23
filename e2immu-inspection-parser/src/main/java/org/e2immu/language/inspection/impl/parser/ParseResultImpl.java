@@ -63,7 +63,8 @@ public class ParseResultImpl implements ParseResult {
         if (m.matches()) {
             String typeFqn = m.group(1);
             TypeInfo typeInfo = findType(typeFqn);
-            MethodInfo methodInfo = typeInfo.methodStream().filter(mi -> mi.fullyQualifiedName().equals(methodFqn))
+            MethodInfo methodInfo = typeInfo.constructorAndMethodStream()
+                    .filter(mi -> mi.fullyQualifiedName().equals(methodFqn))
                     .findFirst().orElse(null);
             if (methodInfo != null) return methodInfo;
         }
