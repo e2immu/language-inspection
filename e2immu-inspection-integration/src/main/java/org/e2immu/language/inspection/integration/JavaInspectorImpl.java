@@ -2,6 +2,8 @@ package org.e2immu.language.inspection.integration;
 
 import org.e2immu.bytecode.java.asm.ByteCodeInspectorImpl;
 import org.e2immu.language.cst.api.element.CompilationUnit;
+import org.e2immu.language.cst.api.element.FingerPrint;
+import org.e2immu.language.cst.api.element.SourceSet;
 import org.e2immu.language.cst.api.info.ImportComputer;
 import org.e2immu.language.cst.api.info.TypeInfo;
 import org.e2immu.language.cst.api.output.Formatter;
@@ -16,6 +18,7 @@ import org.e2immu.language.inspection.api.parser.Summary;
 import org.e2immu.language.inspection.api.resource.*;
 import org.e2immu.language.inspection.impl.parser.*;
 import org.e2immu.language.inspection.resource.CompiledTypesManagerImpl;
+import org.e2immu.language.inspection.resource.MD5FingerPrint;
 import org.e2immu.language.inspection.resource.ResourcesImpl;
 import org.e2immu.parser.java.ParseCompilationUnit;
 import org.e2immu.parser.java.ParseHelperImpl;
@@ -24,9 +27,15 @@ import org.parsers.java.JavaParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.*;
-import java.net.*;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.StringWriter;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
@@ -42,12 +51,13 @@ then, do a 1st round of parsing the source types -> map fqn->type/subType + list
 finally, do the actual parsing for all primary types
  */
 public class JavaInspectorImpl implements JavaInspector {
+    private static final Logger LOGGER = LoggerFactory.getLogger(JavaInspectorImpl.class);
+
     private Runtime runtime;
-    private List<URI> sourceURIs;
-    private List<URI> testURIs;
+    private List<SourceFile> sourceURIs;
+    private List<SourceFile> testURIs;
     private final SourceTypeMapImpl sourceTypeMap = new SourceTypeMapImpl();
     private CompiledTypesManager compiledTypesManager;
-    private static final Logger LOGGER = LoggerFactory.getLogger(JavaInspector.class);
 
     /**
      * Use of this prefix in parts of the input classpath allows for adding jars
@@ -94,60 +104,54 @@ public class JavaInspectorImpl implements JavaInspector {
     }
 
     @Override
-    public void initialize(InputConfiguration inputConfiguration) throws IOException {
-        List<String> classPathAsList = classPathAsList(inputConfiguration);
-        LOGGER.info("Combined classpath and test classpath has {} entries", classPathAsList.size());
-        if (inputConfiguration.infoLogClasspath()) {
-            for (String cp : classPathAsList) {
-                LOGGER.info("Classpath entry: {}", cp);
+    public List<InitializationProblem> initialize(InputConfiguration inputConfiguration) throws IOException {
+        List<InitializationProblem> initializationProblems = new LinkedList<>();
+        try {
+            List<SourceSet> classPathSourceSets = inputConfiguration.classPathParts().stream()
+                    .map(set -> (SourceSet) set).toList();
+            Resources classPath = assemblePath(inputConfiguration.alternativeJREDirectory(), classPathSourceSets,
+                    true, "Classpath", initializationProblems);
+            CompiledTypesManagerImpl ctm = new CompiledTypesManagerImpl(classPath);
+            runtime = new RuntimeWithCompiledTypesManager(ctm);
+            ByteCodeInspector byteCodeInspector = new ByteCodeInspectorImpl(runtime, ctm);
+            ctm.setByteCodeInspector(byteCodeInspector);
+            this.compiledTypesManager = ctm;
+
+            for (String packageName : new String[]{"java.lang", "java.util.function"}) {
+                preload(packageName);
             }
+
+            List<SourceSet> sourcePathSourceSets = inputConfiguration.sourceSets().stream()
+                    .filter(set -> !set.test()).toList();
+            Resources sourcePath = assemblePath(inputConfiguration.alternativeJREDirectory(),
+                    sourcePathSourceSets, false, "Source path", initializationProblems);
+            List<SourceSet> testSourcePathSourceSets = inputConfiguration.sourceSets().stream()
+                    .filter(SourceSet::test).toList();
+            Resources testSourcePath = assemblePath(inputConfiguration.alternativeJREDirectory(), testSourcePathSourceSets,
+                    false, "Test source path", initializationProblems);
+
+            sourceURIs = computeSourceURIs(sourcePath, "source path");
+            testURIs = computeSourceURIs(testSourcePath, "test source path");
+        } catch (URISyntaxException e) {
+            LOGGER.error("Caught URISyntaxException, transforming into IOException", e);
+            throw new IOException(e);
         }
-        Resources classPath = assemblePath(inputConfiguration, true, "Classpath", classPathAsList);
-        CompiledTypesManagerImpl ctm = new CompiledTypesManagerImpl(classPath);
-        runtime = new RuntimeWithCompiledTypesManager(ctm);
-        ByteCodeInspector byteCodeInspector = new ByteCodeInspectorImpl(runtime, ctm);
-        ctm.setByteCodeInspector(byteCodeInspector);
-        this.compiledTypesManager = ctm;
-
-        for (String packageName : new String[]{"java.lang", "java.util.function"}) {
-            preload(packageName);
-        }
-
-        Resources sourcePath = assemblePath(inputConfiguration, false, "Source path",
-                inputConfiguration.sources());
-        Resources testSourcePath = assemblePath(inputConfiguration, false, "Test source path",
-                inputConfiguration.testSources());
-
-        sourceURIs = computeSourceURIs(sourcePath,
-                inputConfiguration.restrictSourceToPackages(), "source path");
-        testURIs = computeSourceURIs(testSourcePath,
-                inputConfiguration.restrictTestSourceToPackages(), "test source path");
+        return List.copyOf(initializationProblems);
     }
 
-    private static List<String> classPathAsList(InputConfiguration inputConfiguration) {
-        Stream<String> compileCp = inputConfiguration.classPathParts().stream();
-        Stream<String> runtimeCp = inputConfiguration.runtimeClassPathParts().stream();
-        Stream<String> testCompileCp = inputConfiguration.testClassPathParts().stream();
-        Stream<String> testRuntimeCp = inputConfiguration.testClassPathParts().stream();
-        return Stream.concat(Stream.concat(compileCp, runtimeCp), Stream.concat(testCompileCp, testRuntimeCp))
-                .distinct()
-                .filter(s -> inputConfiguration.excludeFromClasspath().stream().noneMatch(s::contains))
-                .toList();
-    }
-
-    private List<URI> computeSourceURIs(Resources sourcePath, List<String> restrictions, String what) {
-        List<URI> uris = new LinkedList<>();
+    private List<SourceFile> computeSourceURIs(Resources sourcePath, String what) {
+        List<SourceFile> sourceFiles = new LinkedList<>();
         AtomicInteger ignored = new AtomicInteger();
         sourcePath.visit(new String[0], (parts, list) -> {
-            if (parts.length >= 1) {
+            if (parts.length >= 1 && !list.isEmpty()) {
                 int n = parts.length - 1;
                 String name = parts[n];
                 if (name.endsWith(".java") && !"package-info.java".equals(name)) {
                     String typeName = name.substring(0, name.length() - 5);
                     String packageName = Arrays.stream(parts).limit(n).collect(Collectors.joining("."));
-                    if (acceptSource(packageName, typeName, restrictions)) {
-                        URI uri = list.get(0);
-                        uris.add(uri);
+                    SourceFile sourceFile = list.get(0);
+                    if (acceptSource(packageName, typeName, sourceFile.sourceSet().excludePackages())) {
+                        sourceFiles.add(sourceFile);
                         parts[n] = typeName;
                     } else {
                         ignored.incrementAndGet();
@@ -155,11 +159,11 @@ public class JavaInspectorImpl implements JavaInspector {
                 }
             }
         });
-        LOGGER.info("Found {} .java files in {}, skipped {}", uris.size(), what, ignored);
-        return List.copyOf(uris);
+        LOGGER.info("Found {} .java files in {}, skipped {}", sourceFiles.size(), what, ignored);
+        return List.copyOf(sourceFiles);
     }
 
-    public static boolean acceptSource(String packageName, String typeName, List<String> restrictions) {
+    public static boolean acceptSource(String packageName, String typeName, Set<String> restrictions) {
         if (restrictions.isEmpty()) return true;
         for (String packageString : restrictions) {
             if (packageString.endsWith(".")) {
@@ -186,54 +190,64 @@ public class JavaInspectorImpl implements JavaInspector {
         compiledTypesManager.loadByteCodeQueue();
     }
 
-    private static Resources assemblePath(InputConfiguration configuration,
+    private static Resources assemblePath(Path alternativeJREDirectory,
+                                          List<SourceSet> sourceSets,
                                           boolean isClassPath,
                                           String msg,
-                                          List<String> parts) throws IOException {
+                                          List<InitializationProblem> initializationProblems) throws IOException, URISyntaxException {
         Resources resources = new ResourcesImpl();
-        if (isClassPath) {
-            Map<String, Integer> entriesAdded = resources.addJarFromClassPath("org/e2immu/annotation");
-            if (entriesAdded.size() != 1 || entriesAdded.values().stream().findFirst().orElseThrow() < 10) {
-                throw new RuntimeException("? expected 1 jar, at least 10 entries; got " + entriesAdded.size());
-            }
-        }
-        for (String part : parts) {
+        for (SourceSet sourceSet : sourceSets) {
+            String part = sourceSet.path().toString();
+            Throwable throwable = null;
             if (part.startsWith(JAR_WITH_PATH_PREFIX)) {
-                Map<String, Integer> entriesAdded = resources.addJarFromClassPath(part.substring(JAR_WITH_PATH_PREFIX.length()));
-                LOGGER.debug("Found {} jar(s) on classpath for {}", entriesAdded.size(), part);
-                entriesAdded.forEach((p, n) -> LOGGER.debug("  ... added {} entries for jar {}", n, p));
+                String suffix = part.substring(JAR_WITH_PATH_PREFIX.length());
+                Map<String, Integer> entriesAdded = resources.addJarFromClassPath(suffix, sourceSet);
+                if (entriesAdded.isEmpty()) {
+                    String msgString = msg + " part '" + part + "' is empty";
+                    LOGGER.warn(msg);
+                    initializationProblems.add(new InitializationProblem(msgString, null));
+                } else if (LOGGER.isDebugEnabled()) {
+                    LOGGER.debug("Found {} jar(s) on classpath for {}", entriesAdded.size(), part);
+                    entriesAdded.forEach((p, n) -> LOGGER.debug("  ... added {} entries for jar {}", n, p));
+                }
             } else if (part.endsWith(".jar")) {
                 try {
                     // "jar:file:build/libs/equivalent.jar!/"
                     URL url = new URL("jar:file:" + part + "!/");
-                    int entries = resources.addJar(url);
+                    int entries = resources.addJar(new SourceFile(part, url.toURI(), sourceSet, null));
                     LOGGER.debug("Added {} entries for jar {}", entries, part);
                 } catch (IOException e) {
-                    LOGGER.error("{} part '{}' ignored: IOException {}", msg, part, e.getMessage());
+                    throwable = e;
                 }
             } else if (part.endsWith(".jmod")) {
                 try {
-                    URL url = ResourcesImpl.constructJModURL(part, configuration.alternativeJREDirectory());
-                    int entries = resources.addJmod(url);
+                    URL url = ResourcesImpl.constructJModURL(part, alternativeJREDirectory.toString());
+                    int entries = resources.addJmod(new SourceFile(part, url.toURI(), sourceSet, null));
                     LOGGER.debug("Added {} entries for jmod {}", entries, part);
                 } catch (IOException e) {
-                    LOGGER.error("{} part '{}' ignored: IOException {}", msg, part, e.getMessage());
+                    throwable = e;
                 }
             } else if (part.startsWith(TEST_PROTOCOL_PREFIX)) {
                 try {
-                    resources.addTestProtocol(new URI(part));
+                    resources.addTestProtocol(new SourceFile(part, new URI(part), sourceSet, null));
                 } catch (URISyntaxException e) {
-                    LOGGER.error("Illegal test protocol {}", part);
+                    throwable = e;
                 }
             } else {
                 File directory = new File(part);
                 if (directory.isDirectory()) {
-                    String what = isClassPath ? "classpath" : "source path";
-                    LOGGER.info("Adding {} to " + what, directory.getAbsolutePath());
-                    resources.addDirectoryFromFileSystem(directory);
+                    LOGGER.info("Adding {} to {}", directory.getAbsolutePath(), msg);
+                    resources.addDirectoryFromFileSystem(directory, sourceSet);
                 } else {
-                    LOGGER.error("{} part '{}' is not a .jar file, and not a directory: ignored", msg, part);
+                    String msgString = msg + " part '" + part + "' is not a .jar file, and not a directory: ignored";
+                    LOGGER.warn(msgString);
+                    initializationProblems.add(new InitializationProblem(msgString, null));
                 }
+            }
+            if (throwable != null) {
+                String msgString = msg + " part '" + part + "' ignored: " + throwable.getMessage();
+                LOGGER.warn(msgString);
+                initializationProblems.add(new InitializationProblem(msgString, throwable));
             }
         }
         return resources;
@@ -255,7 +269,8 @@ public class JavaInspectorImpl implements JavaInspector {
         Summary failFastSummary = new SummaryImpl(true);
         try {
             URI uri = new URI("input");
-            return internalParse(failFastSummary, uri, () -> {
+            SourceFile sourceFile = new SourceFile(null, uri, null, null);
+            return internalParse(failFastSummary, sourceFile, () -> {
                 JavaParser parser = new JavaParser(input);
                 parser.setParserTolerant(false);
                 return parser;
@@ -265,7 +280,10 @@ public class JavaInspectorImpl implements JavaInspector {
         }
     }
 
-    private List<TypeInfo> internalParse(Summary summary, URI uri, Supplier<JavaParser> parser, ParseOptions parseOptions) {
+    private List<TypeInfo> internalParse(Summary summary,
+                                         SourceFile sourceFile,
+                                         Supplier<JavaParser> parser,
+                                         ParseOptions parseOptions) {
         Resolver resolver = new ResolverImpl(runtime.computeMethodOverrides(), new ParseHelperImpl(runtime));
         TypeContextImpl typeContext = new TypeContextImpl(runtime, compiledTypesManager, sourceTypeMap,
                 parseOptions.allowCreationOfStubTypes());
@@ -273,7 +291,8 @@ public class JavaInspectorImpl implements JavaInspector {
                 parseOptions.detailedSources());
         ScanCompilationUnit scanCompilationUnit = new ScanCompilationUnit(summary, runtime);
 
-        ScanCompilationUnit.ScanResult sr = scanCompilationUnit.scan(uri, parser.get().CompilationUnit(),
+        ScanCompilationUnit.ScanResult sr = scanCompilationUnit.scan(sourceFile.uri(), sourceFile.sourceSet(),
+                sourceFile.fingerPrint(), parser.get().CompilationUnit(),
                 parseOptions.detailedSources());
         sourceTypeMap.putAll(sr.sourceTypes());
         CompilationUnit cu = sr.compilationUnit();
@@ -291,8 +310,8 @@ public class JavaInspectorImpl implements JavaInspector {
         try (InputStreamReader isr = makeInputStreamReader(uri); StringWriter sw = new StringWriter()) {
             isr.transferTo(sw);
             String sourceCode = sw.toString();
-
-            internalParse(summary, uri, () -> {
+            SourceFile sourceFile = new SourceFile(uri.toString(), uri, null, MD5FingerPrint.compute(sourceCode));
+            internalParse(summary, sourceFile, () -> {
                 JavaParser parser = new JavaParser(sourceCode);
                 parser.setParserTolerant(false);
                 return parser;
@@ -328,20 +347,21 @@ public class JavaInspectorImpl implements JavaInspector {
 
         // PHASE 1: scanning all the types, call CongoCC parser
 
-        List<URI> allURIs = Stream.concat(sourceURIs.stream(), testURIs.stream()).toList();
+        List<SourceFile> allURIs = Stream.concat(sourceURIs.stream(), testURIs.stream()).toList();
 
         List<URICompilationUnit> list = new ArrayList<>(allURIs.size());
-        for (URI uri : allURIs) {
-            String uriString = uri.toString();
+        for (SourceFile sourceFile : allURIs) {
+            String uriString = sourceFile.toString();
             if (uriString.startsWith(TEST_PROTOCOL_PREFIX)) {
-                String source = sourcesByTestProtocolURIString.get(uriString);
-                parseSourceString(uri, source, summary, list, parseOptions.detailedSources());
+                String sourceCode = sourcesByTestProtocolURIString.get(uriString);
+                parseSourceString(sourceFile.uri(), sourceFile.sourceSet(), sourceCode, summary,
+                        list, parseOptions.detailedSources());
             } else {
-                try (InputStreamReader isr = makeInputStreamReader(uri); StringWriter sw = new StringWriter()) {
+                try (InputStreamReader isr = makeInputStreamReader(sourceFile.uri()); StringWriter sw = new StringWriter()) {
                     isr.transferTo(sw);
                     String sourceCode = sw.toString();
-
-                    parseSourceString(uri, sourceCode, summary, list, parseOptions.detailedSources());
+                    parseSourceString(sourceFile.uri(), sourceFile.sourceSet(), sourceCode, summary, list,
+                            parseOptions.detailedSources());
                 } catch (IOException io) {
                     LOGGER.error("Caught IO exception", io);
                     summary.addParserError(io);
@@ -364,7 +384,8 @@ public class JavaInspectorImpl implements JavaInspector {
         return summary;
     }
 
-    private void parseSourceString(URI uri, String sourceCode, Summary summary, List<URICompilationUnit> list,
+    private void parseSourceString(URI uri, SourceSet sourceSet, String sourceCode,
+                                   Summary summary, List<URICompilationUnit> list,
                                    boolean addDetailedSources) {
         JavaParser parser = new JavaParser(sourceCode);
         parser.setParserTolerant(false);
@@ -372,7 +393,8 @@ public class JavaInspectorImpl implements JavaInspector {
         ScanCompilationUnit scanCompilationUnit = new ScanCompilationUnit(summary, runtime);
         org.parsers.java.ast.CompilationUnit cu = parser.CompilationUnit();
         LOGGER.debug("Scanning {}", uri);
-        ScanCompilationUnit.ScanResult sr = scanCompilationUnit.scan(uri, cu, addDetailedSources);
+        FingerPrint fingerPrint = MD5FingerPrint.compute(sourceCode);
+        ScanCompilationUnit.ScanResult sr = scanCompilationUnit.scan(uri, sourceSet, fingerPrint, cu, addDetailedSources);
         sourceTypeMap.putAll(sr.sourceTypes());
         CompilationUnit compilationUnit = sr.compilationUnit();
         URICompilationUnit uc = new URICompilationUnit(uri, cu, compilationUnit);
@@ -390,12 +412,12 @@ public class JavaInspectorImpl implements JavaInspector {
     }
 
     @Override
-    public List<URI> sourceURIs() {
+    public List<SourceFile> sourceURIs() {
         return sourceURIs;
     }
 
     @Override
-    public List<URI> testURIs() {
+    public List<SourceFile> testURIs() {
         return testURIs;
     }
 

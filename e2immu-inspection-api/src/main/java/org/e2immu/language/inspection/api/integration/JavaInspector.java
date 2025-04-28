@@ -7,6 +7,7 @@ import org.e2immu.language.cst.api.runtime.Runtime;
 import org.e2immu.language.inspection.api.parser.Summary;
 import org.e2immu.language.inspection.api.resource.CompiledTypesManager;
 import org.e2immu.language.inspection.api.resource.InputConfiguration;
+import org.e2immu.language.inspection.api.resource.SourceFile;
 
 import java.io.IOException;
 import java.net.URI;
@@ -36,7 +37,10 @@ public interface JavaInspector {
 
     ImportComputer importComputer(int minStar);
 
-    void initialize(InputConfiguration inputConfiguration) throws IOException;
+    record InitializationProblem(String errorMsg, Throwable throwable) {
+    }
+
+    List<InitializationProblem> initialize(InputConfiguration inputConfiguration) throws IOException;
 
     void loadByteCodeQueue();
 
@@ -66,7 +70,7 @@ public interface JavaInspector {
 
     CompiledTypesManager compiledTypesManager();
 
-    List<URI> sourceURIs();
+    List<SourceFile> sourceURIs();
 
-    List<URI> testURIs();
+    List<SourceFile> testURIs();
 }

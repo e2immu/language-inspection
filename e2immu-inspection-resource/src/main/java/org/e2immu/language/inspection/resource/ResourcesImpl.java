@@ -1,5 +1,7 @@
 package org.e2immu.language.inspection.resource;
 
+import org.e2immu.language.cst.api.element.CompilationUnit;
+import org.e2immu.language.cst.api.element.SourceSet;
 import org.e2immu.language.cst.api.info.TypeInfo;
 import org.e2immu.language.inspection.api.resource.Resources;
 import org.e2immu.language.inspection.api.resource.SourceFile;
@@ -29,7 +31,7 @@ public class ResourcesImpl implements Resources {
         }
     }
 
-    private final Trie<URI> data = new Trie<>();
+    private final Trie<SourceFile> data = new Trie<>();
     private final Map<String, JarSize> jarSizes = new HashMap<>();
 
     @Override
@@ -38,7 +40,7 @@ public class ResourcesImpl implements Resources {
     }
 
     @Override
-    public void visit(String[] prefix, BiConsumer<String[], List<URI>> visitor) {
+    public void visit(String[] prefix, BiConsumer<String[], List<SourceFile>> visitor) {
         data.visit(prefix, visitor);
     }
 
@@ -51,7 +53,7 @@ public class ResourcesImpl implements Resources {
     }
 
     @Override
-    public void expandPaths(String path, String extension, BiConsumer<String[], List<URI>> visitor) {
+    public void expandPaths(String path, String extension, BiConsumer<String[], List<SourceFile>> visitor) {
         String[] prefix = path.split("\\.");
         data.visit(prefix, (s, list) -> {
             if (s.length > 0 && s[s.length - 1].endsWith(extension)) {
@@ -61,7 +63,7 @@ public class ResourcesImpl implements Resources {
     }
 
     @Override
-    public void expandLeaves(String path, String extension, BiConsumer<String[], List<URI>> visitor) {
+    public void expandLeaves(String path, String extension, BiConsumer<String[], List<SourceFile>> visitor) {
         String[] prefix = path.split("\\.");
         data.visitLeaves(prefix, (s, list) -> {
             if (s.length > 0 && s[s.length - 1].endsWith(extension)) {
@@ -71,8 +73,8 @@ public class ResourcesImpl implements Resources {
     }
 
     @Override
-    public List<URI> expandURLs(String extension) {
-        List<URI> expansions = new LinkedList<>();
+    public List<SourceFile> expandURLs(String extension) {
+        List<SourceFile> expansions = new LinkedList<>();
         data.visit(new String[0], (s, list) -> {
             if (s[s.length - 1].endsWith(extension)) {
                 expansions.addAll(list);
@@ -83,12 +85,14 @@ public class ResourcesImpl implements Resources {
 
 
     /**
+     * Mostly used in tests: add a jar from the classpath of the test.
+     *
      * @param prefix adds the jars that contain the package denoted by the prefix
      * @return a map containing the number of entries per jar
      * @throws IOException when the jar handling fails somehow
      */
     @Override
-    public Map<String, Integer> addJarFromClassPath(String prefix) throws IOException {
+    public Map<String, Integer> addJarFromClassPath(String prefix, SourceSet sourceSet) throws IOException, URISyntaxException {
         Enumeration<URL> roots = getClass().getClassLoader().getResources(prefix);
         Map<String, Integer> result = new HashMap<>();
         while (roots.hasMoreElements()) {
@@ -99,7 +103,7 @@ public class ResourcesImpl implements Resources {
             URL strippedURL = new URL(strippedUrlString);
             LOGGER.debug("Stripped URL is {}", strippedURL);
             if ("jar".equals(strippedURL.getProtocol())) {
-                int entries = addJar(strippedURL);
+                int entries = addJar(new SourceFile(strippedUrlString, strippedURL.toURI(), sourceSet, null));
                 result.put(strippedUrlString, entries);
             } else {
                 throw new MalformedURLException("Protocol not implemented in URL: " + strippedURL.getProtocol());
@@ -111,8 +115,8 @@ public class ResourcesImpl implements Resources {
     private static final Pattern JAR_FILE = Pattern.compile("/([^/]+\\.jar)");
 
     @Override
-    public void addTestProtocol(URI testProtocol) {
-        String s = testProtocol.toString();
+    public void addTestProtocol(SourceFile testProtocol) {
+        String s = testProtocol.uri().toString();
         String packageName = s.substring(s.indexOf(':') + 1, s.indexOf('/'));
         String[] split = packageName.split("\\.");
         split[split.length - 1] = split[split.length - 1] + ".java";
@@ -122,13 +126,14 @@ public class ResourcesImpl implements Resources {
     /**
      * Add a jar to the trie
      *
-     * @param jarUrl must be a correct JAR url, as described in the class JarURLConnection
+     * @param jarSourceFile must contain a correct JAR url, as described in the class JarURLConnection
      * @return the number of entries added to the classpath
      * @throws IOException when jar handling fails somehow.
      */
     @Override
-    public int addJar(URL jarUrl) throws IOException {
-        JarURLConnection jarConnection = (JarURLConnection) jarUrl.openConnection();
+    public int addJar(SourceFile jarSourceFile) throws IOException {
+        URL url = jarSourceFile.uri().toURL();
+        JarURLConnection jarConnection = (JarURLConnection) url.openConnection();
         JarFile jarFile = jarConnection.getJarFile();
         AtomicInteger entries = new AtomicInteger();
         AtomicInteger errors = new AtomicInteger();
@@ -139,8 +144,8 @@ public class ResourcesImpl implements Resources {
                 LOGGER.trace("Adding {}", realName);
                 String[] split = je.getRealName().split("/");
                 try {
-                    URI fullUrl = new URL(jarUrl, je.getRealName()).toURI();
-                    data.add(split, fullUrl);
+                    URI fullUrl = new URL(url, je.getRealName()).toURI();
+                    data.add(split, jarSourceFile);
                     entries.incrementAndGet();
                 } catch (MalformedURLException | URISyntaxException e) {
                     throw new RuntimeException(e);
@@ -152,7 +157,7 @@ public class ResourcesImpl implements Resources {
         if (m.find()) {
             jarName = m.group(1);
         } else {
-            jarName = jarUrl.toString();
+            jarName = url.toString();
         }
         jarSizes.put(jarName, new JarSize(entries.get(), 0));
         if (errors.get() > 0) {
@@ -177,7 +182,8 @@ public class ResourcesImpl implements Resources {
 
 
     @Override
-    public int addJmod(URL jmodUrl) throws IOException {
+    public int addJmod(SourceFile jmodSourceFile) throws IOException {
+        URL jmodUrl = jmodSourceFile.uri().toURL();
         JarURLConnection jarConnection = (JarURLConnection) jmodUrl.openConnection();
         JarFile jarFile = jarConnection.getJarFile();
         AtomicInteger entries = new AtomicInteger();
@@ -190,7 +196,7 @@ public class ResourcesImpl implements Resources {
                     String[] split = realName.split("/");
                     try {
                         URL fullUrl = new URL(jmodUrl, je.getRealName());
-                        data.add(split, fullUrl.toURI());
+                        data.add(split, jmodSourceFile.withURI(fullUrl.toURI()));
                         entries.incrementAndGet();
                     } catch (MalformedURLException | URISyntaxException e) {
                         throw new RuntimeException(e);
@@ -206,12 +212,13 @@ public class ResourcesImpl implements Resources {
     public SourceFile sourceFileOfType(TypeInfo subType, String suffix) {
         if (subType.compilationUnitOrEnclosingType().isLeft()) {
             String path = subType.fullyQualifiedName().replace(".", "/") + suffix;
-            return new SourceFile(path, subType.compilationUnit().uri());
+            CompilationUnit cu = subType.compilationUnit();
+            return new SourceFile(path, cu.uri(), cu.sourceSet(), cu.fingerPrint());
         }
         SourceFile parentSourceFile = sourceFileOfType(subType.compilationUnitOrEnclosingType().getRight(), suffix);
         String p = parentSourceFile.path();
         String newPath = p.substring(0, p.length() - suffix.length()) + "$" + subType.simpleName() + suffix;
-        return new SourceFile(newPath, parentSourceFile.uri());
+        return parentSourceFile.withPath(newPath);
     }
 
     @Override
@@ -225,9 +232,10 @@ public class ResourcesImpl implements Resources {
                 parts[i] += "$" + splitDot[j];
             }
             parts[i] += extension;
-            List<URI> uris = data.get(parts);
-            if (uris != null && !uris.isEmpty()) {
-                return new SourceFile(String.join("/", parts), uris.get(0));
+            List<SourceFile> sourceFiles = data.get(parts);
+            if (sourceFiles != null && !sourceFiles.isEmpty()) {
+                SourceFile sf0 = sourceFiles.get(0);
+                return sf0.withPath(String.join("/", parts));
             }
         }
         LOGGER.debug("Cannot find {} with extension {} in classpath", fqn, extension);
@@ -258,15 +266,15 @@ public class ResourcesImpl implements Resources {
     @Override
     public byte[] loadBytes(String path) {
         String[] prefix = path.split("/");
-        List<URI> urls = data.get(prefix);
-        if (urls != null) {
-            for (URI uri : urls) {
+        List<SourceFile> sourceFiles = data.get(prefix);
+        if (sourceFiles != null) {
+            for (SourceFile sourceFile : sourceFiles) {
                 try (ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-                     InputStream inputStream = uri.toURL().openStream()) {
+                     InputStream inputStream = sourceFile.uri().toURL().openStream()) {
                     inputStream.transferTo(byteArrayOutputStream);
                     return byteArrayOutputStream.toByteArray();
                 } catch (IOException e) {
-                    throw new ResourceAccessException("URL = " + uri + ", Cannot read? " + e.getMessage());
+                    throw new ResourceAccessException("URL = " + sourceFile.uri() + ", Cannot read? " + e.getMessage());
                 }
             }
         }
@@ -275,22 +283,23 @@ public class ResourcesImpl implements Resources {
     }
 
     @Override
-    public void addDirectoryFromFileSystem(File base) {
+    public void addDirectoryFromFileSystem(File base, SourceSet sourceSet) {
         File file = new File("");
         try {
-            recursivelyAddFiles(base, file);
+            recursivelyAddFiles(base, file, sourceSet);
         } catch (MalformedURLException e) {
             throw new UnsupportedOperationException("??");
         }
     }
 
-    private void recursivelyAddFiles(File baseDirectory, File dirRelativeToBase) throws MalformedURLException {
+    private void recursivelyAddFiles(File baseDirectory, File dirRelativeToBase, SourceSet sourceSet)
+            throws MalformedURLException {
         File dir = new File(baseDirectory, dirRelativeToBase.getPath());
         if (dir.isDirectory()) {
             File[] subDirs = dir.listFiles(File::isDirectory);
             if (subDirs != null) {
                 for (File subDir : subDirs) { // 1.0.1.0.0
-                    recursivelyAddFiles(baseDirectory, new File(dirRelativeToBase, subDir.getName()));
+                    recursivelyAddFiles(baseDirectory, new File(dirRelativeToBase, subDir.getName()), sourceSet);
                 }
             }
             File[] files = dir.listFiles(f -> !f.isDirectory());
@@ -302,9 +311,12 @@ public class ResourcesImpl implements Resources {
                                         .split("/");
                 for (File file : files) {
                     String name = file.getName();
-                    LOGGER.debug("File {} in path {}", name, String.join("/", packageParts));
-                    data.add(Stream.concat(Arrays.stream(packageParts), Stream.of(name)).toArray(String[]::new),
-                            file.toURI());
+                    String packageName = String.join(".", packageParts);
+                    LOGGER.debug("File {} in package {}", name, packageName);
+                    if (!sourceSet.excludePackages().contains(packageName)) {
+                        data.add(Stream.concat(Arrays.stream(packageParts), Stream.of(name)).toArray(String[]::new),
+                                new SourceFile(file.getPath(), file.toURI(), sourceSet, null));
+                    }
                 }
             }
         }

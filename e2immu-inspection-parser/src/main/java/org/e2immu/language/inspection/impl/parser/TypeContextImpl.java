@@ -9,8 +9,8 @@ import org.e2immu.language.cst.api.runtime.Runtime;
 import org.e2immu.language.cst.api.type.NamedType;
 import org.e2immu.language.cst.api.type.ParameterizedType;
 import org.e2immu.language.cst.api.variable.FieldReference;
-import org.e2immu.language.inspection.api.parser.StaticImportMap;
 import org.e2immu.language.inspection.api.parser.SourceTypeMap;
+import org.e2immu.language.inspection.api.parser.StaticImportMap;
 import org.e2immu.language.inspection.api.parser.TypeContext;
 import org.e2immu.language.inspection.api.resource.CompiledTypesManager;
 import org.e2immu.language.inspection.api.resource.Resources;
@@ -18,7 +18,6 @@ import org.e2immu.language.inspection.api.resource.SourceFile;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.net.URI;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -111,19 +110,19 @@ public class TypeContextImpl implements TypeContext {
                     inSourceTypes.subTypes().forEach(st -> map.putIfAbsent(st.simpleName(), st));
                 }
                 // TODO this should be java-specific (call to data.compiledTypesManager.XXX)
-                data.compiledTypesManager.classPath().expandLeaves(fullyQualified, ".class", (expansion, urls) -> {
+                data.compiledTypesManager.classPath().expandLeaves(fullyQualified, ".class", (expansion, sourceFiles) -> {
                     String leaf = expansion[expansion.length - 1];
                     if (!leaf.contains("$")) {
                         // primary type
                         String simpleName = Resources.stripDotClass(leaf);
-                        URI uri = urls.get(0);
+                        SourceFile sourceFile = sourceFiles.get(0);
                         String path = fullyQualified.replace(".", "/") + "/" + simpleName + ".class";
-                        TypeInfo newTypeInfo = data.compiledTypesManager.load(new SourceFile(path, uri));
+                        TypeInfo newTypeInfo = data.compiledTypesManager.load(sourceFile.withPath(path));
                         if (newTypeInfo != null) {
                             LOGGER.debug("Registering inspection handler for {}", newTypeInfo);
                             addToContext(newTypeInfo, false);
                         } else {
-                            LOGGER.error("Could not load {}, URI {}", path, uri);
+                            LOGGER.error("Could not load {}, URI {}", path, sourceFile.uri());
                         }
                     }
                 });

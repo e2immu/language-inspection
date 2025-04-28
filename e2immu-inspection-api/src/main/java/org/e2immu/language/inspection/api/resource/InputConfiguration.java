@@ -1,52 +1,49 @@
 package org.e2immu.language.inspection.api.resource;
 
 import org.e2immu.annotation.Fluent;
+import org.e2immu.language.cst.api.element.SourceSet;
 
-import java.nio.charset.Charset;
+import java.nio.file.Path;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Stream;
 
 public interface InputConfiguration {
 
+    /**
+     * If true, send the class path information to the info logger.
+     */
     boolean infoLogClasspath();
 
-    List<String> sources();
+    /**
+     * At inspection level, the order of the source sets may be important, as packages/types may be ignored
+     * when duplicates occur. This duplication needs to be resolved here; the concept of "hidden" or "inactive" types
+     * in a source set does not exist at the CST level.
+     * If the duplication occurs at package level (as an aggregate over the types), the <code>excludePackages()</code>
+     * field in the source set may be used to store this information.
+     */
+    List<SourceSet> sourceSets();
 
-    List<String> restrictSourceToPackages();
+    /**
+     * At inspection level, the order of the class path parts may be important, as packages/types may be ignored
+     * when duplicates occur. See <code>sourceSets()</code>.
+     */
+    List<ClassPathPart> classPathParts();
 
-    List<String> testSources();
+    Path alternativeJREDirectory();
 
-    List<String> restrictTestSourceToPackages();
-
-    List<String> classPathParts();
-
-    List<String> runtimeClassPathParts();
-
-    List<String> testClassPathParts();
-
-    List<String> testRuntimeClassPathParts();
-
-    List<String> excludeFromClasspath();
-
-    String alternativeJREDirectory();
-
-    Charset sourceEncoding();
-
-    List<String> dependencies();
-
-    InputConfiguration withClassPathParts(String... classPathParts);
+    InputConfiguration withClassPathParts(ClassPathPart... classPathParts);
 
     interface Builder {
 
         @Fluent
-        Builder addClassPath(String... sources);
+        Builder addSourceSets(SourceSet... sourceSets);
 
         @Fluent
-        Builder addExcludeFromClasspath(String... jarNames);
+        Builder addClassPathParts(ClassPathPart... classPathParts);
+
+        // --- alternatives to addSourceSets
 
         @Fluent
-        Builder addDependencies(String... deps);
+        Builder addSources(String... sources);
 
         @Fluent
         Builder addRestrictSourceToPackages(String... packages);
@@ -54,11 +51,13 @@ public interface InputConfiguration {
         @Fluent
         Builder addRestrictTestSourceToPackages(String... packages);
 
-        @Fluent
-        Builder addRuntimeClassPath(String... sources);
+        // --- alternatives to addClassPathParts
 
         @Fluent
-        Builder addSources(String... sources);
+        Builder addClassPath(String... sources);
+
+        @Fluent
+        Builder addRuntimeClassPath(String... sources);
 
         @Fluent
         Builder addTestClassPath(String... sources);
@@ -68,6 +67,8 @@ public interface InputConfiguration {
 
         @Fluent
         Builder addTestSources(String... sources);
+
+        // --- rest
 
         @Fluent
         Builder setAlternativeJREDirectory(String alternativeJREDirectory);
@@ -79,11 +80,5 @@ public interface InputConfiguration {
         Builder setInfoLogClasspath(boolean infoLogClasspath);
 
         InputConfiguration build();
-    }
-
-    default List<String> allClassPathParts() {
-        return Stream.concat(Stream.concat(Stream.concat(classPathParts().stream(),
-                        testClassPathParts().stream()), runtimeClassPathParts().stream()),
-                testRuntimeClassPathParts().stream()).distinct().toList();
     }
 }

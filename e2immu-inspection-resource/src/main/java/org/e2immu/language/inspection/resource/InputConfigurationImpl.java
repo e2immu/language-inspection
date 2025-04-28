@@ -3,26 +3,21 @@ package org.e2immu.language.inspection.resource;
 
 import org.e2immu.annotation.Container;
 import org.e2immu.annotation.Fluent;
+import org.e2immu.language.cst.api.element.SourceSet;
+import org.e2immu.language.inspection.api.resource.ClassPathPart;
 import org.e2immu.language.inspection.api.resource.InputConfiguration;
 
-import java.io.File;
+import java.net.URI;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 import java.util.*;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-public record InputConfigurationImpl(List<String> sources,
-                                     List<String> restrictSourceToPackages,
-                                     List<String> testSources,
-                                     List<String> restrictTestSourceToPackages,
-                                     List<String> classPathParts,
-                                     List<String> runtimeClassPathParts,
-                                     List<String> testClassPathParts,
-                                     List<String> testRuntimeClassPathParts,
-                                     List<String> excludeFromClasspath,
-                                     String alternativeJREDirectory,
-                                     Charset sourceEncoding,
-                                     List<String> dependencies,
+public record InputConfigurationImpl(List<SourceSet> sourceSets,
+                                     List<ClassPathPart> classPathParts,
+                                     Path alternativeJREDirectory,
                                      boolean infoLogClasspath) implements InputConfiguration {
 
     public static final String MAVEN_MAIN = "src/main/java";
@@ -45,40 +40,33 @@ public record InputConfigurationImpl(List<String> sources,
     static final String NL_TAB = "\n    ";
 
     @Override
-    public InputConfiguration withClassPathParts(String... classPathParts) {
-        List<String> combinedClassPathParts = Stream.concat(this.classPathParts.stream(), Arrays.stream(classPathParts))
-                .toList();
-        return new InputConfigurationImpl(sources, restrictSourceToPackages, testSources, restrictTestSourceToPackages,
-                combinedClassPathParts, runtimeClassPathParts, testClassPathParts, testRuntimeClassPathParts,
-                excludeFromClasspath, alternativeJREDirectory, sourceEncoding, dependencies, infoLogClasspath);
+    public InputConfiguration withClassPathParts(ClassPathPart... classPathParts) {
+        return new InputConfigurationImpl(sourceSets, Arrays.stream(classPathParts).toList(), alternativeJREDirectory,
+                infoLogClasspath);
     }
 
     @Override
     public String toString() {
         return "InputConfiguration:" +
-               NL_TAB + "sources=" + sources +
-               NL_TAB + "testSources=" + testSources +
-               NL_TAB + "sourceEncoding=" + sourceEncoding.displayName() +
-               NL_TAB + "restrictSourceToPackages=" + restrictSourceToPackages +
-               NL_TAB + "restrictTestSourceToPackages=" + restrictTestSourceToPackages +
+               NL_TAB + "sourcesSets=" + sourceSets +
                NL_TAB + "classPathParts=" + classPathParts +
-               NL_TAB + "alternativeJREDirectory=" + (alternativeJREDirectory == null ? "<default>" : alternativeJREDirectory);
+               NL_TAB + "alternativeJREDirectory=" + (alternativeJREDirectory == null ? "<default>"
+                : alternativeJREDirectory);
     }
 
     @Container
     public static class Builder implements InputConfiguration.Builder {
+        private final List<SourceSet> sourceSets = new ArrayList<>();
+        private final List<ClassPathPart> classPathParts = new ArrayList<>();
         private final List<String> sourceDirs = new ArrayList<>();
         private final List<String> testSourceDirs = new ArrayList<>();
-        private final List<String> classPathParts = new ArrayList<>();
+        private final List<String> classPathStringParts = new ArrayList<>();
         private final List<String> runtimeClassPathParts = new ArrayList<>();
         private final List<String> testClassPathParts = new ArrayList<>();
         private final List<String> testRuntimeClassPathParts = new ArrayList<>();
-        private final List<String> excludeFromClasspath = new ArrayList<>();
 
-        // result of dependency analysis: group:artifactId:version:configuration
-        private final List<String> dependencies = new ArrayList<>();
-        private final List<String> restrictSourceToPackages = new ArrayList<>();
-        private final List<String> restrictTestSourceToPackages = new ArrayList<>();
+        private final Set<String> restrictSourceToPackages = new HashSet<>();
+        private final Set<String> restrictTestSourceToPackages = new HashSet<>();
 
         private String alternativeJREDirectory;
         private String sourceEncoding;
@@ -86,21 +74,58 @@ public record InputConfigurationImpl(List<String> sources,
 
         public InputConfiguration build() {
             Charset sourceCharset = sourceEncoding == null ? StandardCharsets.UTF_8 : Charset.forName(sourceEncoding);
-            return new InputConfigurationImpl(
-                    List.copyOf(sourceDirs),
-                    List.copyOf(restrictSourceToPackages),
-                    List.copyOf(testSourceDirs),
-                    List.copyOf(restrictTestSourceToPackages),
-                    List.copyOf(classPathParts),
-                    List.copyOf(runtimeClassPathParts),
-                    List.copyOf(testClassPathParts),
-                    List.copyOf(testRuntimeClassPathParts),
-                    List.copyOf(excludeFromClasspath),
-                    alternativeJREDirectory,
-                    sourceCharset,
-                    List.copyOf(dependencies),
-                    infoLogClasspath
-            );
+
+            for (String cpp : classPathStringParts) {
+                classPathParts.add(new ClassPathPartImpl(cpp, Path.of(cpp), null, false, true,
+                        true, isJmod(cpp),
+                        Set.of(), Set.of(), URI.create(cpp), false));
+            }
+            for (String cpp : runtimeClassPathParts) {
+                classPathParts.add(new ClassPathPartImpl(cpp, Path.of(cpp), null, false, true,
+                        true, isJmod(cpp),
+                        Set.of(), Set.of(), URI.create(cpp), true));
+            }
+            for (String cpp : testClassPathParts) {
+                classPathParts.add(new ClassPathPartImpl(cpp, Path.of(cpp), null, true, true,
+                        true, isJmod(cpp),
+                        Set.of(), Set.of(), URI.create(cpp), false));
+            }
+            for (String cpp : testRuntimeClassPathParts) {
+                classPathParts.add(new ClassPathPartImpl(cpp, Path.of(cpp), null, true, true,
+                        true, isJmod(cpp),
+                        Set.of(), Set.of(), URI.create(cpp), true));
+            }
+            for (String sourceDir : sourceDirs) {
+                Set<SourceSet> allDependencies = Stream.concat(classPathParts.stream(),
+                        sourceSets.stream()).collect(Collectors.toUnmodifiableSet());
+                sourceSets.add(new SourceSetImpl(sourceDir, Path.of(sourceDir), sourceCharset, false, false,
+                        false, false, restrictSourceToPackages, allDependencies));
+            }
+            for (String sourceDir : testSourceDirs) {
+                Set<SourceSet> allDependencies = Stream.concat(classPathParts.stream(),
+                        sourceSets.stream()).collect(Collectors.toUnmodifiableSet());
+                sourceSets.add(new SourceSetImpl(sourceDir, Path.of(sourceDir), sourceCharset, true, false,
+                        false, false, restrictTestSourceToPackages, allDependencies));
+            }
+
+            return new InputConfigurationImpl(List.copyOf(sourceSets), List.copyOf(classPathParts),
+                    Path.of(alternativeJREDirectory), infoLogClasspath);
+        }
+
+        private static boolean isJmod(String classPathPart) {
+            return classPathPart.startsWith("jmod/");
+        }
+
+        @Override
+        public Builder addSourceSets(SourceSet... sourceSets) {
+            this.sourceSets.addAll(Arrays.asList(sourceSets));
+            return this;
+        }
+
+        @Override
+        public Builder addClassPathParts(ClassPathPart... classPathParts) {
+            this.classPathParts.addAll(Arrays.asList(classPathParts));
+            return this;
         }
 
         @Override
@@ -120,7 +145,7 @@ public record InputConfigurationImpl(List<String> sources,
         @Override
         @Fluent
         public Builder addClassPath(String... sources) {
-            classPathParts.addAll(Arrays.asList(sources));
+            classPathStringParts.addAll(Arrays.asList(sources));
             return this;
         }
 
@@ -142,20 +167,6 @@ public record InputConfigurationImpl(List<String> sources,
         @Fluent
         public Builder addTestRuntimeClassPath(String... sources) {
             testRuntimeClassPathParts.addAll(Arrays.asList(sources));
-            return this;
-        }
-
-        @Override
-        @Fluent
-        public Builder addExcludeFromClasspath(String... jarNames) {
-            excludeFromClasspath.addAll(Arrays.asList(jarNames));
-            return this;
-        }
-
-        @Override
-        @Fluent
-        public Builder addDependencies(String... deps) {
-            dependencies.addAll(Arrays.asList(deps));
             return this;
         }
 
@@ -188,7 +199,7 @@ public record InputConfigurationImpl(List<String> sources,
         }
 
         @Override
-        public InputConfiguration.Builder setInfoLogClasspath(boolean infoLogClasspath) {
+        public Builder setInfoLogClasspath(boolean infoLogClasspath) {
             this.infoLogClasspath = infoLogClasspath;
             return this;
         }

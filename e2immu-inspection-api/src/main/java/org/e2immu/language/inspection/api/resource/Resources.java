@@ -1,10 +1,12 @@
 package org.e2immu.language.inspection.api.resource;
 
+import org.e2immu.language.cst.api.element.SourceSet;
 import org.e2immu.language.cst.api.info.TypeInfo;
 
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.List;
 import java.util.Map;
@@ -17,7 +19,7 @@ public interface Resources {
         return path;
     }
 
-    void addDirectoryFromFileSystem(File base);
+    void addDirectoryFromFileSystem(File base, SourceSet sourceSet);
 
     String pathToFqn(String name);
 
@@ -28,23 +30,23 @@ public interface Resources {
 
     Map<String, Resources.JarSize> getJarSizes();
 
-    void visit(String[] prefix, BiConsumer<String[], List<URI>> visitor);
+    void visit(String[] prefix, BiConsumer<String[], List<SourceFile>> visitor);
 
     List<String[]> expandPaths(String path);
 
-    void expandPaths(String path, String extension, BiConsumer<String[], List<URI>> visitor);
+    void expandPaths(String path, String extension, BiConsumer<String[], List<SourceFile>> visitor);
 
-    void expandLeaves(String path, String extension, BiConsumer<String[], List<URI>> visitor);
+    void expandLeaves(String path, String extension, BiConsumer<String[], List<SourceFile>> visitor);
 
-    List<URI> expandURLs(String extension);
+    List<SourceFile> expandURLs(String extension);
 
-    Map<String, Integer> addJarFromClassPath(String prefix) throws IOException;
+    Map<String, Integer> addJarFromClassPath(String prefix, SourceSet sourceSet) throws IOException, URISyntaxException;
 
-    void addTestProtocol(URI testProtocol);
+    void addTestProtocol(SourceFile testProtocol);
 
-    int addJar(URL jarUrl) throws IOException;
+    int addJar(SourceFile jarSourceFile) throws IOException;
 
-    int addJmod(URL url) throws IOException;
+    int addJmod(SourceFile jmodSourceFile) throws IOException;
 
     SourceFile fqnToPath(String fqn, String s);
 
