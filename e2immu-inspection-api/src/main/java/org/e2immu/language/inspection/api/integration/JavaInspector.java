@@ -19,7 +19,7 @@ import java.util.Map;
  */
 public interface JavaInspector {
 
-    String TEST_PROTOCOL = "testprotocol";
+    String TEST_PROTOCOL = "test-protocol";
 
     record ParseOptions(boolean failFast, boolean detailedSources, boolean allowCreationOfStubTypes) {
     }

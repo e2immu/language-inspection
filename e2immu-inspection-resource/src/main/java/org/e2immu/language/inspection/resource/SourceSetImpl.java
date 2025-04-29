@@ -4,6 +4,7 @@ import org.e2immu.language.cst.api.element.FingerPrint;
 import org.e2immu.language.cst.api.element.SourceSet;
 import org.e2immu.support.SetOnce;
 
+import java.net.URI;
 import java.nio.charset.Charset;
 import java.nio.file.Path;
 import java.util.Objects;
@@ -11,31 +12,40 @@ import java.util.Set;
 
 public class SourceSetImpl implements SourceSet {
     private final String name;
-    private final Path path;
-    private final Charset encoding;
+    private final Path sourceDirectory;
+    private final URI uri;
+    private final Charset sourceEncoding;
     private final boolean test;
     private final boolean library;
     private final boolean externalLibrary;
     private final boolean partOfJdk;
+    private final boolean runtimeOnly;
     private final Set<String> restrictToPackages;
     private final Set<SourceSet> dependencies;
     private final SetOnce<FingerPrint> fingerPrint = new SetOnce<>();
     private final SetOnce<FingerPrint> analysisFingerPrint = new SetOnce<>();
 
-    public SourceSetImpl(String name, Path path,
-                         Charset encoding,
-                         boolean test, boolean library, boolean externalLibrary, boolean partOfJdk,
+    public SourceSetImpl(String name,
+                         Path sourceDirectory, URI uri,
+                         Charset sourceEncoding,
+                         boolean test, boolean library, boolean externalLibrary, boolean partOfJdk, boolean runtimeOnly,
                          Set<String> restrictToPackages,
                          Set<SourceSet> dependencies) {
-        this.name = name;
-        this.path = path;
-        this.encoding = encoding;
+        this.name = Objects.requireNonNull(name);
+        this.sourceDirectory = sourceDirectory;
+        this.uri = Objects.requireNonNull(uri);
+        Objects.requireNonNull(uri.getScheme(), "The URI of source set " + name + " must have a non-null scheme");
+        this.sourceEncoding = sourceEncoding;
         this.test = test;
         this.library = library;
         this.externalLibrary = externalLibrary;
         this.partOfJdk = partOfJdk;
+        this.runtimeOnly = runtimeOnly;
         this.restrictToPackages = restrictToPackages;
         this.dependencies = dependencies;
+
+        assert !runtimeOnly || externalLibrary : "Runtime-only can only be true for external libraries: " + name;
+        assert !partOfJdk || externalLibrary : "Parts of the JDK are also external libraries: " + name;
     }
 
     @Override
@@ -52,13 +62,13 @@ public class SourceSetImpl implements SourceSet {
     @Override
     public String toString() {
         String code = partOfJdk ? "[jdk]" : externalLibrary ? "[external]" : library ? "[library]" : test ? "[test]" : "";
-        String pathString = path.toString();
+        String pathString = sourceDirectory.toString();
         return name + code + (pathString.equals(name) ? "" : ":" + pathString);
     }
 
     @Override
-    public Charset encoding() {
-        return encoding;
+    public Charset sourceEncoding() {
+        return sourceEncoding;
     }
 
     @Override
@@ -67,8 +77,13 @@ public class SourceSetImpl implements SourceSet {
     }
 
     @Override
-    public Path path() {
-        return path;
+    public Path sourceDirectory() {
+        return sourceDirectory;
+    }
+
+    @Override
+    public URI uri() {
+        return uri;
     }
 
     @Override
@@ -89,6 +104,11 @@ public class SourceSetImpl implements SourceSet {
     @Override
     public boolean partOfJdk() {
         return partOfJdk;
+    }
+
+    @Override
+    public boolean runtimeOnly() {
+        return runtimeOnly;
     }
 
     @Override
@@ -135,5 +155,17 @@ public class SourceSetImpl implements SourceSet {
             }
         }
         return false;
+    }
+
+    @Override
+    public SourceSet withPath(Path path) {
+        return new SourceSetImpl(name, path, uri, sourceEncoding, test, library, externalLibrary, partOfJdk, runtimeOnly,
+                restrictToPackages, dependencies);
+    }
+
+    @Override
+    public SourceSet withPathUri(Path sourceDirectory, URI uri) {
+        return new SourceSetImpl(name, sourceDirectory, uri, sourceEncoding, test, library, externalLibrary, partOfJdk,
+                runtimeOnly, restrictToPackages, dependencies);
     }
 }

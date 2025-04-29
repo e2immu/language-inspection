@@ -3,7 +3,6 @@ package org.e2immu.language.inspection.resource;
 import org.e2immu.annotation.Container;
 import org.e2immu.annotation.Fluent;
 import org.e2immu.language.cst.api.element.SourceSet;
-import org.e2immu.language.inspection.api.resource.ClassPathPart;
 import org.e2immu.language.inspection.api.resource.InputConfiguration;
 
 import java.net.URI;
@@ -11,11 +10,12 @@ import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public record InputConfigurationImpl(List<SourceSet> sourceSets,
-                                     List<ClassPathPart> classPathParts,
+                                     List<SourceSet> classPathParts,
                                      Path alternativeJREDirectory) implements InputConfiguration {
 
     public static final String MAVEN_MAIN = "src/main/java";
@@ -23,13 +23,13 @@ public record InputConfigurationImpl(List<SourceSet> sourceSets,
     public static final String GRADLE_BUIlD = "build/classes/java/main";
 
     public static final String[] DEFAULT_MODULES = {
-            "jmods/java.base.jmod",
-            "jmods/java.datatransfer.jmod",
-            "jmods/java.desktop.jmod",
-            "jmods/java.logging.jmod",
-            "jmods/java.net.http.jmod",
-            "jmods/java.sql.jmod",
-            "jmods/java.xml.jmod",
+            "jmod:java.base.jmod",
+            "jmod:java.datatransfer.jmod",
+            "jmod:java.desktop.jmod",
+            "jmod:java.logging.jmod",
+            "jmod:java.net.http.jmod",
+            "jmod:java.sql.jmod",
+            "jmod:java.xml.jmod",
     };
 
     public static final String[] GRADLE_DEFAULT = Stream.concat(Stream.of(GRADLE_BUIlD),
@@ -38,8 +38,11 @@ public record InputConfigurationImpl(List<SourceSet> sourceSets,
     static final String NL_TAB = "\n    ";
 
     @Override
-    public InputConfiguration withClassPathParts(ClassPathPart... classPathParts) {
-        return new InputConfigurationImpl(sourceSets, Arrays.stream(classPathParts).toList(), alternativeJREDirectory);
+    public InputConfiguration withDefaultModules() {
+        Stream<SourceSet> defaultModuleStream = Arrays.stream(DEFAULT_MODULES).map(mod ->
+                new SourceSetImpl(mod, null, URI.create(mod), StandardCharsets.UTF_8, false, true,
+                        false, true, false, Set.of(), Set.of()));
+        return new InputConfigurationImpl(sourceSets, Stream.concat(classPathParts.stream(), defaultModuleStream).toList(), alternativeJREDirectory);
     }
 
     @Override
@@ -54,7 +57,7 @@ public record InputConfigurationImpl(List<SourceSet> sourceSets,
     @Container
     public static class Builder implements InputConfiguration.Builder {
         private final List<SourceSet> sourceSets = new ArrayList<>();
-        private final List<ClassPathPart> classPathParts = new ArrayList<>();
+        private final List<SourceSet> classPathParts = new ArrayList<>();
         private final List<String> sourceDirs = new ArrayList<>();
         private final List<String> testSourceDirs = new ArrayList<>();
         private final List<String> classPathStringParts = new ArrayList<>();
@@ -72,43 +75,50 @@ public record InputConfigurationImpl(List<SourceSet> sourceSets,
             Charset sourceCharset = sourceEncoding == null ? StandardCharsets.UTF_8 : Charset.forName(sourceEncoding);
 
             for (String cpp : classPathStringParts) {
-                classPathParts.add(new ClassPathPartImpl(cpp, Path.of(cpp), null, false, true,
-                        true, isJmod(cpp),
-                        Set.of(), Set.of(), URI.create(cpp), false));
+                classPathParts.add(new SourceSetImpl(cpp, null, createURI(cpp), null,
+                        false, true, true, isJmod(cpp), false, Set.of(), Set.of()));
             }
             for (String cpp : runtimeClassPathParts) {
-                classPathParts.add(new ClassPathPartImpl(cpp, Path.of(cpp), null, false, true,
-                        true, isJmod(cpp),
-                        Set.of(), Set.of(), URI.create(cpp), true));
+                classPathParts.add(new SourceSetImpl(cpp, null, createURI(cpp), null,
+                        false, true, true, isJmod(cpp), true, Set.of(), Set.of()));
             }
             for (String cpp : testClassPathParts) {
-                classPathParts.add(new ClassPathPartImpl(cpp, Path.of(cpp), null, true, true,
-                        true, isJmod(cpp),
-                        Set.of(), Set.of(), URI.create(cpp), false));
+                classPathParts.add(new SourceSetImpl(cpp, null, createURI(cpp), null,
+                        true, true, true, isJmod(cpp), false, Set.of(), Set.of()));
             }
             for (String cpp : testRuntimeClassPathParts) {
-                classPathParts.add(new ClassPathPartImpl(cpp, Path.of(cpp), null, true, true,
-                        true, isJmod(cpp),
-                        Set.of(), Set.of(), URI.create(cpp), true));
+                classPathParts.add(new SourceSetImpl(cpp, null, createURI(cpp), null,
+                        true, true, true, isJmod(cpp), true, Set.of(), Set.of()));
             }
             for (String sourceDir : sourceDirs) {
                 Set<SourceSet> allDependencies = Stream.concat(classPathParts.stream(),
                         sourceSets.stream()).collect(Collectors.toUnmodifiableSet());
-                sourceSets.add(new SourceSetImpl(sourceDir, Path.of(sourceDir), sourceCharset, false, false,
-                        false, false, restrictSourceToPackages, allDependencies));
+                sourceSets.add(new SourceSetImpl(sourceDir, Path.of(sourceDir), createURI(sourceDir), sourceCharset,
+                        false, false, false, false, false,
+                        restrictSourceToPackages, allDependencies));
             }
             for (String sourceDir : testSourceDirs) {
                 Set<SourceSet> allDependencies = Stream.concat(classPathParts.stream(),
                         sourceSets.stream()).collect(Collectors.toUnmodifiableSet());
-                sourceSets.add(new SourceSetImpl(sourceDir, Path.of(sourceDir), sourceCharset, true, false,
-                        false, false, restrictTestSourceToPackages, allDependencies));
+                sourceSets.add(new SourceSetImpl(sourceDir, Path.of(sourceDir), createURI(sourceDir), sourceCharset,
+                        true, false, false, false, false,
+                        restrictTestSourceToPackages, allDependencies));
             }
             return new InputConfigurationImpl(List.copyOf(sourceSets), List.copyOf(classPathParts),
                     alternativeJREDirectory == null ? null : Path.of(alternativeJREDirectory));
         }
 
+        private static final Pattern SCHEME = Pattern.compile("([A-Za-z-]+):.+");
+
+        private static URI createURI(String path) {
+            if (SCHEME.matcher(path).matches()) {
+                return URI.create(path);
+            }
+            return URI.create("file:" + path);
+        }
+
         private static boolean isJmod(String classPathPart) {
-            return classPathPart.startsWith("jmods/");
+            return classPathPart.startsWith("jmod:");
         }
 
         @Override
@@ -118,7 +128,7 @@ public record InputConfigurationImpl(List<SourceSet> sourceSets,
         }
 
         @Override
-        public Builder addClassPathParts(ClassPathPart... classPathParts) {
+        public Builder addClassPathParts(SourceSet... classPathParts) {
             this.classPathParts.addAll(Arrays.asList(classPathParts));
             return this;
         }

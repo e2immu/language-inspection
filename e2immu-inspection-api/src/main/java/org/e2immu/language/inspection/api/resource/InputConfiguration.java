@@ -21,11 +21,9 @@ public interface InputConfiguration {
      * At inspection level, the order of the class path parts may be important, as packages/types may be ignored
      * when duplicates occur. See <code>sourceSets()</code>.
      */
-    List<ClassPathPart> classPathParts();
+    List<SourceSet> classPathParts();
 
     Path alternativeJREDirectory();
-
-    InputConfiguration withClassPathParts(ClassPathPart... classPathParts);
 
     interface Builder {
 
@@ -33,7 +31,7 @@ public interface InputConfiguration {
         Builder addSourceSets(SourceSet... sourceSets);
 
         @Fluent
-        Builder addClassPathParts(ClassPathPart... classPathParts);
+        Builder addClassPathParts(SourceSet... classPathParts);
 
         // --- alternatives to addSourceSets
 
@@ -73,4 +71,9 @@ public interface InputConfiguration {
 
         InputConfiguration build();
     }
+
+    // helper
+
+    InputConfiguration withDefaultModules();
+
 }
