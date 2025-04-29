@@ -411,6 +411,7 @@ public class JavaInspectorImpl implements JavaInspector {
     private void parseSourceString(URI uri, SourceSet sourceSet, String sourceCode,
                                    Summary summary, List<URICompilationUnit> list,
                                    boolean addDetailedSources) {
+        assert sourceCode != null;
         JavaParser parser = new JavaParser(sourceCode);
         parser.setParserTolerant(false);
 
