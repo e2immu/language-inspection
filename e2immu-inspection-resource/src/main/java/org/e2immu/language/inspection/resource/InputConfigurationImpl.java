@@ -1,6 +1,5 @@
 package org.e2immu.language.inspection.resource;
 
-
 import org.e2immu.annotation.Container;
 import org.e2immu.annotation.Fluent;
 import org.e2immu.language.cst.api.element.SourceSet;
@@ -17,8 +16,7 @@ import java.util.stream.Stream;
 
 public record InputConfigurationImpl(List<SourceSet> sourceSets,
                                      List<ClassPathPart> classPathParts,
-                                     Path alternativeJREDirectory,
-                                     boolean infoLogClasspath) implements InputConfiguration {
+                                     Path alternativeJREDirectory) implements InputConfiguration {
 
     public static final String MAVEN_MAIN = "src/main/java";
     public static final String MAVEN_TEST = "src/test/java";
@@ -41,8 +39,7 @@ public record InputConfigurationImpl(List<SourceSet> sourceSets,
 
     @Override
     public InputConfiguration withClassPathParts(ClassPathPart... classPathParts) {
-        return new InputConfigurationImpl(sourceSets, Arrays.stream(classPathParts).toList(), alternativeJREDirectory,
-                infoLogClasspath);
+        return new InputConfigurationImpl(sourceSets, Arrays.stream(classPathParts).toList(), alternativeJREDirectory);
     }
 
     @Override
@@ -70,7 +67,6 @@ public record InputConfigurationImpl(List<SourceSet> sourceSets,
 
         private String alternativeJREDirectory;
         private String sourceEncoding;
-        private boolean infoLogClasspath;
 
         public InputConfiguration build() {
             Charset sourceCharset = sourceEncoding == null ? StandardCharsets.UTF_8 : Charset.forName(sourceEncoding);
@@ -108,8 +104,7 @@ public record InputConfigurationImpl(List<SourceSet> sourceSets,
                         false, false, restrictTestSourceToPackages, allDependencies));
             }
             return new InputConfigurationImpl(List.copyOf(sourceSets), List.copyOf(classPathParts),
-                    alternativeJREDirectory == null ? null : Path.of(alternativeJREDirectory),
-                    infoLogClasspath);
+                    alternativeJREDirectory == null ? null : Path.of(alternativeJREDirectory));
         }
 
         private static boolean isJmod(String classPathPart) {
@@ -195,12 +190,6 @@ public record InputConfigurationImpl(List<SourceSet> sourceSets,
         @Fluent
         public Builder addRestrictTestSourceToPackages(String... packages) {
             restrictTestSourceToPackages.addAll(Arrays.asList(packages));
-            return this;
-        }
-
-        @Override
-        public Builder setInfoLogClasspath(boolean infoLogClasspath) {
-            this.infoLogClasspath = infoLogClasspath;
             return this;
         }
     }

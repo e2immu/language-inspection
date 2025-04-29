@@ -30,7 +30,7 @@ public abstract class CommonTest2 {
         Map<String, String> sourcesByURIString = sourcesByFqn.entrySet()
                 .stream().collect(Collectors.toUnmodifiableMap(
                         e -> TEST_PROTOCOL_PREFIX + e.getKey(), Map.Entry::getValue));
-        javaInspector = new JavaInspectorImpl();
+        javaInspector = new JavaInspectorImpl(true);
         InputConfiguration.Builder inputConfigurationBuilder = new InputConfigurationImpl.Builder()
                 .addClassPath(InputConfigurationImpl.GRADLE_DEFAULT)
                 // NOTE: no access to ToolChain here; this is rather exceptional

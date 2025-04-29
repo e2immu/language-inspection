@@ -1,4 +1,4 @@
-package org.e2immu.language.inspection.resource;
+package org.e2immu.language.inspection.api.resource;
 
 import org.e2immu.language.cst.api.element.FingerPrint;
 
@@ -10,6 +10,8 @@ import java.util.Objects;
 
 public class MD5FingerPrint implements FingerPrint {
 
+    public static final FingerPrint NO_FINGERPRINT = new MD5FingerPrint(new byte[]{});
+
     private final byte[] bytes;
 
     public MD5FingerPrint(byte[] bytes) {
@@ -17,14 +19,24 @@ public class MD5FingerPrint implements FingerPrint {
     }
 
     public static FingerPrint compute(String sourceCode) {
+        return compute(sourceCode.getBytes());
+    }
+
+    public static FingerPrint compute(byte[] bytes) {
         try {
             MessageDigest md = MessageDigest.getInstance("MD5");
-            md.update(sourceCode.getBytes());
+            md.update(bytes);
             byte[] digest = md.digest();
             return new MD5FingerPrint(digest);
         } catch (NoSuchAlgorithmException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    public static FingerPrint compute(MessageDigest md, byte[] bytes) {
+        md.reset();
+        byte[] digest = md.digest(bytes);
+        return new MD5FingerPrint(digest);
     }
 
     @Override
@@ -40,6 +52,7 @@ public class MD5FingerPrint implements FingerPrint {
 
     @Override
     public String toString() {
+        if (this == NO_FINGERPRINT) return "<no fingerprint>";
         try {
             MessageDigest md = MessageDigest.getInstance("MD5");
             byte[] arr = md.digest(bytes);

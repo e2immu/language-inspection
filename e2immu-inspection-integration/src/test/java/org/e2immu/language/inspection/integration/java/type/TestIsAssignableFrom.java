@@ -3,6 +3,7 @@ package org.e2immu.language.inspection.integration.java.type;
 import org.e2immu.language.cst.api.info.TypeInfo;
 import org.e2immu.language.cst.api.runtime.Runtime;
 import org.e2immu.language.cst.api.type.ParameterizedType;
+import org.e2immu.language.inspection.api.resource.MD5FingerPrint;
 import org.e2immu.language.inspection.integration.java.CommonTest;
 import org.intellij.lang.annotations.Language;
 import org.junit.jupiter.api.Test;
@@ -32,6 +33,7 @@ public class TestIsAssignableFrom extends CommonTest {
         // from array base to type parameter
         assertFalse(iterableCloseable.isAssignableFrom(runtime, closeableArray));
     }
+
     @Language("java")
     public static final String INPUT2 = """
             package a.b;
@@ -50,6 +52,9 @@ public class TestIsAssignableFrom extends CommonTest {
         TypeInfo child = X.findSubType("Child");
         assertTrue(parent.asParameterizedType().isAssignableFrom(javaInspector.runtime(), child.asParameterizedType()));
 
-        assertEquals("Gs6V69ZWZ3rgLGbR8gpSIQ==", X.compilationUnit().fingerPrint().toString());
+        assertEquals("Gs6V69ZWZ3rgLGbR8gpSIQ==", X.compilationUnit().fingerPrintOrNull().toString());
+        TypeInfo list = javaInspector.compiledTypesManager().getOrLoad(List.class);
+        assertSame(MD5FingerPrint.NO_FINGERPRINT, list.compilationUnit().fingerPrintOrNull());
+        assertSame(MD5FingerPrint.NO_FINGERPRINT, list.compilationUnit().sourceSet().fingerPrint());
     }
 }

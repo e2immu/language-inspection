@@ -9,11 +9,6 @@ import java.util.List;
 public interface InputConfiguration {
 
     /**
-     * If true, send the class path information to the info logger.
-     */
-    boolean infoLogClasspath();
-
-    /**
      * At inspection level, the order of the source sets may be important, as packages/types may be ignored
      * when duplicates occur. This duplication needs to be resolved here; the concept of "hidden" or "inactive" types
      * in a source set does not exist at the CST level.
@@ -75,9 +70,6 @@ public interface InputConfiguration {
 
         @Fluent
         Builder setSourceEncoding(String sourceEncoding);
-
-        @Fluent
-        Builder setInfoLogClasspath(boolean infoLogClasspath);
 
         InputConfiguration build();
     }

@@ -6,6 +6,7 @@ import org.e2immu.language.cst.api.info.TypeInfo;
 import java.io.File;
 import java.io.IOException;
 import java.net.URISyntaxException;
+import java.net.URL;
 import java.util.List;
 import java.util.Map;
 import java.util.function.BiConsumer;
@@ -43,7 +44,7 @@ public interface Resources {
 
     List<SourceFile> expandURLs(String extension);
 
-    Map<String, Integer> addJarFromClassPath(String prefix, SourceSet sourceSet) throws IOException, URISyntaxException;
+    URL findJarInClassPath(String prefix) throws IOException;
 
     void addTestProtocol(SourceFile testProtocol);
 

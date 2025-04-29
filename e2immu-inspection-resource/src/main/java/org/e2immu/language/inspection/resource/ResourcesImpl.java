@@ -93,24 +93,16 @@ public class ResourcesImpl implements Resources {
      * @throws IOException when the jar handling fails somehow
      */
     @Override
-    public Map<String, Integer> addJarFromClassPath(String prefix, SourceSet sourceSet) throws IOException, URISyntaxException {
+    public URL findJarInClassPath(String prefix) throws IOException {
         Enumeration<URL> roots = getClass().getClassLoader().getResources(prefix);
-        Map<String, Integer> result = new HashMap<>();
-        while (roots.hasMoreElements()) {
+        if (roots.hasMoreElements()) {
             URL url = roots.nextElement();
             String urlString = url.toString();
             int bangSlash = urlString.indexOf("!/");
             String strippedUrlString = urlString.substring(0, bangSlash + 2);
-            URL strippedURL = new URL(strippedUrlString);
-            LOGGER.debug("Stripped URL is {}", strippedURL);
-            if ("jar".equals(strippedURL.getProtocol())) {
-                int entries = addJar(new SourceFile(strippedUrlString, strippedURL.toURI(), sourceSet, null));
-                result.put(strippedUrlString, entries);
-            } else {
-                throw new MalformedURLException("Protocol not implemented in URL: " + strippedURL.getProtocol());
-            }
+            return new URL(strippedUrlString);
         }
-        return result;
+        return null;
     }
 
     private static final Pattern JAR_FILE = Pattern.compile("/([^/]+\\.jar)");
@@ -214,7 +206,7 @@ public class ResourcesImpl implements Resources {
         if (subType.compilationUnitOrEnclosingType().isLeft()) {
             String path = subType.fullyQualifiedName().replace(".", "/") + suffix;
             CompilationUnit cu = subType.compilationUnit();
-            return new SourceFile(path, cu.uri(), cu.sourceSet(), cu.fingerPrint());
+            return new SourceFile(path, cu.uri(), cu.sourceSet(), cu.fingerPrintOrNull());
         }
         SourceFile parentSourceFile = sourceFileOfType(subType.compilationUnitOrEnclosingType().getRight(), suffix);
         String p = parentSourceFile.path();

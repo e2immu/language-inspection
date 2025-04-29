@@ -1,6 +1,6 @@
 package org.e2immu.language.inspection.integration.java.method;
 
-import org.e2immu.language.cst.api.element.FingerPrint;
+import org.e2immu.language.cst.api.element.SourceSet;
 import org.e2immu.language.cst.api.info.TypeInfo;
 import org.e2immu.language.inspection.api.parser.ParseResult;
 import org.e2immu.language.inspection.integration.java.CommonTest2;
@@ -11,7 +11,6 @@ import java.io.IOException;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 public class TestOverridesOfRecordAccessors extends CommonTest2 {
 
@@ -55,9 +54,12 @@ public class TestOverridesOfRecordAccessors extends CommonTest2 {
                 processorFqn, PROCESSOR));
         assertEquals(3, parseResult.primaryTypes().size());
         TypeInfo processor = parseResult.findType(processorFqn);
-        assertEquals("vOxJ/OgYP7jlA+kctKlAmw==", processor.compilationUnit().fingerPrint().toString());
+        assertEquals("vOxJ/OgYP7jlA+kctKlAmw==", processor.compilationUnit().fingerPrintOrNull().toString());
 
         TypeInfo logger = javaInspector.compiledTypesManager().get("org.slf4j.Logger");
-        assertEquals("", logger.compilationUnit().fingerPrint().toString());
+        SourceSet sourceSet = logger.compilationUnit().sourceSet();
+        assertEquals("jar-on-classpath:org/slf4j/event", sourceSet.name());
+        assertEquals("9hZeS5VmcgSoxVfeyEwh6w==", logger.compilationUnit().fingerPrintOrNull().toString());
+        assertEquals("RBh3KRpK2Hq4ny18GuC4NQ==", sourceSet.fingerPrint().toString());
     }
 }

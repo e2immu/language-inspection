@@ -18,7 +18,6 @@ import org.e2immu.language.inspection.api.parser.Summary;
 import org.e2immu.language.inspection.api.resource.*;
 import org.e2immu.language.inspection.impl.parser.*;
 import org.e2immu.language.inspection.resource.CompiledTypesManagerImpl;
-import org.e2immu.language.inspection.resource.MD5FingerPrint;
 import org.e2immu.language.inspection.resource.ResourcesImpl;
 import org.e2immu.parser.java.ParseCompilationUnit;
 import org.e2immu.parser.java.ParseHelperImpl;
@@ -35,10 +34,13 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -58,6 +60,15 @@ public class JavaInspectorImpl implements JavaInspector {
     private List<SourceFile> testURIs;
     private final SourceTypeMapImpl sourceTypeMap = new SourceTypeMapImpl();
     private CompiledTypesManager compiledTypesManager;
+    private final boolean computeFingerPrints;
+
+    public JavaInspectorImpl() {
+        this(false);
+    }
+
+    public JavaInspectorImpl(boolean computeFingerPrints) {
+        this.computeFingerPrints = computeFingerPrints;
+    }
 
     /**
      * Use of this prefix in parts of the input classpath allows for adding jars
@@ -115,7 +126,7 @@ public class JavaInspectorImpl implements JavaInspector {
                     true, "Classpath", initializationProblems);
             CompiledTypesManagerImpl ctm = new CompiledTypesManagerImpl(classPath);
             runtime = new RuntimeWithCompiledTypesManager(ctm);
-            ByteCodeInspector byteCodeInspector = new ByteCodeInspectorImpl(runtime, ctm);
+            ByteCodeInspector byteCodeInspector = new ByteCodeInspectorImpl(runtime, ctm, computeFingerPrints);
             ctm.setByteCodeInspector(byteCodeInspector);
             this.compiledTypesManager = ctm;
 
@@ -180,38 +191,38 @@ public class JavaInspectorImpl implements JavaInspector {
         compiledTypesManager.loadByteCodeQueue();
     }
 
-    private static Resources assemblePath(Path alternativeJREDirectory,
-                                          List<SourceSet> sourceSets,
-                                          boolean isClassPath,
-                                          String msg,
-                                          List<InitializationProblem> initializationProblems) throws IOException, URISyntaxException {
+    private Resources assemblePath(Path alternativeJREDirectory,
+                                   List<SourceSet> sourceSets,
+                                   boolean isClassPath,
+                                   String msg,
+                                   List<InitializationProblem> initializationProblems) throws IOException, URISyntaxException {
         Resources resources = new ResourcesImpl();
         for (SourceSet sourceSet : sourceSets) {
             String part = sourceSet.path().toString();
             Throwable throwable = null;
             if (part.startsWith(JAR_WITH_PATH_PREFIX)) {
                 String suffix = part.substring(JAR_WITH_PATH_PREFIX.length());
-                Map<String, Integer> entriesAdded = resources.addJarFromClassPath(suffix, sourceSet);
-                if (entriesAdded.isEmpty()) {
-                    String msgString = msg + " part '" + part + "' is empty";
+                URL jarUrl = resources.findJarInClassPath(suffix);
+                if (jarUrl == null) {
+                    String msgString = msg + " part '" + part + "': jar not found";
                     LOGGER.warn(msg);
                     initializationProblems.add(new InitializationProblem(msgString, null));
-                } else if (LOGGER.isDebugEnabled()) {
-                    LOGGER.debug("Found {} jar(s) on classpath for {}", entriesAdded.size(), part);
-                    entriesAdded.forEach((p, n) -> LOGGER.debug("  ... added {} entries for jar {}", n, p));
+                } else {
+                    addJar(resources, part, jarUrl, sourceSet);
                 }
             } else if (part.endsWith(".jar")) {
                 try {
                     // "jar:file:build/libs/equivalent.jar!/"
-                    URL url = new URL("jar:file:" + part + "!/");
-                    int entries = resources.addJar(new SourceFile(part, url.toURI(), sourceSet, null));
-                    LOGGER.debug("Added {} entries for jar {}", entries, part);
+                    URL jarUrl = new URL("jar:file:" + part + "!/");
+                    addJar(resources, part, jarUrl, sourceSet);
                 } catch (IOException e) {
                     throwable = e;
                 }
             } else if (part.endsWith(".jmod")) {
                 try {
                     URL url = ResourcesImpl.constructJModURL(part, alternativeJREDirectory);
+                    FingerPrint fingerPrint = makeFingerPrint(url);
+                    sourceSet.setFingerPrint(fingerPrint);
                     int entries = resources.addJmod(new SourceFile(part, url.toURI(), sourceSet, null));
                     LOGGER.debug("Added {} entries for jmod {}", entries, part);
                 } catch (IOException e) {
@@ -241,6 +252,29 @@ public class JavaInspectorImpl implements JavaInspector {
             }
         }
         return resources;
+    }
+
+    private void addJar(Resources resources, String part, URL jarUrl, SourceSet sourceSet) throws IOException, URISyntaxException {
+        FingerPrint fingerPrint = makeFingerPrint(jarUrl);
+        sourceSet.setFingerPrint(fingerPrint);
+        int entries = resources.addJar(new SourceFile(part, jarUrl.toURI(), sourceSet, null));
+        LOGGER.debug("Added {} entries for jar {}", entries, part);
+    }
+
+    private static final Pattern JAR_URL_PATTERN = Pattern.compile("jar:(file:.+)!/");
+
+    private FingerPrint makeFingerPrint(URL jarUrl) throws URISyntaxException, IOException {
+        if (computeFingerPrints) {
+            Matcher m = JAR_URL_PATTERN.matcher(jarUrl.toString());
+            if (m.matches()) {
+                Path path = Path.of(new URI(m.group(1)));
+                byte[] bytes = Files.readAllBytes(path);
+                return MD5FingerPrint.compute(bytes);
+            } else {
+                throw new UnsupportedOperationException("? " + jarUrl);
+            }
+        }
+        return MD5FingerPrint.NO_FINGERPRINT;
     }
 
     // used for testing
