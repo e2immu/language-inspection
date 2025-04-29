@@ -23,13 +23,13 @@ public record InputConfigurationImpl(List<SourceSet> sourceSets,
     public static final String GRADLE_BUIlD = "build/classes/java/main";
 
     public static final String[] DEFAULT_MODULES = {
-            "jmod:java.base.jmod",
-            "jmod:java.datatransfer.jmod",
-            "jmod:java.desktop.jmod",
-            "jmod:java.logging.jmod",
-            "jmod:java.net.http.jmod",
-            "jmod:java.sql.jmod",
-            "jmod:java.xml.jmod",
+            "jmod:java.base",
+            "jmod:java.datatransfer",
+            "jmod:java.desktop",
+            "jmod:java.logging",
+            "jmod:java.net.http",
+            "jmod:java.sql",
+            "jmod:java.xml",
     };
 
     public static final String[] GRADLE_DEFAULT = Stream.concat(Stream.of(GRADLE_BUIlD),

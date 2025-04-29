@@ -170,7 +170,7 @@ public class ResourcesImpl implements Resources {
             jre = altJREDirectory.toString();
         }
         if (!jre.endsWith("/")) jre = jre + "/";
-        return new URL("jar:file:" + jre + "jmods/" + part + "!/");
+        return new URL("jar:file:" + jre + "jmods/" + part + ".jmod!/");
     }
 
 
