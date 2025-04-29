@@ -30,6 +30,7 @@ public abstract class CommonTest {
                 .addSources(InputConfigurationImpl.MAVEN_TEST)
                 .addRestrictSourceToPackages("org.e2immu.language.inspection.integration.java.importhelper.")
                 .addClassPath(InputConfigurationImpl.GRADLE_DEFAULT)
+                .addClassPath(JavaInspectorImpl.E2IMMU_SUPPORT)
                 // NOTE: no access to ToolChain here; this is rather exceptional
                 .addClassPath(JAR_WITH_PATH_PREFIX + "org/junit/jupiter/api")
                 .addClassPath(JAR_WITH_PATH_PREFIX + "org/apiguardian/api")

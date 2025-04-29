@@ -5,6 +5,7 @@ import org.e2immu.language.cst.api.element.FingerPrint;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.Objects;
 
 public class MD5FingerPrint implements FingerPrint {
@@ -35,5 +36,16 @@ public class MD5FingerPrint implements FingerPrint {
     @Override
     public int hashCode() {
         return Arrays.hashCode(bytes);
+    }
+
+    @Override
+    public String toString() {
+        try {
+            MessageDigest md = MessageDigest.getInstance("MD5");
+            byte[] arr = md.digest(bytes);
+            return Base64.getEncoder().encodeToString(arr);
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException(e);
+        }
     }
 }

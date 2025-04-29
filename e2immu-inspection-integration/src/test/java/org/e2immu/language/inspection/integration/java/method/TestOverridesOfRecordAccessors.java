@@ -1,5 +1,7 @@
 package org.e2immu.language.inspection.integration.java.method;
 
+import org.e2immu.language.cst.api.element.FingerPrint;
+import org.e2immu.language.cst.api.info.TypeInfo;
 import org.e2immu.language.inspection.api.parser.ParseResult;
 import org.e2immu.language.inspection.integration.java.CommonTest2;
 import org.intellij.lang.annotations.Language;
@@ -9,6 +11,7 @@ import java.io.IOException;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 public class TestOverridesOfRecordAccessors extends CommonTest2 {
 
@@ -46,9 +49,15 @@ public class TestOverridesOfRecordAccessors extends CommonTest2 {
 
     @Test
     public void test() throws IOException {
+        String processorFqn = "io.codelaser.jfocus.stdbase.viewer.util.Processor";
         ParseResult parseResult = init(Map.of("io.codelaser.jfocus.stdbase.viewer.ISource", ISOURCE,
                 "io.codelaser.jfocus.stdbase.viewer.Source", SOURCE,
-                "io.codelaser.jfocus.stdbase.viewer.util.Processor", PROCESSOR));
+                processorFqn, PROCESSOR));
         assertEquals(3, parseResult.primaryTypes().size());
+        TypeInfo processor = parseResult.findType(processorFqn);
+        assertEquals("vOxJ/OgYP7jlA+kctKlAmw==", processor.compilationUnit().fingerPrint().toString());
+
+        TypeInfo logger = javaInspector.compiledTypesManager().get("org.slf4j.Logger");
+        assertEquals("", logger.compilationUnit().fingerPrint().toString());
     }
 }

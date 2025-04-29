@@ -17,7 +17,7 @@ public class SourceSetImpl implements SourceSet {
     private final boolean library;
     private final boolean externalLibrary;
     private final boolean partOfJdk;
-    private final Set<String> excludePackages;
+    private final Set<String> restrictToPackages;
     private final Set<SourceSet> dependencies;
     private final SetOnce<FingerPrint> fingerPrint = new SetOnce<>();
     private final SetOnce<FingerPrint> analysisFingerPrint = new SetOnce<>();
@@ -25,7 +25,7 @@ public class SourceSetImpl implements SourceSet {
     public SourceSetImpl(String name, Path path,
                          Charset encoding,
                          boolean test, boolean library, boolean externalLibrary, boolean partOfJdk,
-                         Set<String> excludePackages,
+                         Set<String> restrictToPackages,
                          Set<SourceSet> dependencies) {
         this.name = name;
         this.path = path;
@@ -34,7 +34,7 @@ public class SourceSetImpl implements SourceSet {
         this.library = library;
         this.externalLibrary = externalLibrary;
         this.partOfJdk = partOfJdk;
-        this.excludePackages = excludePackages;
+        this.restrictToPackages = restrictToPackages;
         this.dependencies = dependencies;
     }
 
@@ -92,8 +92,8 @@ public class SourceSetImpl implements SourceSet {
     }
 
     @Override
-    public Set<String> excludePackages() {
-        return excludePackages;
+    public Set<String> restrictToPackages() {
+        return restrictToPackages;
     }
 
     @Override
@@ -119,5 +119,21 @@ public class SourceSetImpl implements SourceSet {
     @Override
     public void setAnalysisFingerPrint(FingerPrint fingerPrint) {
         analysisFingerPrint.set(fingerPrint);
+    }
+
+    @Override
+    public boolean acceptSource(String packageName, String typeName) {
+        if (restrictToPackages.isEmpty()) return true;
+        for (String packageString : restrictToPackages) {
+            if (packageString.endsWith(".")) {
+                if (packageName.startsWith(packageString) ||
+                    packageName.equals(packageString.substring(0, packageString.length() - 1))) {
+                    return true;
+                }
+            } else if (packageName.equals(packageString) || packageString.equals(packageName + "." + typeName)) {
+                return true;
+            }
+        }
+        return false;
     }
 }

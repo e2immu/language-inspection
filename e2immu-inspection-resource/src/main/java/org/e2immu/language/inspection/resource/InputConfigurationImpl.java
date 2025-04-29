@@ -107,13 +107,13 @@ public record InputConfigurationImpl(List<SourceSet> sourceSets,
                 sourceSets.add(new SourceSetImpl(sourceDir, Path.of(sourceDir), sourceCharset, true, false,
                         false, false, restrictTestSourceToPackages, allDependencies));
             }
-
             return new InputConfigurationImpl(List.copyOf(sourceSets), List.copyOf(classPathParts),
-                    Path.of(alternativeJREDirectory), infoLogClasspath);
+                    alternativeJREDirectory == null ? null : Path.of(alternativeJREDirectory),
+                    infoLogClasspath);
         }
 
         private static boolean isJmod(String classPathPart) {
-            return classPathPart.startsWith("jmod/");
+            return classPathPart.startsWith("jmods/");
         }
 
         @Override

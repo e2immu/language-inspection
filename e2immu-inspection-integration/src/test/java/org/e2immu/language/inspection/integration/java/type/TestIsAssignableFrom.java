@@ -49,5 +49,7 @@ public class TestIsAssignableFrom extends CommonTest {
         TypeInfo parent = X.findSubType("Parent");
         TypeInfo child = X.findSubType("Child");
         assertTrue(parent.asParameterizedType().isAssignableFrom(javaInspector.runtime(), child.asParameterizedType()));
+
+        assertEquals("Gs6V69ZWZ3rgLGbR8gpSIQ==", X.compilationUnit().fingerPrint().toString());
     }
 }

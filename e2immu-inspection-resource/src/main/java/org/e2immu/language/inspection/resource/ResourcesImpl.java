@@ -14,6 +14,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.*;
+import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
@@ -117,8 +118,8 @@ public class ResourcesImpl implements Resources {
     @Override
     public void addTestProtocol(SourceFile testProtocol) {
         String s = testProtocol.uri().toString();
-        String packageName = s.substring(s.indexOf(':') + 1, s.indexOf('/'));
-        String[] split = packageName.split("\\.");
+        String fullyQualifiedName = s.substring(s.indexOf(':') + 1);
+        String[] split = fullyQualifiedName.split("\\.");
         split[split.length - 1] = split[split.length - 1] + ".java";
         data.add(split, testProtocol);
     }
@@ -145,7 +146,7 @@ public class ResourcesImpl implements Resources {
                 String[] split = je.getRealName().split("/");
                 try {
                     URI fullUrl = new URL(url, je.getRealName()).toURI();
-                    data.add(split, jarSourceFile);
+                    data.add(split, jarSourceFile.withURI(fullUrl));
                     entries.incrementAndGet();
                 } catch (MalformedURLException | URISyntaxException e) {
                     throw new RuntimeException(e);
@@ -166,7 +167,7 @@ public class ResourcesImpl implements Resources {
         return entries.get();
     }
 
-    public static URL constructJModURL(String part, String altJREDirectory) throws MalformedURLException {
+    public static URL constructJModURL(String part, Path altJREDirectory) throws MalformedURLException {
         if (part.startsWith("/")) {
             return new URL("jar:file:" + part + "!/");
         }
@@ -174,7 +175,7 @@ public class ResourcesImpl implements Resources {
         if (altJREDirectory == null) {
             jre = System.getProperty("java.home");
         } else {
-            jre = altJREDirectory;
+            jre = altJREDirectory.toString();
         }
         if (!jre.endsWith("/")) jre = jre + "/";
         return new URL("jar:file:" + jre + part + "!/");
@@ -313,7 +314,7 @@ public class ResourcesImpl implements Resources {
                     String name = file.getName();
                     String packageName = String.join(".", packageParts);
                     LOGGER.debug("File {} in package {}", name, packageName);
-                    if (!sourceSet.excludePackages().contains(packageName)) {
+                    if (sourceSet.acceptSource(packageName, Resources.stripNameSuffix(name))) {
                         data.add(Stream.concat(Arrays.stream(packageParts), Stream.of(name)).toArray(String[]::new),
                                 new SourceFile(file.getPath(), file.toURI(), sourceSet, null));
                     }

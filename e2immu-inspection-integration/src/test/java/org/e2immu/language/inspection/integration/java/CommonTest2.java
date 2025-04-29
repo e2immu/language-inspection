@@ -29,7 +29,7 @@ public abstract class CommonTest2 {
     public ParseResult init(Map<String, String> sourcesByFqn) throws IOException {
         Map<String, String> sourcesByURIString = sourcesByFqn.entrySet()
                 .stream().collect(Collectors.toUnmodifiableMap(
-                        e -> TEST_PROTOCOL_PREFIX + e.getKey() + "/", Map.Entry::getValue));
+                        e -> TEST_PROTOCOL_PREFIX + e.getKey(), Map.Entry::getValue));
         javaInspector = new JavaInspectorImpl();
         InputConfiguration.Builder inputConfigurationBuilder = new InputConfigurationImpl.Builder()
                 .addClassPath(InputConfigurationImpl.GRADLE_DEFAULT)

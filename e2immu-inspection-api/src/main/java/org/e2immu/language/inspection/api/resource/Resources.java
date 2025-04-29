@@ -5,9 +5,7 @@ import org.e2immu.language.cst.api.info.TypeInfo;
 
 import java.io.File;
 import java.io.IOException;
-import java.net.URI;
 import java.net.URISyntaxException;
-import java.net.URL;
 import java.util.List;
 import java.util.Map;
 import java.util.function.BiConsumer;
@@ -17,6 +15,11 @@ public interface Resources {
     static String stripDotClass(String path) {
         if (path.endsWith(".class")) return path.substring(0, path.length() - 6);
         return path;
+    }
+
+    static String stripNameSuffix(String name) {
+        int lastDot = name.lastIndexOf('.');
+        return lastDot < 0 ? name : name.substring(0, lastDot);
     }
 
     void addDirectoryFromFileSystem(File base, SourceSet sourceSet);

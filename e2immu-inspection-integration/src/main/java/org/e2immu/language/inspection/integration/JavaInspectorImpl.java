@@ -70,6 +70,8 @@ public class JavaInspectorImpl implements JavaInspector {
      * jar:file:/Users/bnaudts/.gradle/caches/modules-2/files-2.1/com.google.guava/guava/28.1-jre/b0e91dcb6a44ffb6221b5027e12a5cb34b841145/guava-28.1-jre.jar!/
      */
     public static final String JAR_WITH_PATH_PREFIX = "jar-on-classpath:";
+    public static final String E2IMMU_SUPPORT = JAR_WITH_PATH_PREFIX + "org/e2immu/annotation";
+
     public static final String TEST_PROTOCOL_PREFIX = TEST_PROTOCOL + ":";
     public static final ParseOptions FAIL_FAST = new ParseOptions(true, false,
             false);
@@ -150,7 +152,7 @@ public class JavaInspectorImpl implements JavaInspector {
                     String typeName = name.substring(0, name.length() - 5);
                     String packageName = Arrays.stream(parts).limit(n).collect(Collectors.joining("."));
                     SourceFile sourceFile = list.get(0);
-                    if (acceptSource(packageName, typeName, sourceFile.sourceSet().excludePackages())) {
+                    if (sourceFile.sourceSet().acceptSource(packageName, typeName)) {
                         sourceFiles.add(sourceFile);
                         parts[n] = typeName;
                     } else {
@@ -161,18 +163,6 @@ public class JavaInspectorImpl implements JavaInspector {
         });
         LOGGER.info("Found {} .java files in {}, skipped {}", sourceFiles.size(), what, ignored);
         return List.copyOf(sourceFiles);
-    }
-
-    public static boolean acceptSource(String packageName, String typeName, Set<String> restrictions) {
-        if (restrictions.isEmpty()) return true;
-        for (String packageString : restrictions) {
-            if (packageString.endsWith(".")) {
-                if (packageName.startsWith(packageString) ||
-                    packageName.equals(packageString.substring(0, packageString.length() - 1))) return true;
-            } else if (packageName.equals(packageString) || packageString.equals(packageName + "." + typeName))
-                return true;
-        }
-        return false;
     }
 
     /**
@@ -221,7 +211,7 @@ public class JavaInspectorImpl implements JavaInspector {
                 }
             } else if (part.endsWith(".jmod")) {
                 try {
-                    URL url = ResourcesImpl.constructJModURL(part, alternativeJREDirectory.toString());
+                    URL url = ResourcesImpl.constructJModURL(part, alternativeJREDirectory);
                     int entries = resources.addJmod(new SourceFile(part, url.toURI(), sourceSet, null));
                     LOGGER.debug("Added {} entries for jmod {}", entries, part);
                 } catch (IOException e) {
@@ -269,7 +259,7 @@ public class JavaInspectorImpl implements JavaInspector {
         Summary failFastSummary = new SummaryImpl(true);
         try {
             URI uri = new URI("input");
-            SourceFile sourceFile = new SourceFile(null, uri, null, null);
+            SourceFile sourceFile = new SourceFile(null, uri, null, MD5FingerPrint.compute(input));
             return internalParse(failFastSummary, sourceFile, () -> {
                 JavaParser parser = new JavaParser(input);
                 parser.setParserTolerant(false);
@@ -351,7 +341,7 @@ public class JavaInspectorImpl implements JavaInspector {
 
         List<URICompilationUnit> list = new ArrayList<>(allURIs.size());
         for (SourceFile sourceFile : allURIs) {
-            String uriString = sourceFile.toString();
+            String uriString = sourceFile.uri().toString();
             if (uriString.startsWith(TEST_PROTOCOL_PREFIX)) {
                 String sourceCode = sourcesByTestProtocolURIString.get(uriString);
                 parseSourceString(sourceFile.uri(), sourceFile.sourceSet(), sourceCode, summary,
