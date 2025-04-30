@@ -55,6 +55,6 @@ public class TestIsAssignableFrom extends CommonTest {
         assertEquals("Gs6V69ZWZ3rgLGbR8gpSIQ==", X.compilationUnit().fingerPrintOrNull().toString());
         TypeInfo list = javaInspector.compiledTypesManager().getOrLoad(List.class);
         assertSame(MD5FingerPrint.NO_FINGERPRINT, list.compilationUnit().fingerPrintOrNull());
-        assertSame(MD5FingerPrint.NO_FINGERPRINT, list.compilationUnit().sourceSet().fingerPrint());
+        assertSame(MD5FingerPrint.NO_FINGERPRINT, list.compilationUnit().sourceSet().fingerPrintOrNull());
     }
 }

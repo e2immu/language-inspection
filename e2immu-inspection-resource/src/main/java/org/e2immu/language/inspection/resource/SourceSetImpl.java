@@ -122,8 +122,8 @@ public class SourceSetImpl implements SourceSet {
     }
 
     @Override
-    public FingerPrint fingerPrint() {
-        return fingerPrint.get();
+    public FingerPrint fingerPrintOrNull() {
+        return fingerPrint.getOrDefaultNull();
     }
 
     @Override

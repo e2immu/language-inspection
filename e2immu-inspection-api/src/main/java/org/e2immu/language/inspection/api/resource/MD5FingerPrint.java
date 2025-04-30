@@ -10,11 +10,16 @@ import java.util.Objects;
 
 public class MD5FingerPrint implements FingerPrint {
 
-    public static final FingerPrint NO_FINGERPRINT = new MD5FingerPrint(new byte[]{});
+    public static final FingerPrint NO_FINGERPRINT = new MD5FingerPrint();
 
     private final byte[] bytes;
 
+    private MD5FingerPrint() {
+        this.bytes = new byte[]{};
+    }
+
     public MD5FingerPrint(byte[] bytes) {
+        assert bytes.length == 16;
         this.bytes = bytes;
     }
 
@@ -39,6 +44,11 @@ public class MD5FingerPrint implements FingerPrint {
         return new MD5FingerPrint(digest);
     }
 
+    public static FingerPrint from(String toString) {
+        byte[] decodedBytes = Base64.getDecoder().decode(toString.substring(0, 22));
+        return new MD5FingerPrint(decodedBytes);
+    }
+
     @Override
     public boolean equals(Object object) {
         if (!(object instanceof MD5FingerPrint that)) return false;
@@ -53,12 +63,6 @@ public class MD5FingerPrint implements FingerPrint {
     @Override
     public String toString() {
         if (this == NO_FINGERPRINT) return "<no fingerprint>";
-        try {
-            MessageDigest md = MessageDigest.getInstance("MD5");
-            byte[] arr = md.digest(bytes);
-            return Base64.getEncoder().encodeToString(arr);
-        } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException(e);
-        }
+        return Base64.getEncoder().encodeToString(bytes);
     }
 }

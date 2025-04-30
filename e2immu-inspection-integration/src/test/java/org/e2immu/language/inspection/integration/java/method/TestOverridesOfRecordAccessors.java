@@ -60,6 +60,6 @@ public class TestOverridesOfRecordAccessors extends CommonTest2 {
         SourceSet sourceSet = logger.compilationUnit().sourceSet();
         assertEquals("jar-on-classpath:org/slf4j/event", sourceSet.name());
         assertEquals("9hZeS5VmcgSoxVfeyEwh6w==", logger.compilationUnit().fingerPrintOrNull().toString());
-        assertEquals("RBh3KRpK2Hq4ny18GuC4NQ==", sourceSet.fingerPrint().toString());
+        assertEquals("RBh3KRpK2Hq4ny18GuC4NQ==", sourceSet.fingerPrintOrNull().toString());
     }
 }
