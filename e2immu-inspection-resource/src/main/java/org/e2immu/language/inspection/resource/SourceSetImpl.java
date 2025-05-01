@@ -159,14 +159,14 @@ public class SourceSetImpl implements SourceSet {
     }
 
     @Override
-    public SourceSet withPath(Path path) {
-        return new SourceSetImpl(name, List.of(path), uri, sourceEncoding, test, library, externalLibrary, partOfJdk, runtimeOnly,
+    public SourceSet withSourceDirectories(List<Path> paths) {
+        return new SourceSetImpl(name, paths, uri, sourceEncoding, test, library, externalLibrary, partOfJdk, runtimeOnly,
                 restrictToPackages, dependencies);
     }
 
     @Override
-    public SourceSet withPathUri(Path sourceDirectory, URI uri) {
-        return new SourceSetImpl(name, List.of(sourceDirectory), uri, sourceEncoding, test, library, externalLibrary, partOfJdk,
+    public SourceSet withSourceDirectoriesUri(List<Path> sourceDirectories, URI uri) {
+        return new SourceSetImpl(name, sourceDirectories, uri, sourceEncoding, test, library, externalLibrary, partOfJdk,
                 runtimeOnly, restrictToPackages, dependencies);
     }
 
