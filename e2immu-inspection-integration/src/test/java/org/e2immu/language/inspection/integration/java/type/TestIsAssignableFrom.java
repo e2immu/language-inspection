@@ -52,7 +52,7 @@ public class TestIsAssignableFrom extends CommonTest {
         TypeInfo child = X.findSubType("Child");
         assertTrue(parent.asParameterizedType().isAssignableFrom(javaInspector.runtime(), child.asParameterizedType()));
 
-        assertEquals("Gs6V69ZWZ3rgLGbR8gpSIQ==", X.compilationUnit().fingerPrintOrNull().toString());
+        assertEquals("rRYs3LDF1ia1MgjUQEW0Aw==", X.compilationUnit().fingerPrintOrNull().toString());
         TypeInfo list = javaInspector.compiledTypesManager().getOrLoad(List.class);
         assertSame(MD5FingerPrint.NO_FINGERPRINT, list.compilationUnit().fingerPrintOrNull());
         assertSame(MD5FingerPrint.NO_FINGERPRINT, list.compilationUnit().sourceSet().fingerPrintOrNull());

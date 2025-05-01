@@ -30,9 +30,9 @@ java {
 }
 
 dependencies {
-    implementation("org.e2immu:e2immu-cst-api:some.version")
-    implementation("org.e2immu:e2immu-external-support:some.version")
-    implementation("org.e2immu:e2immu-internal-util:some.version")
+    implementation("org.e2immu:e2immu-cst-api:${version}")
+    implementation("org.e2immu:e2immu-external-support:${version}")
+    implementation("org.e2immu:e2immu-internal-util:${version}")
     implementation("org.slf4j:slf4j-api:2.0.7")
 
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.9.3")
@@ -42,4 +42,45 @@ dependencies {
 
 tasks.test {
     useJUnitPlatform()
+}
+
+
+publishing {
+    repositories {
+        maven {
+            url = uri(project.findProperty("publishUri") as String)
+            credentials {
+                username = project.findProperty("publishUsername") as String
+                password = project.findProperty("publishPassword") as String
+            }
+        }
+    }
+    publications {
+        create<MavenPublication>("mavenJava") {
+            from(components["java"])
+
+            pom {
+                name = "language-inspection-api of e2immu analyser"
+                description = "Static code analyser focusing on modification and immutability. " +
+                        "This module defines the abstraction layer for code inspection."
+                url = "https://e2immu.org"
+                scm {
+                    url = "https://github.com/e2immu"
+                }
+                licenses {
+                    license {
+                        name = "GNU Lesser General Public License, version 3.0"
+                        url = "https://www.gnu.org/licenses/lgpl-3.0.html"
+                    }
+                }
+                developers {
+                    developer {
+                        id = "bnaudts"
+                        name = "Bart Naudts"
+                        email = "bart.naudts@e2immu.org"
+                    }
+                }
+            }
+        }
+    }
 }

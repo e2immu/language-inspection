@@ -54,12 +54,12 @@ public class TestOverridesOfRecordAccessors extends CommonTest2 {
                 processorFqn, PROCESSOR));
         assertEquals(3, parseResult.primaryTypes().size());
         TypeInfo processor = parseResult.findType(processorFqn);
-        assertEquals("vOxJ/OgYP7jlA+kctKlAmw==", processor.compilationUnit().fingerPrintOrNull().toString());
+        assertEquals("OhUf4rF0+cdKdIdanESW7g==", processor.compilationUnit().fingerPrintOrNull().toString());
 
         TypeInfo logger = javaInspector.compiledTypesManager().get("org.slf4j.Logger");
         SourceSet sourceSet = logger.compilationUnit().sourceSet();
         assertEquals("jar-on-classpath:org/slf4j/event", sourceSet.name());
-        assertEquals("9hZeS5VmcgSoxVfeyEwh6w==", logger.compilationUnit().fingerPrintOrNull().toString());
-        assertEquals("RBh3KRpK2Hq4ny18GuC4NQ==", sourceSet.fingerPrintOrNull().toString());
+        assertEquals("KbWqJ430MNlxkWaqzoLTCg==", logger.compilationUnit().fingerPrintOrNull().toString());
+        assertEquals("NX5KIwv9miwwPyWj8q3kwg==", sourceSet.fingerPrintOrNull().toString());
     }
 }
