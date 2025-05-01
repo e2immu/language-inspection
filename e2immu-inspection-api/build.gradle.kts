@@ -6,7 +6,7 @@
 
 plugins {
     java
-    id("maven-publish")
+    `maven-publish`
 }
 
 group = "org.e2immu"
