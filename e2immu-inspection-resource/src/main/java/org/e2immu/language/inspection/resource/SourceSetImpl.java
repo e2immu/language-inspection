@@ -7,12 +7,13 @@ import org.e2immu.support.SetOnce;
 import java.net.URI;
 import java.nio.charset.Charset;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
 public class SourceSetImpl implements SourceSet {
     private final String name;
-    private final Path sourceDirectory;
+    private final List<Path> sourceDirectories;
     private final URI uri;
     private final Charset sourceEncoding;
     private final boolean test;
@@ -26,13 +27,13 @@ public class SourceSetImpl implements SourceSet {
     private final SetOnce<FingerPrint> analysisFingerPrint = new SetOnce<>();
 
     public SourceSetImpl(String name,
-                         Path sourceDirectory, URI uri,
+                         List<Path> sourceDirectories, URI uri,
                          Charset sourceEncoding,
                          boolean test, boolean library, boolean externalLibrary, boolean partOfJdk, boolean runtimeOnly,
                          Set<String> restrictToPackages,
                          Set<SourceSet> dependencies) {
         this.name = Objects.requireNonNull(name);
-        this.sourceDirectory = sourceDirectory;
+        this.sourceDirectories = sourceDirectories;
         this.uri = Objects.requireNonNull(uri);
         Objects.requireNonNull(uri.getScheme(), "The URI of source set " + name + " must have a non-null scheme");
         this.sourceEncoding = sourceEncoding;
@@ -62,7 +63,7 @@ public class SourceSetImpl implements SourceSet {
     @Override
     public String toString() {
         String code = partOfJdk ? "[jdk]" : externalLibrary ? "[external]" : library ? "[library]" : test ? "[test]" : "";
-        String pathString = sourceDirectory.toString();
+        String pathString = sourceDirectories.size() == 1 ? sourceDirectories.get(0).toString() : sourceDirectories.toString();
         return name + code + (pathString.equals(name) ? "" : ":" + pathString);
     }
 
@@ -77,8 +78,8 @@ public class SourceSetImpl implements SourceSet {
     }
 
     @Override
-    public Path sourceDirectory() {
-        return sourceDirectory;
+    public List<Path> sourceDirectories() {
+        return sourceDirectories;
     }
 
     @Override
@@ -159,13 +160,19 @@ public class SourceSetImpl implements SourceSet {
 
     @Override
     public SourceSet withPath(Path path) {
-        return new SourceSetImpl(name, path, uri, sourceEncoding, test, library, externalLibrary, partOfJdk, runtimeOnly,
+        return new SourceSetImpl(name, List.of(path), uri, sourceEncoding, test, library, externalLibrary, partOfJdk, runtimeOnly,
                 restrictToPackages, dependencies);
     }
 
     @Override
     public SourceSet withPathUri(Path sourceDirectory, URI uri) {
-        return new SourceSetImpl(name, sourceDirectory, uri, sourceEncoding, test, library, externalLibrary, partOfJdk,
+        return new SourceSetImpl(name, List.of(sourceDirectory), uri, sourceEncoding, test, library, externalLibrary, partOfJdk,
                 runtimeOnly, restrictToPackages, dependencies);
+    }
+
+    @Override
+    public SourceSet withDependencies(Set<SourceSet> dependencies) {
+        return new SourceSetImpl(name, sourceDirectories, uri, sourceEncoding, test, library,
+                externalLibrary, partOfJdk, runtimeOnly, restrictToPackages, dependencies);
     }
 }

@@ -93,14 +93,14 @@ public record InputConfigurationImpl(List<SourceSet> sourceSets,
             for (String sourceDir : sourceDirs) {
                 Set<SourceSet> allDependencies = Stream.concat(classPathParts.stream(),
                         sourceSets.stream()).collect(Collectors.toUnmodifiableSet());
-                sourceSets.add(new SourceSetImpl(sourceDir, Path.of(sourceDir), createURI(sourceDir), sourceCharset,
+                sourceSets.add(new SourceSetImpl(sourceDir, List.of(Path.of(sourceDir)), createURI(sourceDir), sourceCharset,
                         false, false, false, false, false,
                         restrictSourceToPackages, allDependencies));
             }
             for (String sourceDir : testSourceDirs) {
                 Set<SourceSet> allDependencies = Stream.concat(classPathParts.stream(),
                         sourceSets.stream()).collect(Collectors.toUnmodifiableSet());
-                sourceSets.add(new SourceSetImpl(sourceDir, Path.of(sourceDir), createURI(sourceDir), sourceCharset,
+                sourceSets.add(new SourceSetImpl(sourceDir, List.of(Path.of(sourceDir)), createURI(sourceDir), sourceCharset,
                         true, false, false, false, false,
                         restrictTestSourceToPackages, allDependencies));
             }
