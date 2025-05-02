@@ -14,7 +14,8 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-public record InputConfigurationImpl(List<SourceSet> sourceSets,
+public record InputConfigurationImpl(Path workingDirectory,
+                                     List<SourceSet> sourceSets,
                                      List<SourceSet> classPathParts,
                                      Path alternativeJREDirectory) implements InputConfiguration {
 
@@ -42,7 +43,8 @@ public record InputConfigurationImpl(List<SourceSet> sourceSets,
         Stream<SourceSet> defaultModuleStream = Arrays.stream(DEFAULT_MODULES).map(mod ->
                 new SourceSetImpl(mod, null, URI.create(mod), StandardCharsets.UTF_8, false, true,
                         false, true, false, Set.of(), Set.of()));
-        return new InputConfigurationImpl(sourceSets, Stream.concat(classPathParts.stream(), defaultModuleStream).toList(), alternativeJREDirectory);
+        return new InputConfigurationImpl(workingDirectory, sourceSets, Stream.concat(classPathParts.stream(),
+                defaultModuleStream).toList(), alternativeJREDirectory);
     }
 
     @Override
@@ -68,6 +70,7 @@ public record InputConfigurationImpl(List<SourceSet> sourceSets,
         private final Set<String> restrictSourceToPackages = new HashSet<>();
         private final Set<String> restrictTestSourceToPackages = new HashSet<>();
 
+        private String workingDirectory;
         private String alternativeJREDirectory;
         private String sourceEncoding;
 
@@ -104,8 +107,11 @@ public record InputConfigurationImpl(List<SourceSet> sourceSets,
                         true, false, false, false, false,
                         restrictTestSourceToPackages, allDependencies));
             }
-            return new InputConfigurationImpl(List.copyOf(sourceSets), List.copyOf(classPathParts),
-                    alternativeJREDirectory == null ? null : Path.of(alternativeJREDirectory));
+            return new InputConfigurationImpl(workingDirectory == null || workingDirectory.isBlank()
+                    ? Path.of(".") : Path.of(workingDirectory),
+                    List.copyOf(sourceSets), List.copyOf(classPathParts),
+                    alternativeJREDirectory == null || alternativeJREDirectory.isBlank()
+                            ? null : Path.of(alternativeJREDirectory));
         }
 
         private static final Pattern SCHEME = Pattern.compile("([A-Za-z-]+):.+");
@@ -119,6 +125,12 @@ public record InputConfigurationImpl(List<SourceSet> sourceSets,
 
         private static boolean isJmod(String classPathPart) {
             return classPathPart.startsWith("jmod:");
+        }
+
+        @Override
+        public Builder setWorkingDirectory(String workingDirectory) {
+            this.workingDirectory = workingDirectory;
+            return this;
         }
 
         @Override

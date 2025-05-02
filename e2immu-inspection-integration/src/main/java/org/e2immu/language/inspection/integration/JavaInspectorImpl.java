@@ -123,7 +123,8 @@ public class JavaInspectorImpl implements JavaInspector {
         try {
             List<SourceSet> classPathSourceSets = inputConfiguration.classPathParts().stream()
                     .map(set -> (SourceSet) set).toList();
-            Resources classPath = assemblePath(inputConfiguration.alternativeJREDirectory(), classPathSourceSets,
+            Resources classPath = assemblePath(inputConfiguration.workingDirectory(),
+                    classPathSourceSets, inputConfiguration.alternativeJREDirectory(),
                     "Classpath", initializationProblems);
             CompiledTypesManagerImpl ctm = new CompiledTypesManagerImpl(classPath);
             runtime = new RuntimeWithCompiledTypesManager(ctm);
@@ -137,12 +138,12 @@ public class JavaInspectorImpl implements JavaInspector {
 
             List<SourceSet> sourcePathSourceSets = inputConfiguration.sourceSets().stream()
                     .filter(set -> !set.test()).toList();
-            Resources sourcePath = assemblePath(inputConfiguration.alternativeJREDirectory(), sourcePathSourceSets,
-                    "Source path", initializationProblems);
+            Resources sourcePath = assemblePath(inputConfiguration.workingDirectory(), sourcePathSourceSets,
+                    inputConfiguration.alternativeJREDirectory(), "Source path", initializationProblems);
             List<SourceSet> testSourcePathSourceSets = inputConfiguration.sourceSets().stream().filter(SourceSet::test)
                     .toList();
-            Resources testSourcePath = assemblePath(inputConfiguration.alternativeJREDirectory(), testSourcePathSourceSets,
-                    "Test source path", initializationProblems);
+            Resources testSourcePath = assemblePath(inputConfiguration.workingDirectory(), testSourcePathSourceSets,
+                    inputConfiguration.alternativeJREDirectory(), "Test source path", initializationProblems);
 
             sourceURIs = computeSourceURIs(sourcePath, "source path");
             testURIs = computeSourceURIs(testSourcePath, "test source path");
@@ -192,11 +193,12 @@ public class JavaInspectorImpl implements JavaInspector {
         compiledTypesManager.loadByteCodeQueue();
     }
 
-    private Resources assemblePath(Path alternativeJREDirectory,
+    private Resources assemblePath(Path workingDirectory,
                                    List<SourceSet> sourceSets,
+                                   Path alternativeJREDirectory,
                                    String msg,
                                    List<InitializationProblem> initializationProblems) throws IOException, URISyntaxException {
-        Resources resources = new ResourcesImpl();
+        Resources resources = new ResourcesImpl(workingDirectory);
         for (SourceSet sourceSet : sourceSets) {
             String scheme = sourceSet.uri().getScheme();
             Throwable throwable = null;

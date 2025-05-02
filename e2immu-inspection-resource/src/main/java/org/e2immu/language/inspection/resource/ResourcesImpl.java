@@ -35,6 +35,23 @@ public class ResourcesImpl implements Resources {
     private final Trie<SourceFile> data = new Trie<>();
     private final Map<String, JarSize> jarSizes = new HashMap<>();
 
+    private final Path workingDirectory;
+
+    public ResourcesImpl(Path workingDirectory) {
+        this.workingDirectory = workingDirectory;
+    }
+
+    private URI relativeToAbsolute(URI uri) {
+        if ("file".equals(uri.getScheme())) {
+            String path = uri.getSchemeSpecificPart();
+            if (!path.startsWith("/")) {
+                Path newPath = workingDirectory.resolve(Path.of(path));
+                return newPath.toUri();
+            }
+        }
+        return uri;
+    }
+
     @Override
     public Map<String, JarSize> getJarSizes() {
         return jarSizes;
@@ -125,7 +142,7 @@ public class ResourcesImpl implements Resources {
      */
     @Override
     public int addJar(SourceFile jarSourceFile) throws IOException {
-        URL url = jarSourceFile.uri().toURL();
+        URL url = relativeToAbsolute(jarSourceFile.uri()).toURL();
         JarURLConnection jarConnection = (JarURLConnection) url.openConnection();
         JarFile jarFile = jarConnection.getJarFile();
         AtomicInteger entries = new AtomicInteger();
@@ -262,12 +279,14 @@ public class ResourcesImpl implements Resources {
         List<SourceFile> sourceFiles = data.get(prefix);
         if (sourceFiles != null) {
             for (SourceFile sourceFile : sourceFiles) {
+                URI absolute = relativeToAbsolute(sourceFile.uri());
                 try (ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-                     InputStream inputStream = sourceFile.uri().toURL().openStream()) {
+                     InputStream inputStream = absolute.toURL().openStream()) {
                     inputStream.transferTo(byteArrayOutputStream);
                     return byteArrayOutputStream.toByteArray();
                 } catch (IOException e) {
-                    throw new ResourceAccessException("URL = " + sourceFile.uri() + ", Cannot read? " + e.getMessage());
+                    throw new ResourceAccessException("URI = " + absolute + ", from " + workingDirectory
+                                                      + " and " + sourceFile.uri() + ", Cannot read? " + e.getMessage());
                 }
             }
         }
