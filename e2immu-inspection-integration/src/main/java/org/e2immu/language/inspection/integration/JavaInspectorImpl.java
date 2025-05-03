@@ -203,50 +203,52 @@ public class JavaInspectorImpl implements JavaInspector {
             Throwable throwable = null;
             String path = sourceSet.uri().getSchemeSpecificPart();
             assert path != null && !path.isBlank();
-            if (JAR_WITH_PATH.equals(scheme)) {
-                URL jarUrl = resources.findJarInClassPath(path);
-                if (jarUrl == null) {
-                    String msgString = msg + " part '" + sourceSet.uri() + "': jar not found";
-                    LOGGER.warn(msg);
-                    initializationProblems.add(new InitializationProblem(msgString, null));
-                } else {
-                    addJar(resources, path, jarUrl, sourceSet);
-                }
-            } else if ("jmod".equals(scheme)) {
-                try {
-                    URL url = ResourcesImpl.constructJModURL(path, alternativeJREDirectory);
-                    FingerPrint fingerPrint = makeFingerPrint(url);
-                    sourceSet.setFingerPrint(fingerPrint);
-                    int entries = resources.addJmod(new SourceFile(path, url.toURI(), sourceSet, null));
-                    LOGGER.debug("Added {} entries for jmod {}", entries, path);
-                } catch (IOException e) {
-                    throwable = e;
-                }
-            } else if (TEST_PROTOCOL.equals(scheme)) {
-                resources.addTestProtocol(new SourceFile(path, sourceSet.uri(), sourceSet, null));
-            } else if ("file".equals(scheme)) {
-                if (path.endsWith(".jar")) {
-                    try {
-                        // "jar:file:build/libs/equivalent.jar!/"
-                        File file = new File(workingDirectory.toFile(), path);
-                        URL jarUrl = new URL("jar:file:" + file.getPath() + "!/");
+            switch (scheme) {
+                case JAR_WITH_PATH -> {
+                    URL jarUrl = resources.findJarInClassPath(path);
+                    if (jarUrl == null) {
+                        String msgString = msg + " part '" + sourceSet.uri() + "': jar not found";
+                        LOGGER.warn(msg);
+                        initializationProblems.add(new InitializationProblem(msgString, null));
+                    } else {
                         addJar(resources, path, jarUrl, sourceSet);
+                    }
+                }
+                case "jmod" -> {
+                    try {
+                        URL url = ResourcesImpl.constructJModURL(path, alternativeJREDirectory);
+                        FingerPrint fingerPrint = makeFingerPrint(url);
+                        sourceSet.setFingerPrint(fingerPrint);
+                        int entries = resources.addJmod(new SourceFile(path, url.toURI(), sourceSet, null));
+                        LOGGER.debug("Added {} entries for jmod {}", entries, path);
                     } catch (IOException e) {
                         throwable = e;
                     }
-                } else {
-                    File directory = new File(workingDirectory.toFile(), path);
-                    if (directory.isDirectory()) {
-                        LOGGER.info("Adding {} to {}", directory.getAbsolutePath(), msg);
-                        resources.addDirectoryFromFileSystem(directory, sourceSet);
+                }
+                case TEST_PROTOCOL -> resources.addTestProtocol(new SourceFile(path, sourceSet.uri(), sourceSet,
+                        null));
+                case "file" -> {
+                    File file = toAbsoluteFile(workingDirectory, path);
+                    if (path.endsWith(".jar")) {
+                        try {
+                            // "jar:file:build/libs/equivalent.jar!/"
+                            URL jarUrl = URI.create("jar:file:" + file.getPath() + "!/").toURL();
+                            addJar(resources, path, jarUrl, sourceSet);
+                        } catch (IOException e) {
+                            throwable = e;
+                        }
                     } else {
-                        String msgString = msg + " part '" + path + "' is not a .jar file, and not a directory: ignored";
-                        LOGGER.warn(msgString);
-                        initializationProblems.add(new InitializationProblem(msgString, null));
+                        if (file.isDirectory()) {
+                            LOGGER.info("Adding {} to {}", file.getAbsolutePath(), msg);
+                            resources.addDirectoryFromFileSystem(file, sourceSet);
+                        } else {
+                            String msgString = msg + " part '" + path + "' is not a .jar file, and not a directory: ignored";
+                            LOGGER.warn(msgString);
+                            initializationProblems.add(new InitializationProblem(msgString, null));
+                        }
                     }
                 }
-            } else {
-                throw new UnsupportedOperationException("Unknown URI scheme " + scheme);
+                case null, default -> throw new UnsupportedOperationException("Unknown URI scheme " + scheme);
             }
             if (throwable != null) {
                 String msgString = msg + " part '" + path + "' ignored: " + throwable.getMessage();
@@ -255,6 +257,12 @@ public class JavaInspectorImpl implements JavaInspector {
             }
         }
         return resources;
+    }
+
+    private File toAbsoluteFile(Path workingDirectory, String path) {
+        File file = new File(path);
+        if (file.exists() && file.isAbsolute()) return file;
+        return new File(workingDirectory.toFile(), path);
     }
 
     private void addJar(Resources resources, String part, URL jarUrl, SourceSet sourceSet) throws IOException, URISyntaxException {
@@ -283,12 +291,12 @@ public class JavaInspectorImpl implements JavaInspector {
     // used for testing
     @Override
     public TypeInfo parse(String input, ParseOptions parseOptions) {
-        return parseReturnAll(input, parseOptions).get(0);
+        return parseReturnAll(input, parseOptions).getFirst();
     }
 
     @Override
     public TypeInfo parse(String input) {
-        return parseReturnAll(input, FAIL_FAST).get(0);
+        return parseReturnAll(input, FAIL_FAST).getFirst();
     }
 
     @Override

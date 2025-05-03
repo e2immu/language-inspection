@@ -151,7 +151,7 @@ public class SourceSetImpl implements SourceSet {
 
     @Override
     public boolean acceptSource(String packageName, String typeName) {
-        if (restrictToPackages.isEmpty()) return true;
+        if (restrictToPackages == null || restrictToPackages.isEmpty()) return true;
         for (String packageString : restrictToPackages) {
             if (packageString.endsWith(".")) {
                 if (packageName.startsWith(packageString) ||
