@@ -74,6 +74,7 @@ public class ResolverImpl implements Resolver {
                 try {
                     resolveMethod(todo, builder);
                 } catch (RuntimeException re) {
+                    LOGGER.error("Caught exception resolving {}", todo.info);
                     success = false;
                     todo.context.summary().addParserError(re);
                 }
