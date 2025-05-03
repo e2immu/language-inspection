@@ -228,7 +228,8 @@ public class JavaInspectorImpl implements JavaInspector {
                 if (path.endsWith(".jar")) {
                     try {
                         // "jar:file:build/libs/equivalent.jar!/"
-                        URL jarUrl = new URL("jar:file:" + path + "!/");
+                        File file = new File(workingDirectory.toFile(), path);
+                        URL jarUrl = new URL("jar:file:" + file.getPath() + "!/");
                         addJar(resources, path, jarUrl, sourceSet);
                     } catch (IOException e) {
                         throwable = e;
