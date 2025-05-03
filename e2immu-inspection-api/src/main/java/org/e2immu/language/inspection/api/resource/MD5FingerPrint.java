@@ -65,4 +65,9 @@ public class MD5FingerPrint implements FingerPrint {
         if (this == NO_FINGERPRINT) return "<no fingerprint>";
         return Base64.getEncoder().encodeToString(bytes);
     }
+
+    @Override
+    public boolean isNoFingerPrint() {
+        return this == NO_FINGERPRINT;
+    }
 }

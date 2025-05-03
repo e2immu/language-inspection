@@ -42,9 +42,23 @@ public record InputConfigurationImpl(Path workingDirectory,
     public InputConfiguration withDefaultModules() {
         Stream<SourceSet> defaultModuleStream = Arrays.stream(DEFAULT_MODULES).map(mod ->
                 new SourceSetImpl(mod, null, URI.create(mod), StandardCharsets.UTF_8, false, true,
-                        false, true, false, Set.of(), Set.of()));
+                        true, true, false, Set.of(), Set.of()));
         return new InputConfigurationImpl(workingDirectory, sourceSets, Stream.concat(classPathParts.stream(),
                 defaultModuleStream).toList(), alternativeJREDirectory);
+    }
+
+    @Override
+    public InputConfiguration withE2ImmuSupportFromClasspath() {
+        if (classPathParts.stream().anyMatch(cpp -> cpp.uri().getSchemeSpecificPart().contains("org/e2immu/annotation"))) {
+            return this;
+        }
+        SourceSet e2immuSupport =
+                new SourceSetImpl("e2immuSupport", null,
+                        URI.create("jar-on-classpath:org/e2immu/annotation"),
+                        StandardCharsets.UTF_8, false, true,
+                        true, false, false, Set.of(), Set.of());
+        return new InputConfigurationImpl(workingDirectory, sourceSets, Stream.concat(classPathParts.stream(),
+                Stream.of(e2immuSupport)).toList(), alternativeJREDirectory);
     }
 
     @Override

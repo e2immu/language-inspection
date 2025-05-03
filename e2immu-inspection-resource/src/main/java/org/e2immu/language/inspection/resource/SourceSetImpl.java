@@ -63,7 +63,8 @@ public class SourceSetImpl implements SourceSet {
     @Override
     public String toString() {
         String code = partOfJdk ? "[jdk]" : externalLibrary ? "[external]" : library ? "[library]" : test ? "[test]" : "";
-        String pathString = sourceDirectories.size() == 1 ? sourceDirectories.get(0).toString() : sourceDirectories.toString();
+        String pathString = sourceDirectories == null ? "<no source dir>"
+                : sourceDirectories.size() == 1 ? sourceDirectories.getFirst().toString() : sourceDirectories.toString();
         return name + code + (pathString.equals(name) ? "" : ":" + pathString);
     }
 
@@ -129,7 +130,13 @@ public class SourceSetImpl implements SourceSet {
 
     @Override
     public void setFingerPrint(FingerPrint fingerPrint) {
-        this.fingerPrint.set(fingerPrint);
+        if (this.fingerPrint.isSet()) {
+            if (!fingerPrint.equals(this.fingerPrint.get())) {
+                throw new UnsupportedOperationException("Trying to overwrite: " + this.fingerPrint.get() + "->" + fingerPrint);
+            }
+        } else {
+            this.fingerPrint.set(fingerPrint);
+        }
     }
 
     @Override

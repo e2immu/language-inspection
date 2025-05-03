@@ -91,5 +91,6 @@ public interface InputConfiguration {
     // helper
 
     InputConfiguration withDefaultModules();
+    InputConfiguration withE2ImmuSupportFromClasspath();
 
 }

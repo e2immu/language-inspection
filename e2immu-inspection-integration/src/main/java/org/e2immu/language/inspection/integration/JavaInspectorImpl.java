@@ -121,10 +121,9 @@ public class JavaInspectorImpl implements JavaInspector {
     public List<InitializationProblem> initialize(InputConfiguration inputConfiguration) throws IOException {
         List<InitializationProblem> initializationProblems = new LinkedList<>();
         try {
-            List<SourceSet> classPathSourceSets = inputConfiguration.classPathParts().stream()
-                    .map(set -> (SourceSet) set).toList();
+
             Resources classPath = assemblePath(inputConfiguration.workingDirectory(),
-                    classPathSourceSets, inputConfiguration.alternativeJREDirectory(),
+                    inputConfiguration.classPathParts(), inputConfiguration.alternativeJREDirectory(),
                     "Classpath", initializationProblems);
             CompiledTypesManagerImpl ctm = new CompiledTypesManagerImpl(classPath);
             runtime = new RuntimeWithCompiledTypesManager(ctm);
@@ -235,7 +234,7 @@ public class JavaInspectorImpl implements JavaInspector {
                         throwable = e;
                     }
                 } else {
-                    File directory = new File(path);
+                    File directory = new File(workingDirectory.toFile(), path);
                     if (directory.isDirectory()) {
                         LOGGER.info("Adding {} to {}", directory.getAbsolutePath(), msg);
                         resources.addDirectoryFromFileSystem(directory, sourceSet);

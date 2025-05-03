@@ -63,6 +63,12 @@ public class ParseResultImpl implements ParseResult {
         if (m.matches()) {
             String typeFqn = m.group(1);
             TypeInfo typeInfo = findType(typeFqn);
+            if (typeInfo == null) {
+                if (complain) {
+                    throw new RuntimeException("Cannot find type with fqn '" + typeFqn + "'");
+                }
+                return null;
+            }
             MethodInfo methodInfo = typeInfo.constructorAndMethodStream()
                     .filter(mi -> mi.fullyQualifiedName().equals(methodFqn))
                     .findFirst().orElse(null);
