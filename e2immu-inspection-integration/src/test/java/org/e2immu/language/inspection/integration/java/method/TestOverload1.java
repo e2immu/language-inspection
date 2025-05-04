@@ -1,15 +1,13 @@
 package org.e2immu.language.inspection.integration.java.method;
 
-import org.e2immu.language.cst.api.expression.BinaryOperator;
 import org.e2immu.language.cst.api.expression.MethodCall;
 import org.e2immu.language.cst.api.info.MethodInfo;
 import org.e2immu.language.cst.api.info.TypeInfo;
-import org.e2immu.language.cst.api.statement.Block;
 import org.e2immu.language.cst.api.statement.ExpressionAsStatement;
-import org.e2immu.language.cst.api.statement.ReturnStatement;
 import org.e2immu.language.cst.api.statement.Statement;
 import org.e2immu.language.inspection.integration.java.CommonTest;
 import org.intellij.lang.annotations.Language;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -155,4 +153,47 @@ public class TestOverload1 extends CommonTest {
             assertEquals("java.security.MessageDigest.update(byte)", mc(s1).methodInfo().fullyQualifiedName());
         }
     }
+
+
+    @Language("java")
+    private static final String INPUT4 = """
+            package a.b;
+            import java.io.PrintWriter;
+            public class X {
+            
+                interface Expression<Y> {
+            
+                }
+            
+                interface CriteriaBuilder {
+                     <Y extends Comparable<? super Y>> boolean greaterThan(Expression<? extends Y> expression1,
+                         Expression<? extends Y> expression2);
+                     <Y extends Comparable<? super Y>> boolean greaterThan(Expression<? extends Y> expression, Y y);
+                }
+            }
+            """;
+
+    @DisplayName("infinite loop type parameter recursion + printing type parameters")
+    @Test
+    public void test4() {
+        TypeInfo typeInfo = javaInspector.parse(INPUT4);
+
+
+        String s = javaInspector.print2(typeInfo);
+        @Language("java")
+        String expect = """
+                package a.b;
+                public class X {
+                    public void method() {
+                        String s = \"""
+                                abc\\
+                                def
+                                123
+                                \""";
+                    }
+                }
+                """;
+        assertEquals(expect, s);
+    }
+
 }
