@@ -1,6 +1,8 @@
 package org.e2immu.language.inspection.api.parser;
 
+import org.e2immu.language.cst.api.expression.AnnotationExpression;
 import org.e2immu.language.cst.api.expression.Expression;
+import org.e2immu.language.cst.api.info.FieldInfo;
 import org.e2immu.language.cst.api.info.Info;
 import org.e2immu.language.cst.api.info.MethodInfo;
 import org.e2immu.language.cst.api.info.TypeInfo;
@@ -13,7 +15,12 @@ public interface Resolver {
              Object toResolve,
              Context newContext);
 
+    void addRecordField(FieldInfo recordField);
+
     void add(TypeInfo.Builder builder);
+
+    void addAnnotationTodo(Info.Builder<?> infoBuilder, AnnotationExpression.Builder ab, int indexInAnnotationList,
+                           Object annotation, Context context);
 
     // add to the to-do list, but only for overrides
     void addRecordAccessor(MethodInfo accessor);

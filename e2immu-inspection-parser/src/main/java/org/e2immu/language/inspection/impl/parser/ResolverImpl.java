@@ -1,6 +1,7 @@
 package org.e2immu.language.inspection.impl.parser;
 
 
+import org.e2immu.language.cst.api.expression.AnnotationExpression;
 import org.e2immu.language.cst.api.expression.Expression;
 import org.e2immu.language.cst.api.info.*;
 import org.e2immu.language.inspection.api.parser.Context;
@@ -33,22 +34,41 @@ public class ResolverImpl implements Resolver {
                 Context context) {
     }
 
+    record AnnotationTodo(Info.Builder<?> infoBuilder, AnnotationExpression.Builder annotationExpressionBuilder,
+                          int indexInAnnotationList, Object annotation, Context context) {
+    }
+
     private final List<Todo> todos = new LinkedList<>();
+    private final List<AnnotationTodo> annotationTodos = new LinkedList<>();
     private final List<TypeInfo.Builder> types = new LinkedList<>();
     private final List<MethodInfo> recordAccessors = new LinkedList<>();
+    private final List<FieldInfo> recordFields = new LinkedList<>();
 
+    @Override
     public Resolver newEmpty() {
         return new ResolverImpl(computeMethodOverrides, parseHelper);
     }
 
+    @Override
     public void add(Info info, Info.Builder<?> infoBuilder, ForwardType forwardType, Object eci, Object expression,
                     Context context) {
         todos.add(new Todo(info, infoBuilder, forwardType, eci, expression, context));
     }
 
     @Override
+    public void addAnnotationTodo(Info.Builder<?> infoBuilder, AnnotationExpression.Builder ab, int indexInAnnotationList,
+                                  Object annotation, Context context) {
+        annotationTodos.add(new AnnotationTodo(infoBuilder, ab, indexInAnnotationList, annotation, context));
+    }
+
+    @Override
     public void addRecordAccessor(MethodInfo accessor) {
         recordAccessors.add(accessor);
+    }
+
+    @Override
+    public void addRecordField(FieldInfo recordField) {
+        recordFields.add(recordField);
     }
 
     @Override
@@ -58,6 +78,11 @@ public class ResolverImpl implements Resolver {
 
     public void resolve() {
         LOGGER.info("Start resolving {} type(s), {} field(s)/method(s)", types.size(), todos.size());
+
+        for (AnnotationTodo annotationTodo : annotationTodos) {
+            AnnotationExpression ae = parseAnnotationExpression(annotationTodo);
+            annotationTodo.infoBuilder.setAnnotationExpression(annotationTodo.indexInAnnotationList, ae);
+        }
 
         for (Todo todo : todos) {
             if (todo.infoBuilder instanceof FieldInfo.Builder builder) {
@@ -82,6 +107,9 @@ public class ResolverImpl implements Resolver {
                 todo.context.summary().addMethod(success);
             } else throw new UnsupportedOperationException("In java, we cannot have expressions in other places");
         }
+        for (FieldInfo recordField : recordFields) {
+            recordField.builder().commit();
+        }
         for (MethodInfo accessor : recordAccessors) {
             accessor.builder().addOverrides(computeMethodOverrides.overrides(accessor));
             accessor.builder().commit();
@@ -89,6 +117,12 @@ public class ResolverImpl implements Resolver {
         for (TypeInfo.Builder builder : types) {
             builder.commit();
         }
+    }
+
+    private AnnotationExpression parseAnnotationExpression(AnnotationTodo at) {
+        List<AnnotationExpression.KV> kvs = parseHelper.parseAnnotationExpression(at.annotation, at.context);
+        at.annotationExpressionBuilder.setKeyValuesPairs(kvs);
+        return at.annotationExpressionBuilder().build();
     }
 
     private void resolveField(Todo todo, FieldInfo.Builder builder) {
