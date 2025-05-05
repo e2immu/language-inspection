@@ -144,9 +144,9 @@ public class TestMethodCall0 extends CommonTest {
     public void test3() {
         TypeInfo typeInfo = javaInspector.parse(INPUT3);
         MethodInfo test = typeInfo.findUniqueMethod("test", 0);
-        if (test.methodBody().statements().get(0) instanceof ExpressionAsStatement eas
+        if (test.methodBody().statements().getFirst() instanceof ExpressionAsStatement eas
             && eas.expression() instanceof MethodCall mc1
-            && mc1.parameterExpressions().get(0) instanceof MethodCall mc2) {
+            && mc1.parameterExpressions().getFirst() instanceof MethodCall mc2) {
             assertEquals("Type java.util.List<org.e2immu.analyser.resolver.testexample.MethodCall_1.GetOnly>",
                     mc2.concreteReturnType().toString());
         } else fail();

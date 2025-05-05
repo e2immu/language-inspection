@@ -262,7 +262,7 @@ public class MethodResolutionImpl implements MethodResolution {
         LOGGER.debug("Concrete return type of {} is {}", methodName, returnType.detailedString());
 
         DetailedSources.Builder detailedSourcesBuilder = context.newDetailedSourcesBuilder();
-        if(detailedSourcesBuilder != null) {
+        if (detailedSourcesBuilder != null) {
             detailedSourcesBuilder.put(resolvedMethod.name(), sourceOfName);
         }
         return runtime.newMethodCallBuilder()
@@ -445,9 +445,10 @@ public class MethodResolutionImpl implements MethodResolution {
 
         // finally, look at the return type
         ParameterizedType formalReturnType = method.methodInfo().returnType();
-        if (formalReturnType.isTypeParameter() && forwardedReturnType != null) {
-            mapExpansion.merge(formalReturnType.typeParameter(), forwardedReturnType,
-                    (ptOld, ptNew) -> ptOld.mostSpecific(runtime, primaryType, ptNew));
+        if (forwardedReturnType != null) {
+            Map<NamedType, ParameterizedType> map = formalReturnType.formalToConcrete(forwardedReturnType);
+            // see TestMethodCall0,3 for the "ifAbsent" aspect; TestVar,1 for the put.
+            map.forEach(mapExpansion::putIfAbsent);
         }
 
         return mapExpansion;
@@ -458,6 +459,10 @@ public class MethodResolutionImpl implements MethodResolution {
     }
 
 
+    /*
+    see TestVar, methodExplicit(I i). The call to 'collect' in statement 1. Extra maps T->J; this information
+    must be passed on!
+     */
     private List<Expression> reEvaluateErasedExpression(Context context,
                                                         String index,
                                                         List<Object> expressions,
