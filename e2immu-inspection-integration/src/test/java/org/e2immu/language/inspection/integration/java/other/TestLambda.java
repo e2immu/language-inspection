@@ -41,4 +41,28 @@ public class TestLambda extends CommonTest {
             assertEquals("java.util.function.Predicate<String>", ti.interfacesImplemented().get(0).fullyQualifiedName());
         } else fail();
     }
+
+
+    @Language("java")
+    private static final String INPUT2 = """
+            import java.util.List;
+            import java.util.Set;
+            import java.util.stream.Stream;
+            class C {
+                void method1(List<String> list) {
+                    list.stream().findFirst().ifPresent(s -> {
+                        if(s.length() > 10) {
+                            throw new RuntimeException();
+                        }
+                    });
+                }
+            }
+            """;
+
+    @Test
+    public void test2() {
+        TypeInfo typeInfo = javaInspector.parse(INPUT2);
+        MethodInfo method1 = typeInfo.findUniqueMethod("method1", 1);
+
+    }
 }
