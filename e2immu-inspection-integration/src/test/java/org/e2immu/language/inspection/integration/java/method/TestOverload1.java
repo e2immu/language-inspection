@@ -184,13 +184,13 @@ public class TestOverload1 extends CommonTest {
         String expect = """
                 package a.b;
                 public class X {
-                    public void method() {
-                        String s = \"""
-                                abc\\
-                                def
-                                123
-                                \""";
+                    interface CriteriaBuilder {
+                        <Y extends Comparable<? super Y>> boolean greaterThan(
+                            X.Expression<? extends Y> expression1,
+                            X.Expression<? extends Y> expression2);
+                        <Y extends Comparable<? super Y>> boolean greaterThan(X.Expression<? extends Y> expression, Y y);
                     }
+                    interface Expression<Y> { }
                 }
                 """;
         assertEquals(expect, s);

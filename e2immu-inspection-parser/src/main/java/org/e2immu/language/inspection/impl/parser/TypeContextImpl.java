@@ -9,6 +9,7 @@ import org.e2immu.language.cst.api.runtime.Runtime;
 import org.e2immu.language.cst.api.type.NamedType;
 import org.e2immu.language.cst.api.type.ParameterizedType;
 import org.e2immu.language.cst.api.variable.FieldReference;
+import org.e2immu.language.cst.api.variable.Variable;
 import org.e2immu.language.inspection.api.parser.SourceTypeMap;
 import org.e2immu.language.inspection.api.parser.StaticImportMap;
 import org.e2immu.language.inspection.api.parser.TypeContext;
@@ -83,6 +84,29 @@ public class TypeContextImpl implements TypeContext {
             LOGGER.debug("Add import static, type {}, member {}", typeInfo, member);
             addImportStatic(typeInfo, member);
         }
+    }
+
+    /*
+    this is a rather slow method, but the result will be "cached" in the variable context, see ParseExpression
+     */
+    @Override
+    public Variable findStaticFieldImport(String name) {
+        if (data.staticImportMap != null) {
+            TypeInfo typeInfo = data.staticImportMap.getStaticMemberToTypeInfo(name);
+            if (typeInfo != null) {
+                FieldInfo fieldInfo = typeInfo.getFieldByName(name, false);
+                if (fieldInfo != null) {
+                    return data.runtime.newFieldReference(fieldInfo);
+                }
+            }
+            for (TypeInfo ti : data.staticImportMap.staticAsterisk()) {
+                FieldInfo fieldInfo = ti.getFieldByName(name, false);
+                if (fieldInfo != null) {
+                    return data.runtime.newFieldReference(fieldInfo);
+                }
+            }
+        }
+        return null;
     }
 
     @Override
@@ -343,26 +367,6 @@ public class TypeContextImpl implements TypeContext {
 
     public void addImportStatic(TypeInfo typeInfo, String member) {
         data.staticImportMap.putStaticMemberToTypeInfo(member, typeInfo);
-    }
-
-    @Override
-    public Map<String, FieldReference> staticFieldImports(Runtime runtime) {
-        Map<String, FieldReference> map = new HashMap<>();
-        for (Map.Entry<String, TypeInfo> entry : data.staticImportMap.staticMemberToTypeInfoEntrySet()) {
-            TypeInfo typeInfo = entry.getValue();
-            String memberName = entry.getKey();
-            typeInfo.fields().stream()
-                    .filter(FieldInfo::isStatic)
-                    .filter(f -> f.name().equals(memberName))
-                    .findFirst()
-                    .ifPresent(fieldInfo -> map.put(memberName, runtime.newFieldReference(fieldInfo)));
-        }
-        for (TypeInfo typeInfo : data.staticImportMap.staticAsterisk()) {
-            typeInfo.fields().stream()
-                    .filter(FieldInfo::isStatic)
-                    .forEach(fieldInfo -> map.put(fieldInfo.name(), runtime.newFieldReference(fieldInfo)));
-        }
-        return map;
     }
 
     @Override

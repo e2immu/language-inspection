@@ -19,16 +19,16 @@ public class TestAnnotations extends CommonTest {
     @Language("java")
     private static final String INPUT1 = """
             package org.e2immu.analyser.resolver.testexample;
-
+            
             import org.e2immu.annotation.ImmutableContainer;
-
+            
             public class Annotations_0 {
-
+            
                 @ImmutableContainer("false")
                 public static boolean method() {
                     return false;
                 }
-
+            
             }
             """;
 
@@ -40,10 +40,10 @@ public class TestAnnotations extends CommonTest {
     @Language("java")
     private static final String INPUT2 = """
             package org.e2immu.analyser.resolver.testexample;
-
+            
             import org.e2immu.language.inspection.integration.java.importhelper.a.Resources;
             import org.e2immu.language.inspection.integration.java.importhelper.a.Resource;
-
+            
             @Resources({
                     @Resource(name = "xx", lookup = "yy", type = java.util.TreeMap.class),
                     @Resource(name = "zz", type = java.lang.Integer.class)
@@ -75,12 +75,12 @@ public class TestAnnotations extends CommonTest {
     @Language("java")
     private static final String INPUT3 = """
             package org.e2immu.analyser.resolver.testexample;
-
+            
             import org.e2immu.language.inspection.integration.java.importhelper.a.Resources;
             import org.e2immu.language.inspection.integration.java.importhelper.a.Resource;
-
+            
             import static org.e2immu.analyser.resolver.testexample.Annotations_2.XX;
-
+            
             @Resources({
                     @Resource(name = XX, lookup = "yy", type = java.util.TreeMap.class),
                     @Resource(name = Annotations_2.ZZ, type = Integer.class)
@@ -99,10 +99,10 @@ public class TestAnnotations extends CommonTest {
     @Language("java")
     private static final String INPUT4 = """
             package org.e2immu.analyser.resolver.testexample;
-
+            
             import org.e2immu.language.inspection.integration.java.importhelper.a.Resource;
             import static org.e2immu.analyser.resolver.testexample.Annotations_3.XX;
-
+            
             @Resource(name = XX, lookup = Annotations_3.ZZ, type = java.util.TreeMap.class)
             public class Annotations_3 {
                 static final String XX = "xx";
@@ -118,10 +118,10 @@ public class TestAnnotations extends CommonTest {
     @Language("java")
     private static final String INPUT5 = """
             package org.e2immu.analyser.resolver.testexample;
-
+            
             import org.e2immu.language.inspection.integration.java.importhelper.a.Resource;
             import static org.e2immu.analyser.resolver.testexample.Annotations_4.XX;
-
+            
             @Resource(name = XX, lookup = Annotations_4.ZZ, authenticationType = Resource.AuthenticationType.CONTAINER)
             public class Annotations_4 {
                 static final String XX = "xx";
@@ -137,19 +137,19 @@ public class TestAnnotations extends CommonTest {
     @Language("java")
     private static final String INPUT6 = """
             package org.e2immu.analyser.resolver.testexample;
-
+            
             import java.lang.annotation.Retention;
             import java.lang.annotation.Target;
-
+            
             import static java.lang.annotation.ElementType.FIELD;
             import static java.lang.annotation.RetentionPolicy.RUNTIME;
-
+            
             @Target({FIELD})
             @Retention(RUNTIME)
             public @interface Annotations_5 {
-
+            
                 Class<?> value();
-
+            
                 String extra() default "!";
             }
             """;
@@ -166,9 +166,9 @@ public class TestAnnotations extends CommonTest {
             import java.io.IOException;
             import java.io.ObjectInputStream;
             import java.io.Serializable;
-
+            
             public class X {
-
+            
                 public static <T extends Serializable> T u(final String pFilename, final Class<T> pClass) {
                     try {
                         final FileInputStream myFileInputStream = new FileInputStream(pFilename);
@@ -212,7 +212,7 @@ public class TestAnnotations extends CommonTest {
             import java.nio.file.Files;
             import java.nio.file.Path;
             import java.util.Properties;
-
+            
             public class AnalyzerProfile {
               private static String getAnalysisDataDir(Path propFile) {
                 Properties prop = new Properties();
@@ -239,33 +239,33 @@ public class TestAnnotations extends CommonTest {
     @Language("java")
     private static final String INPUT9 = """
             package a.b;
-
+            
             import java.lang.annotation.ElementType;
             import java.lang.annotation.Retention;
             import java.lang.annotation.RetentionPolicy;
             import java.lang.annotation.Target;
-
+            
             @Target({ElementType.TYPE, ElementType.FIELD, ElementType.METHOD})
             @Retention(RetentionPolicy.RUNTIME)
             public @interface Resource {
                 String name() default "";
-
+            
                 String lookup() default "";
-
+            
                 Class<?> type() default Object.class;
-
+            
                 AuthenticationType authenticationType() default AuthenticationType.CONTAINER;
-
+            
                 boolean shareable() default true;
-
+            
                 String mappedName() default "";
-
+            
                 String description() default "";
-
+            
                 enum AuthenticationType {
                     CONTAINER,
                     APPLICATION;
-
+            
                     AuthenticationType() {
                     }
                 }
@@ -282,5 +282,53 @@ public class TestAnnotations extends CommonTest {
         assertTrue(c.isSynthetic());
         assertTrue(c.isStatic());
         assertTrue(c.isFinal());
+
+        AnnotationExpression retention = resource.annotations().stream()
+                .filter(ae -> "Retention".equals(ae.typeInfo().simpleName()))
+                .findFirst().orElseThrow();
+        String valueForRetention = retention.keyValuePairs().stream().filter(kv -> kv.key().equals("value"))
+                .map(kv -> kv.value().toString()).findFirst().orElseThrow();
+        assertEquals("RetentionPolicy.RUNTIME", valueForRetention);
+    }
+
+
+    @Language("java")
+    private static final String INPUT10 = """
+            package a.b;
+            
+            import static java.lang.annotation.RetentionPolicy.RUNTIME;
+            import static java.lang.annotation.ElementType.*;
+            
+            import java.lang.annotation.ElementType;
+            import java.lang.annotation.Retention;
+            import java.lang.annotation.RetentionPolicy;
+            import java.lang.annotation.Target;
+            
+            @Target({TYPE, FIELD, METHOD})
+            @Retention(RUNTIME)
+            public @interface Resource {
+
+            }
+            """;
+
+    @Test
+    public void test10() {
+        TypeInfo resource = javaInspector.parse(INPUT10);
+        {
+            AnnotationExpression retention = resource.annotations().stream()
+                    .filter(ae -> "Retention".equals(ae.typeInfo().simpleName()))
+                    .findFirst().orElseThrow();
+            String valueForRetention = retention.keyValuePairs().stream().filter(kv -> kv.key().equals("value"))
+                    .map(kv -> kv.value().toString()).findFirst().orElseThrow();
+            assertEquals("RetentionPolicy.RUNTIME", valueForRetention);
+        }
+        {
+            AnnotationExpression target = resource.annotations().stream()
+                    .filter(ae -> "Target".equals(ae.typeInfo().simpleName()))
+                    .findFirst().orElseThrow();
+            String valueForTarget = target.keyValuePairs().stream().filter(kv -> kv.key().equals("value"))
+                    .map(kv -> kv.value().toString()).findFirst().orElseThrow();
+            assertEquals("{ElementType.TYPE,ElementType.FIELD,ElementType.METHOD}", valueForTarget);
+        }
     }
 }

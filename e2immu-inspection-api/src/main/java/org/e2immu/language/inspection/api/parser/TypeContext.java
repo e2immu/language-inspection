@@ -7,6 +7,7 @@ import org.e2immu.language.cst.api.info.TypeInfo;
 import org.e2immu.language.cst.api.runtime.Runtime;
 import org.e2immu.language.cst.api.type.NamedType;
 import org.e2immu.language.cst.api.variable.FieldReference;
+import org.e2immu.language.cst.api.variable.Variable;
 
 import java.util.List;
 import java.util.Map;
@@ -21,9 +22,9 @@ public interface TypeContext {
 
     void addNonStaticImportToContext(ImportStatement importStatement);
 
-    TypeContext newCompilationUnit(CompilationUnit compilationUnit);
+    Variable findStaticFieldImport(String name);
 
-    Map<String, FieldReference> staticFieldImports(Runtime runtime);
+    TypeContext newCompilationUnit(CompilationUnit compilationUnit);
 
     TypeContext newAnonymousClassBody(TypeInfo baseType);
 

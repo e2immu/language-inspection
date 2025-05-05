@@ -192,7 +192,7 @@ public class ContextImpl implements Context {
     @Override
     public Context newTypeBody() {
         VariableContext newVariableContext = variableContext.newEmpty();
-        typeContext.staticFieldImports(runtime()).values().forEach(newVariableContext::add);
+        //typeContext.staticFieldImports(runtime()).values().forEach(newVariableContext::add);
         return new ContextImpl(data, enclosingType, enclosingMethod, enclosingField, resolver, typeContext,
                 newVariableContext, anonymousTypeCounters, typeOfEnclosingSwitchExpression, detailedSources);
     }
