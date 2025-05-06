@@ -3,7 +3,10 @@ package org.e2immu.language.inspection.impl.parser;
 import org.e2immu.language.cst.api.element.Comment;
 import org.e2immu.language.cst.api.element.DetailedSources;
 import org.e2immu.language.cst.api.element.Source;
-import org.e2immu.language.cst.api.expression.*;
+import org.e2immu.language.cst.api.expression.Expression;
+import org.e2immu.language.cst.api.expression.MethodReference;
+import org.e2immu.language.cst.api.expression.TypeExpression;
+import org.e2immu.language.cst.api.expression.VariableExpression;
 import org.e2immu.language.cst.api.info.MethodInfo;
 import org.e2immu.language.cst.api.info.ParameterInfo;
 import org.e2immu.language.cst.api.info.TypeInfo;
@@ -365,13 +368,12 @@ public class MethodResolutionImpl implements MethodResolution {
         if (sorted.size() > 1) {
             multipleCandidatesError(methodName, methodCandidates, filterResult.evaluatedExpressions);
         }
-        MethodTypeParameterMap method = sorted.get(0);
+        MethodTypeParameterMap method = sorted.getFirst();
         LOGGER.debug("Found method {}", method.methodInfo());
 
         List<Expression> newParameterExpressions = reEvaluateErasedExpression(context, index, unparsedArguments,
                 returnType, extra, methodName, filterResult.evaluatedExpressions, method);
-        Map<NamedType, ParameterizedType> mapExpansion = computeMapExpansion(method, newParameterExpressions,
-                returnType, context.enclosingType().primaryType());
+        Map<NamedType, ParameterizedType> mapExpansion = computeMapExpansion(method, newParameterExpressions, returnType);
         return new Candidate(newParameterExpressions, mapExpansion, method);
     }
 
@@ -388,8 +390,7 @@ public class MethodResolutionImpl implements MethodResolution {
 
     private Map<NamedType, ParameterizedType> computeMapExpansion(MethodTypeParameterMap method,
                                                                   List<Expression> newParameterExpressions,
-                                                                  ParameterizedType forwardedReturnType,
-                                                                  TypeInfo primaryType) {
+                                                                  ParameterizedType forwardedReturnType) {
         Map<NamedType, ParameterizedType> mapExpansion = new HashMap<>();
         // fill in the map expansion, deal with variable arguments!
         int i = 0;
@@ -482,7 +483,7 @@ public class MethodResolutionImpl implements MethodResolution {
                 newParameterExpressions[i] = e;
                 Map<NamedType, ParameterizedType> learned = e.parameterizedType().initialTypeParameterMap();
                 ParameterizedType formal = i < parameters.size() ? parameters.get(i).parameterizedType() :
-                        parameters.get(parameters.size() - 1).parameterizedType().copyWithOneFewerArrays();
+                        parameters.getLast().parameterizedType().copyWithOneFewerArrays();
                 Map<NamedType, ParameterizedType> inMethod = formal.forwardTypeParameterMap();
                 Map<NamedType, ParameterizedType> combined = genericsHelper.combineMaps(learned, inMethod);
                 if (!combined.isEmpty()) {
@@ -510,7 +511,7 @@ public class MethodResolutionImpl implements MethodResolution {
             ParameterInfo pi = parameters.get(Math.min(i, parameters.size() - 1));
             if (pi.parameterizedType().hasTypeParameters()) {
                 Map<NamedType, ParameterizedType> learned = genericsHelper.translateMap(pi.parameterizedType(),
-                        reParsed.parameterizedType(),true);
+                        reParsed.parameterizedType(), true);
                 if (!learned.isEmpty()) {
                     cumulative = cumulative.merge(new TypeParameterMap(learned));
                 }
@@ -929,7 +930,7 @@ public class MethodResolutionImpl implements MethodResolution {
         List<ParameterInfo> params = methodInspection.parameters();
 
         if (pos >= params.size()) {
-            ParameterInfo lastParameter = params.get(params.size() - 1);
+            ParameterInfo lastParameter = params.getLast();
             assert lastParameter.isVarArgs();
             ParameterizedType typeOfParameter = lastParameter.parameterizedType().copyWithOneFewerArrays();
             return compatibleParameter(expression, typeOfParameter);
@@ -1048,7 +1049,7 @@ public class MethodResolutionImpl implements MethodResolution {
         if (sorted.isEmpty()) {
             throw new Summary.ParseException(context.info(), "I've killed all the candidates myself??");
         }
-        MethodTypeParameterMap method = sorted.get(0);
+        MethodTypeParameterMap method = sorted.getFirst();
         MethodInfo methodInfo = method.methodInfo();
         ParameterizedType formalMethodType = methodInfo.typeInfo().asParameterizedType();
 
@@ -1116,7 +1117,7 @@ public class MethodResolutionImpl implements MethodResolution {
             boolean isVoid = !constructor && methodInfo.isVoid();
             erasures.add(new Count(n, isVoid));
             // we'll allow for empty var-args as well! NOTE: we do not go "up"!
-            if (!methodInfo.parameters().isEmpty() && methodInfo.parameters().get(methodInfo.parameters().size() - 1).isVarArgs()) {
+            if (!methodInfo.parameters().isEmpty() && methodInfo.parameters().getLast().isVarArgs()) {
                 erasures.add(new Count(n - 1, isVoid));
             }
         }

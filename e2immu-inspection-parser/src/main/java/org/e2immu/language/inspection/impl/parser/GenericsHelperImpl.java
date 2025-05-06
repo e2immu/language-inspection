@@ -19,7 +19,6 @@ import org.e2immu.language.inspection.api.parser.GenericsHelper;
 import org.e2immu.language.inspection.api.parser.MethodTypeParameterMap;
 
 import java.util.*;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -112,6 +111,16 @@ public record GenericsHelperImpl(Runtime runtime) implements GenericsHelper {
     public Map<NamedType, ParameterizedType> translateMap(ParameterizedType formalType,
                                                           ParameterizedType concreteType,
                                                           boolean concreteTypeIsAssignableToThis) {
+        return translateMap(formalType, concreteType, concreteTypeIsAssignableToThis, 0);
+    }
+
+    private Map<NamedType, ParameterizedType> translateMap(ParameterizedType formalType,
+                                                           ParameterizedType concreteType,
+                                                           boolean concreteTypeIsAssignableToThis,
+                                                           int infiniteLoopProtection) {
+        if (infiniteLoopProtection > 20) {
+            throw new UnsupportedOperationException("Infinite loop protection");
+        }
         if (formalType.parameters().isEmpty()) {
             if (formalType.isTypeParameter()) {
                 if (formalType.arrays() > 0) {
@@ -136,7 +145,8 @@ public record GenericsHelperImpl(Runtime runtime) implements GenericsHelper {
         if (concreteType.typeInfo() == null || concreteType.isJavaLangObject()) return Map.of();
 
         if (formalType.isFunctionalInterface() && concreteType.isFunctionalInterface()) {
-            return translationMapForFunctionalInterfaces(formalType, concreteType, concreteTypeIsAssignableToThis);
+            return translationMapForFunctionalInterfaces(formalType, concreteType, concreteTypeIsAssignableToThis,
+                    infiniteLoopProtection);
         }
 
         Map<NamedType, ParameterizedType> mapOfConcreteType = concreteType.initialTypeParameterMap();
@@ -158,7 +168,8 @@ public record GenericsHelperImpl(Runtime runtime) implements GenericsHelper {
     // TODO write tests!
     private Map<NamedType, ParameterizedType> translationMapForFunctionalInterfaces(ParameterizedType formalType,
                                                                                     ParameterizedType concreteType,
-                                                                                    boolean concreteTypeIsAssignableToThis) {
+                                                                                    boolean concreteTypeIsAssignableToThis,
+                                                                                    int infiniteLoopProtection) {
         Map<NamedType, ParameterizedType> res = new HashMap<>();
         MethodTypeParameterMap methodTypeParameterMap = findSingleAbstractMethodOfInterface(formalType);
         List<ParameterInfo> methodParams = methodTypeParameterMap.methodInfo().parameters();
@@ -174,12 +185,14 @@ public record GenericsHelperImpl(Runtime runtime) implements GenericsHelper {
         for (int i = 0; i < methodParams.size(); i++) {
             ParameterizedType abstractTypeParameter = methodParams.get(i).parameterizedType();
             ParameterizedType concreteTypeParameter = concreteTypeMap.getConcreteTypeOfParameter(runtime, i);
-            res.putAll(translateMap(abstractTypeParameter, concreteTypeParameter, concreteTypeIsAssignableToThis));
+            res.putAll(translateMap(abstractTypeParameter, concreteTypeParameter, concreteTypeIsAssignableToThis,
+                    infiniteLoopProtection + 1));
         }
         // and now the return type
         ParameterizedType myReturnType = methodTypeParameterMap.getConcreteReturnType(runtime);
         ParameterizedType concreteReturnType = concreteTypeMap.getConcreteReturnType(runtime);
-        res.putAll(translateMap(myReturnType, concreteReturnType, concreteTypeIsAssignableToThis));
+        res.putAll(translateMap(myReturnType, concreteReturnType, concreteTypeIsAssignableToThis,
+                infiniteLoopProtection + 1));
         return res;
     }
 

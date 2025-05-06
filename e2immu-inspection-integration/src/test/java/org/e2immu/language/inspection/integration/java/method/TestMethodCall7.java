@@ -188,8 +188,8 @@ public class TestMethodCall7 extends CommonTest {
                 class II implements I {
                     private final String name;
                     II(String name) { this.name = name; }
-                    String getName() { return name; }
-                    List<J> js() { return List.of(); }
+                    public String getName() { return name; }
+                    public List<J> js() { return List.of(); }
                 }
             
                 Map<String, I> method(List<I> is) {
@@ -197,10 +197,10 @@ public class TestMethodCall7 extends CommonTest {
                         (i1, i2)-> new II(i1.getName())));
                 }
             
-             /*   Map<String, I> method2(List<I> is) {
-                    return is.stream().collect(Collectors.toMap(I::getName, Function::identity,
+                Map<String, I> method2(List<I> is) {
+                    return is.stream().collect(Collectors.toMap(I::getName, Function.identity(),
                         (i1, i2)-> new II(i1.getName())));
-                }*/
+                }
             
             }
             """;
