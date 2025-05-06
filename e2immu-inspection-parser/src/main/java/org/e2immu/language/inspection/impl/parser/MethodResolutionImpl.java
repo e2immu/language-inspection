@@ -446,6 +446,7 @@ public class MethodResolutionImpl implements MethodResolution {
         if (forwardedReturnType != null) {
             Map<NamedType, ParameterizedType> map = formalReturnType.formalToConcrete(forwardedReturnType);
             // see TestMethodCall0,3 for the "ifAbsent" aspect; TestVar,1 for the put.
+            // FIXME it is not immediately clear to my why 2 successive genericsHelper.translateMap calls don't work
             map.forEach(mapExpansion::putIfAbsent);
         }
 

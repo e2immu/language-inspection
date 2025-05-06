@@ -196,4 +196,54 @@ public class TestOverload1 extends CommonTest {
         assertEquals(expect, s);
     }
 
+    @Language("java")
+    private static final String INPUT5 = """
+            package org.e2immu.analyser.resolver.testexample;
+       
+            import java.util.Map;
+            import java.util.Optional;
+            
+            public class Overload1_5 {
+               interface ITemplateResource { }
+               interface IEngineConfiguration { }
+               static abstract class StringTemplateResolver {
+                   protected ITemplateResource	computeTemplateResource(IEngineConfiguration configuration,
+                       String ownerTemplate, String template, Map<String,Object> templateResolutionAttributes);
+               }
+               static class ContentTemplate {
+                   String getContent();
+               }
+               interface ContentTemplateRepository {
+                   Optional<ContentTemplate> findOne(ContentTemplate contentTemplate);
+               }
+
+               static abstract class Resolver extends StringTemplateResolver {
+                   ContentTemplateRepository contentTemplateRepository;
+
+                   @Override
+                   protected ITemplateResource computeTemplateResource(IEngineConfiguration configuration,
+                       String ownerTemplate, String template,  Map<String, Object> templateResolutionAttributes) {
+                       if (template != null && !template.startsWith("mail/") && !template.startsWith("error")) {
+                         ContentTemplate contentTemplate = new ContentTemplate();
+                         Optional<ContentTemplate> optionalContentTemplate = contentTemplateRepository.findOne(contentTemplate);
+                         return optionalContentTemplate
+                           .map(emailTemplate ->
+                             // technically the code seems to be correct without the 'Resolver.' prefix
+                             super.computeTemplateResource(configuration, ownerTemplate, emailTemplate.getContent(), 
+                                 templateResolutionAttributes)
+                           )
+                           .orElse(null);
+                       } else {
+                         return null;
+                       }
+                   }
+               }
+            }
+            """;
+
+    @DisplayName("overload 4 params")
+    @Test
+    public void test5() {
+        javaInspector.parse(INPUT5);
+    }
 }
