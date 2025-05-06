@@ -51,6 +51,8 @@ dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.9.3")
     testImplementation("ch.qos.logback:logback-classic:1.5.8")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.9.3")
+
+    testImplementation("org.assertj:assertj-core:3.27.3")
 }
 
 tasks.test {

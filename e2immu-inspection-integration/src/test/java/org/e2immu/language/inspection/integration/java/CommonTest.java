@@ -39,6 +39,7 @@ public abstract class CommonTest {
                 .addClassPath(JAR_WITH_PATH_PREFIX + "ch/qos/logback/core")
                 .addClassPath(JAR_WITH_PATH_PREFIX + "ch/qos/logback/classic")
                 .addClassPath(JAR_WITH_PATH_PREFIX + "org/opentest4j")
+                .addClassPath(JAR_WITH_PATH_PREFIX + "org/assertj/core")
                 .build();
         javaInspector.initialize(inputConfiguration);
         javaInspector.parse(JavaInspectorImpl.FAIL_FAST);
