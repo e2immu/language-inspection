@@ -868,6 +868,11 @@ public class MethodResolutionImpl implements MethodResolution {
                         translate.put(typeParameter, inMap2);
                     }
                 }
+                ParameterizedType inExtra = extra.map().get(typeParameter);
+                if (inExtra != null) {
+                    // see TestMethodCall7,9, from min -> talk.getTimeSlotStart()
+                    translate.merge(typeParameter, inExtra, ParameterizedType::bestDefined);
+                }
             }
         }
         if (translate.isEmpty()) {

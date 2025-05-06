@@ -298,7 +298,7 @@ public class TestMethodCall7 extends CommonTest {
                     """, mc.object().parameterizedType().toString());
         } else fail();
     }
-    
+
     @Language("java")
     private static final String INPUT9 = """
             package org.e2immu.analyser.resolver.testexample;

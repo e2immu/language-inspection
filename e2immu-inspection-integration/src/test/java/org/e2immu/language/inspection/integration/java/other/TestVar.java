@@ -2,6 +2,7 @@ package org.e2immu.language.inspection.integration.java.other;
 
 import org.e2immu.language.cst.api.info.MethodInfo;
 import org.e2immu.language.cst.api.info.TypeInfo;
+import org.e2immu.language.cst.api.statement.ForEachStatement;
 import org.e2immu.language.cst.api.statement.LocalVariableCreation;
 import org.e2immu.language.cst.api.statement.Statement;
 import org.e2immu.language.inspection.integration.java.CommonTest;
@@ -87,6 +88,28 @@ public class TestVar extends CommonTest {
             LocalVariableCreation lvc2 = (LocalVariableCreation) s2;
             assertEquals("Type java.util.Set<a.b.X.J>", lvc2.localVariable().parameterizedType().toString());
         }
+    }
+
+    @Language("java")
+    private static final String INPUT2 = """
+            package a.b;
+            import java.util.List;
+            
+            class X {
+                void method(List<String> list) {
+                    for(var s: list) {
+                        System.out.println(s);
+                    }
+                }
+            }
+            """;
+
+    @Test
+    public void test2() {
+        TypeInfo typeInfo = javaInspector.parse(INPUT2);
+        MethodInfo methodInfo = typeInfo.findUniqueMethod("method", 1);
+        ForEachStatement fe = (ForEachStatement) methodInfo.methodBody().lastStatement();
+        assertEquals("Type String", fe.initializer().localVariable().parameterizedType().toString());
     }
 
 }
