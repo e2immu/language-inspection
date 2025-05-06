@@ -24,17 +24,17 @@ public class TestMethodCall7 extends CommonTest {
     @Language("java")
     private static final String INPUT0 = """
             package org.e2immu.analyser.resolver.testexample;
-
+            
             import org.e2immu.language.inspection.integration.java.importhelper.b.B;
-
+            
             import static org.e2immu.language.inspection.integration.java.importhelper.b.C.doNothing;
-
+            
             public class MethodCall_70 {
-
+            
                 B method1(B b) {
                     return b.doNothing();
                 }
-
+            
                 B method2() {
                     return doNothing();
                 }
@@ -49,9 +49,9 @@ public class TestMethodCall7 extends CommonTest {
     @Language("java")
     private static final String INPUT1 = """
             package org.e2immu.analyser.resolver.testexample;
-
+            
             public class MethodCall_71 {
-
+            
                 public void b1(int j) {
                     System.out.println(j + " = j");
                     System.out.println("j = " + j);
@@ -76,13 +76,13 @@ public class TestMethodCall7 extends CommonTest {
     @Language("java")
     private static final String INPUT4 = """
             package org.e2immu.analyser.resolver.testexample;
-
+            
             public class MethodCall_74 {
-
+            
                 void init(long[] l1, long[] l2) {
-
+            
                 }
-
+            
                 void method() {
                     init(null, null);
                 }
@@ -98,9 +98,9 @@ public class TestMethodCall7 extends CommonTest {
     @Language("java")
     private static final String INPUT5 = """
             package org.e2immu.analyser.resolver.testexample;
-
+            
             public class MethodCall_75 {
-
+            
                String method(Class<?> clazz) {
                     Class[] classes = clazz.getInterfaces();
                     for(Class c: classes) {
@@ -128,13 +128,13 @@ public class TestMethodCall7 extends CommonTest {
     @Language("java")
     private static final String INPUT6 = """
             package org.e2immu.analyser.resolver.testexample;
-
+            
             import java.net.URI;
             import java.nio.file.*;
             import java.util.Collections;
-
+            
             public class MethodCall_75 {
-
+            
                String method(URI uri) {
                    try (FileSystem fileSystem = FileSystems.newFileSystem(uri, Collections.<String, Object>emptyMap())) {
                         Path basePath = fileSystem.getPath(".").toAbsolutePath();
@@ -166,4 +166,51 @@ public class TestMethodCall7 extends CommonTest {
         assertEquals("Collections.emptyMap()", arg1.toString()); // TODO have no type parameters on method call (yet)
     }
 
+
+    @Language("java")
+    private static final String INPUT7 = """
+            package org.e2immu.analyser.resolver.testexample;
+            
+            import java.util.List;
+            import java.util.Map;
+            import java.util.function.Function;
+            import java.util.stream.Collectors;
+            
+            public class MethodCall_76 {
+            
+                interface J {
+                    void someMethod();
+                }
+                interface I {
+                    List<J> js();
+                    String getName();
+                }
+                class II implements I {
+                    private final String name;
+                    II(String name) { this.name = name; }
+                    String getName() { return name; }
+                    List<J> js() { return List.of(); }
+                }
+            
+                Map<String, I> method(List<I> is) {
+                    return is.stream().collect(Collectors.toMap(i -> i.getName(), i -> i,
+                        (i1, i2)-> new II(i1.getName())));
+                }
+            
+             /*   Map<String, I> method2(List<I> is) {
+                    return is.stream().collect(Collectors.toMap(I::getName, Function::identity,
+                        (i1, i2)-> new II(i1.getName())));
+                }*/
+            
+            }
+            """;
+
+    @DisplayName("type forwarding")
+    @Test
+    public void test7() {
+        TypeInfo ti = javaInspector.parse(INPUT7);
+        MethodInfo methodInfo = ti.findUniqueMethod("method", 1);
+        assertEquals("Type java.util.Map<String,org.e2immu.analyser.resolver.testexample.MethodCall_76.I>",
+                methodInfo.methodBody().statements().getFirst().expression().parameterizedType().toString());
+    }
 }

@@ -77,36 +77,45 @@ public class ResolverImpl implements Resolver {
     }
 
     public void resolve() {
-        LOGGER.info("Start resolving {} type(s), {} field(s)/method(s)", types.size(), todos.size());
+        LOGGER.info("Start resolving {} annotations, {} type(s), {} field(s)/method(s)", annotationTodos.size(),
+                types.size(), todos.size());
 
         for (AnnotationTodo annotationTodo : annotationTodos) {
             AnnotationExpression ae = parseAnnotationExpression(annotationTodo);
             annotationTodo.infoBuilder.setAnnotationExpression(annotationTodo.indexInAnnotationList, ae);
         }
 
-        for (Todo todo : todos) {
-            if (todo.infoBuilder instanceof FieldInfo.Builder builder) {
-                boolean success = true;
-                try {
-                    resolveField(todo, builder);
-                } catch (RuntimeException re) {
-                    success = false;
-                    todo.context.summary().addParserError(re);
-                }
-                todo.context.summary().addType(todo.context.enclosingType().primaryType(), success);
-            } else if (todo.infoBuilder instanceof MethodInfo.Builder builder) {
-                boolean success = true;
-                try {
-                    resolveMethod(todo, builder);
-                } catch (RuntimeException re) {
-                    LOGGER.error("Caught exception resolving {}", todo.info);
-                    success = false;
-                    todo.context.summary().addParserError(re);
-                }
-                todo.context.summary().addType(todo.context.enclosingType().primaryType(), success);
-                todo.context.summary().addMethod(success);
-            } else throw new UnsupportedOperationException("In java, we cannot have expressions in other places");
+        int cnt = 0;
+        try {
+            for (Todo todo : todos) {
+                if (todo.infoBuilder instanceof FieldInfo.Builder builder) {
+                    boolean success = true;
+                    try {
+                        resolveField(todo, builder);
+                    } catch (RuntimeException re) {
+                        success = false;
+                        todo.context.summary().addParserError(re);
+                    }
+                    todo.context.summary().addType(todo.context.enclosingType().primaryType(), success);
+                } else if (todo.infoBuilder instanceof MethodInfo.Builder builder) {
+                    boolean success = true;
+                    try {
+                        resolveMethod(todo, builder);
+                    } catch (RuntimeException re) {
+                        LOGGER.error("Caught exception resolving {}", todo.info);
+                        success = false;
+                        todo.context.summary().addParserError(re);
+                    }
+                    todo.context.summary().addType(todo.context.enclosingType().primaryType(), success);
+                    todo.context.summary().addMethod(success);
+                } else throw new UnsupportedOperationException("In java, we cannot have expressions in other places");
+                ++cnt;
+            }
+        } catch (RuntimeException re) {
+            LOGGER.error("Failed after resolving {} of {} fields/methods", cnt, todos.size());
+            throw re;
         }
+
         for (FieldInfo recordField : recordFields) {
             recordField.builder().commit();
         }

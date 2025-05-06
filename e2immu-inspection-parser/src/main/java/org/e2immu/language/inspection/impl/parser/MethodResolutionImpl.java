@@ -3,10 +3,7 @@ package org.e2immu.language.inspection.impl.parser;
 import org.e2immu.language.cst.api.element.Comment;
 import org.e2immu.language.cst.api.element.DetailedSources;
 import org.e2immu.language.cst.api.element.Source;
-import org.e2immu.language.cst.api.expression.Expression;
-import org.e2immu.language.cst.api.expression.MethodReference;
-import org.e2immu.language.cst.api.expression.TypeExpression;
-import org.e2immu.language.cst.api.expression.VariableExpression;
+import org.e2immu.language.cst.api.expression.*;
 import org.e2immu.language.cst.api.info.MethodInfo;
 import org.e2immu.language.cst.api.info.ParameterInfo;
 import org.e2immu.language.cst.api.info.TypeInfo;
@@ -510,14 +507,16 @@ public class MethodResolutionImpl implements MethodResolution {
             assert !containsErasedExpressions(reParsed);
             newParameterExpressions[i] = reParsed;
 
-            Map<NamedType, ParameterizedType> learned = reParsed.parameterizedType().initialTypeParameterMap();
-            if (!learned.isEmpty()) {
-                cumulative = cumulative.merge(new TypeParameterMap(learned));
-            }
             ParameterInfo pi = parameters.get(Math.min(i, parameters.size() - 1));
             if (pi.parameterizedType().hasTypeParameters()) {
+                Map<NamedType, ParameterizedType> learned = genericsHelper.translateMap(pi.parameterizedType(),
+                        reParsed.parameterizedType(),true);
+                if (!learned.isEmpty()) {
+                    cumulative = cumulative.merge(new TypeParameterMap(learned));
+                }
+
                 // try to reconcile the type parameters with the ones in reParsed, see Lambda_16
-                Map<NamedType, ParameterizedType> forward = pi.parameterizedType().forwardTypeParameterMap();
+                Map<NamedType, ParameterizedType> forward = pi.parameterizedType().initialTypeParameterMap();
                 if (!forward.isEmpty()) {
                     cumulative = cumulative.merge(new TypeParameterMap(forward));
                 }
