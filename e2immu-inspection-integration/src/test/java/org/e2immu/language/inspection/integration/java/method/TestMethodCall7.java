@@ -213,4 +213,188 @@ public class TestMethodCall7 extends CommonTest {
         assertEquals("Type java.util.Map<String,org.e2immu.analyser.resolver.testexample.MethodCall_76.I>",
                 methodInfo.methodBody().statements().getFirst().expression().parameterizedType().toString());
     }
+
+
+    @Language("java")
+    private static final String INPUT8 = """
+            package org.e2immu.analyser.resolver.testexample;
+            import java.util.function.Function;
+            import java.util.function.ToIntBiFunction;
+            import java.util.function.ToIntFunction;
+            
+            public abstract class MethodCall_77 {
+                interface Constraint {
+            
+                }
+                interface Score<S extends Score<S>> {
+            
+                }
+                static class SimpleScore implements Score<SimpleScore> {
+            
+                }
+                static final Score<SimpleScore> ONE_HARD = new SimpleScore();
+            
+                interface Timeslot extends Comparable<Timeslot> {
+            
+                 }
+                interface Talk {
+                    Timeslot getTimeslotStart();
+                    Timeslot getTimeslotEnd();
+                    String getRoom();
+                    int overlappingDurationInMinutes(Talk other) {
+                        return 0;
+                    }
+                }
+                interface BiJoiner<A,B> {
+                    BiJoiner<A, B> and(BiJoiner<A, B> other);
+                }
+                interface BiConstraintStream<A,B> {
+                    <S extends Score<S>> BiConstraintBuilder<A, B, S> penalize(S weight, ToIntBiFunction<A, B> weigher);
+                }
+                interface BiConstraintBuilder<A, B, C> {
+                    Constraint asConstraint(String string);
+                }
+                interface Factory {
+                    <A> BiConstraintStream<A, A> forEachUniquePair(Class<A> clazz, BiJoiner<A,A> j1, BiJoiner<A,A> j2);
+                }
+            
+                static <A,Property_ extends Comparable<Property_>> BiJoiner<A,A> overlapping(Function<A,Property_> startMapping,
+                   Function<A,Property_> endMapping);
+
+                static class Joiners {
+                     static <A,Property_> BiJoiner<A,A> equal(Function<A,Property_> mapping);
+                }
+
+                Constraint method(Factory factory) {
+                   return factory
+                        .forEachUniquePair(
+                          Talk.class,
+                          Joiners.equal(Talk::getRoom),
+                          overlapping(t -> t.getTimeslotStart(), t -> t.getTimeslotEnd())
+                        )
+                       .penalize(ONE_HARD, Talk::overlappingDurationInMinutes)
+                       .asConstraint("c");
+                }
+            
+            }
+            """;
+
+    @DisplayName("generic helper infinite loop")
+    @Test
+    public void test8() {
+        TypeInfo ti = javaInspector.parse(INPUT8);
+        MethodInfo methodInfo = ti.findUniqueMethod("method", 1);
+        Expression expression = methodInfo.methodBody().statements().getFirst().expression();
+        assertEquals("""
+                Type org.e2immu.analyser.resolver.testexample.MethodCall_77.Constraint\
+                """, expression.parameterizedType().toString());
+        if (expression instanceof MethodCall mc) {
+            assertEquals("""
+                    Type org.e2immu.analyser.resolver.testexample.MethodCall_77.BiConstraintBuilder<\
+                    org.e2immu.analyser.resolver.testexample.MethodCall_77.Talk,\
+                    org.e2immu.analyser.resolver.testexample.MethodCall_77.Talk,\
+                    org.e2immu.analyser.resolver.testexample.MethodCall_77.Score<\
+                    org.e2immu.analyser.resolver.testexample.MethodCall_77.SimpleScore>>\
+                    """, mc.object().parameterizedType().toString());
+        } else fail();
+    }
+    
+    @Language("java")
+    private static final String INPUT9 = """
+            package org.e2immu.analyser.resolver.testexample;
+            import java.util.function.*;
+            public abstract class MethodCall_77 {
+                interface Constraint {
+                }
+                interface Score<S extends Score<S>> {
+                }
+                static class SimpleScore implements Score<SimpleScore> {
+                }
+                static final Score<SimpleScore> ONE_HARD = new SimpleScore();
+            
+                interface Timeslot extends Comparable<Timeslot> {
+                }
+                interface Speaker {
+                }
+                interface Talk {
+                    Timeslot getTimeslotStart();
+                    Timeslot getTimeslotEnd();
+                    boolean hasSpeaker(Speaker speaker);
+                }
+                interface BiJoiner<A,B> {
+                    BiJoiner<A, B> and(BiJoiner<A, B> other);
+                }
+                interface UniConstraintStream<A> {
+                    <B> BiConstraintStream<A, B> join(Class<B> otherClass, BiJoiner<A,B> joiner);
+                }
+                interface BiConstraintStream<A,B> {
+                    <S extends Score<S>> BiConstraintBuilder<A, B, S> penalize(S weight, ToIntBiFunction<A, B> weigher);
+                    <GroupKey_,ResultContainer_,Result_> BiConstraintStream<GroupKey_,Result_>
+                        groupBy(BiFunction<A,B,GroupKey_> groupKeyMapping, 
+                                BiConstraintCollector<A,B,ResultContainer_,Result_> collector);
+                }
+                interface BiConstraintCollector<A,B,ResultContainer_,Result_>{
+                    
+                }
+                interface BiConstraintBuilder<A, B, C> {
+                    Constraint asConstraint(String string);
+                }
+                interface UniConstraintBuilder<A, C> {
+                    Constraint asConstraint(String string);
+                }
+                interface Factory {
+                    <A> BiConstraintStream<A, A> forEachUniquePair(Class<A> clazz, BiJoiner<A,A> j1, BiJoiner<A,A> j2);
+                    <A> UniConstraintStream<A> forEach(Class<A> sourceClass);
+                }
+            
+                static <A,Property_ extends Comparable<Property_>> BiJoiner<A,A> overlapping(Function<A,Property_> startMapping,
+                   Function<A,Property_> endMapping);
+
+                static class Joiners {
+                     static <A,Property_> BiJoiner<A,A> equal(Function<A,Property_> mapping);
+                     static <A,B> BiJoiner<A,B> filtering(BiPredicate<A,B> filter);
+                }
+                static class ConstraintCollectors {
+                    static <A,B,Result_,SubResultContainer1_,SubResultContainer2_,SubResult1_,SubResult2_>
+                        BiConstraintCollector<A,B,?,Result_>
+                        compose(BiConstraintCollector<A,B,SubResultContainer1_,SubResult1_> subCollector1,
+                            BiConstraintCollector<A,B,SubResultContainer2_,SubResult2_> subCollector2, 
+                            BiFunction<SubResult1_,SubResult2_,Result_> composeFunction);
+                    static <A,B,Mapped,Comparable_ extends Comparable<? super Comparable_>>
+                        BiConstraintCollector<A,B,?,Mapped>
+                        min(BiFunction<A,B,Mapped> groupValueMapping, 
+                            Function<Mapped,Comparable_> comparableFunction);
+                    static <A,B,Mapped,Comparable_ extends Comparable<? super Comparable_>>
+                        BiConstraintCollector<A,B,?,Mapped>
+                        max(BiFunction<A,B,Mapped> groupValueMapping, 
+                            Function<Mapped,Comparable_> comparableFunction);
+                }
+                Constraint method(Factory factory) {
+                   return factory
+                      .forEach(Speaker.class)
+                      .join(Talk.class, Joiners.filtering((speaker, talk) -> talk.hasSpeaker(speaker)))
+                      .groupBy(
+                        (speaker, talk) -> speaker,
+                        ConstraintCollectors.compose(
+                          ConstraintCollectors.min((Speaker speaker, Talk talk) -> talk, talk -> talk.getTimeslotStart()),
+                          ConstraintCollectors.max((Speaker speaker, Talk talk) -> talk, talk -> talk.getTimeslotEnd()),
+                          (firstTalk, lastTalk) -> {
+                            Timeslot start = firstTalk.getTimeslotStart();
+                            Timeslot end = lastTalk.getTimeslotStart();
+                            return start.compareTo(end); 
+                          }
+                        )
+                      )
+                      .penalize(ONE_HARD, (s, d) -> (d - 1) * 8 * 60)
+                      .asConstraint("c");
+                }
+            
+            }
+            """;
+
+    @DisplayName("method not found")
+    @Test
+    public void test9() {
+        javaInspector.parse(INPUT9);
+    }
 }

@@ -509,18 +509,24 @@ public class MethodResolutionImpl implements MethodResolution {
             newParameterExpressions[i] = reParsed;
 
             ParameterInfo pi = parameters.get(Math.min(i, parameters.size() - 1));
-            if (pi.parameterizedType().hasTypeParameters()) {
-                Map<NamedType, ParameterizedType> learned = genericsHelper.translateMap(pi.parameterizedType(),
-                        reParsed.parameterizedType(), true);
-                if (!learned.isEmpty()) {
-                    cumulative = cumulative.merge(new TypeParameterMap(learned));
-                }
+            try {
+                if (pi.parameterizedType().hasTypeParameters()) {
+                    Map<NamedType, ParameterizedType> learned = genericsHelper.translateMap(pi.parameterizedType(),
+                            reParsed.parameterizedType(), true);
+                    if (!learned.isEmpty()) {
+                        cumulative = cumulative.merge(new TypeParameterMap(learned));
+                    }
 
-                // try to reconcile the type parameters with the ones in reParsed, see Lambda_16
-                Map<NamedType, ParameterizedType> forward = pi.parameterizedType().initialTypeParameterMap();
-                if (!forward.isEmpty()) {
-                    cumulative = cumulative.merge(new TypeParameterMap(forward));
+                    // try to reconcile the type parameters with the ones in reParsed, see Lambda_16
+                    Map<NamedType, ParameterizedType> forward = pi.parameterizedType().initialTypeParameterMap();
+                    if (!forward.isEmpty()) {
+                        cumulative = cumulative.merge(new TypeParameterMap(forward));
+                    }
                 }
+            } catch (RuntimeException re) {
+                LOGGER.error("Caught exception re-evaluating erased expression, pi = {}, type {}", pi, pi.parameterizedType());
+                LOGGER.error("reParsed = {}, type {}", reParsed, reParsed.parameterizedType());
+                throw re;
             }
         }
         return Arrays.stream(newParameterExpressions).toList();
