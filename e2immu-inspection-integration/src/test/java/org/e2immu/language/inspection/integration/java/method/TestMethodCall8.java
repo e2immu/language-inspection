@@ -3,9 +3,11 @@ package org.e2immu.language.inspection.integration.java.method;
 import org.e2immu.language.cst.api.expression.MethodCall;
 import org.e2immu.language.cst.api.info.MethodInfo;
 import org.e2immu.language.cst.api.info.TypeInfo;
+import org.e2immu.language.cst.api.statement.LocalVariableCreation;
 import org.e2immu.language.cst.api.statement.Statement;
 import org.e2immu.language.inspection.integration.java.CommonTest;
 import org.intellij.lang.annotations.Language;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -138,7 +140,10 @@ public class TestMethodCall8 extends CommonTest {
     @Language("java")
     private static final String INPUT3 = """
             package org.e2immu.test;
-            import org.assertj.core.api.AbstractCollectionAssert;import org.assertj.core.api.ObjectAssert;import java.util.Collection;import java.util.Set;
+            import org.assertj.core.api.AbstractCollectionAssert;
+            import org.assertj.core.api.ObjectAssert;
+            import java.util.Collection;
+            import java.util.Set;
             import static org.assertj.core.api.Assertions.assertThat;
             
             public class MethodCall_82 {
@@ -163,5 +168,76 @@ public class TestMethodCall8 extends CommonTest {
     public void test3() {
         javaInspector.parse(INPUT3);
     }
+
+    @Language("java")
+    private static final String INPUT4 = """
+            package org.e2immu.test;
+            
+            public class MethodCall_84 {
+                interface GenericContainer<SELF extends GenericContainer<SELF>> { }
+                static class GreenMailContainer<SELF extends GreenMailContainer<SELF>> extends GenericContainer<SELF> {
+                    GreenMailContainer() { }
+                    SELF withAuthEnabled(boolean authEnabled) { return this; }
+                    SELF withReuse(boolean reuse) { return this; }
+                }
+                void method0() {
+                    GreenMailContainer<?> gmc = new GreenMailContainer<>().withAuthEnabled(true);
+                }
+                void method1() {
+                    var gmc = new GreenMailContainer<>().withAuthEnabled(true);
+                }
+                void method2() {
+                    GreenMailContainer<?>  gmc = new GreenMailContainer<>().withAuthEnabled(true).withReuse(true);
+                }
+                void method3() {
+                    var gmc = new GreenMailContainer<>().withAuthEnabled(true).withReuse(true);
+                }
+            }
+            """;
+
+    @Test
+    public void test4() {
+        TypeInfo typeInfo = javaInspector.parse(INPUT4);
+        {
+            MethodInfo method = typeInfo.findUniqueMethod("method1", 0);
+            LocalVariableCreation lvc = (LocalVariableCreation) method.methodBody().lastStatement();
+            assertEquals("Type param SELF extends org.e2immu.test.MethodCall_84.GreenMailContainer<SELF>",
+                    lvc.localVariable().parameterizedType().toString());
+            assertEquals(lvc.localVariable().parameterizedType(), lvc.localVariable().assignmentExpression().parameterizedType());
+        }
+        {
+            MethodInfo method = typeInfo.findUniqueMethod("method3", 0);
+            LocalVariableCreation lvc = (LocalVariableCreation) method.methodBody().lastStatement();
+            assertEquals("Type param SELF extends org.e2immu.test.MethodCall_84.GreenMailContainer<SELF>",
+                    lvc.localVariable().parameterizedType().toString());
+            assertEquals(lvc.localVariable().parameterizedType(), lvc.localVariable().assignmentExpression().parameterizedType());
+        }
+    }
+
+
+    @Language("java")
+    private static final String INPUT5 = """
+            package org.e2immu.test;
+            import java.util.concurrent.CompletableFuture;
+            
+            public class MethodCall_85 {
+                interface User { String getEmail(); }
+                interface SendMailService {
+                   CompletableFuture<Object> sendMail(String to, String[] bcc, String subject, String content,
+                      boolean isHtml);
+                }
+                SendMailService sendMailService;
+                void method(User user, String content) {
+                    sendMailService.sendMail(user.getEmail(), null, "activation key", content, false);
+                }
+            }
+            """;
+
+    @DisplayName("null to String[]")
+    @Test
+    public void test5() {
+        javaInspector.parse(INPUT5);
+    }
+
 
 }

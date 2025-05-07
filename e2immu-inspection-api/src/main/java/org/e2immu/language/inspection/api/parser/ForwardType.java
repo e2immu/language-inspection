@@ -13,5 +13,14 @@ public interface ForwardType {
 
     ParameterizedType type();
 
+    /*
+    enforced evaluation in erasure mode, MethodCall
+     */
     boolean erasure();
+
+    /*
+    only when evaluation fails, switch to erasure.
+    ConstructorCall
+     */
+    boolean erasureOnFailure();
 }

@@ -1,15 +1,16 @@
 package org.e2immu.language.inspection.integration.java.other;
 
 import org.e2immu.language.cst.api.info.FieldInfo;
-import org.e2immu.language.cst.api.info.Info;
 import org.e2immu.language.cst.api.info.MethodInfo;
 import org.e2immu.language.cst.api.info.TypeInfo;
+import org.e2immu.language.inspection.api.parser.ParseResult;
+import org.e2immu.language.inspection.impl.parser.ParseResultImpl;
 import org.e2immu.language.inspection.integration.java.CommonTest;
 import org.intellij.lang.annotations.Language;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import java.util.List;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -62,5 +63,8 @@ public class TestRecord extends CommonTest {
 
         // also, verify the override
         assertTrue(RIset.overrides().contains(Rset));
+
+        ParseResult parseResult = new ParseResultImpl(Set.of(X));
+        assertEquals("[a.b.X.RI]", parseResult.descendants(R, false).toString());
     }
 }

@@ -4,12 +4,15 @@ import org.e2immu.language.cst.api.info.MethodInfo;
 import org.e2immu.language.cst.api.info.TypeInfo;
 import org.e2immu.language.cst.api.statement.ExplicitConstructorInvocation;
 import org.e2immu.language.cst.api.statement.Statement;
+import org.e2immu.language.inspection.api.parser.ParseResult;
+import org.e2immu.language.inspection.impl.parser.ParseResultImpl;
 import org.e2immu.language.inspection.integration.java.CommonTest;
 import org.intellij.lang.annotations.Language;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import java.util.Set;
+
+import static org.junit.jupiter.api.Assertions.*;
 
 public class TestExplicitConstructorInvocation extends CommonTest {
     @Language("java")
@@ -100,5 +103,13 @@ public class TestExplicitConstructorInvocation extends CommonTest {
             assertTrue(eci.isSuper());
             assertSame(C2Constructor1, eci.methodInfo());
         }
+
+        ParseResult parseResult = new ParseResultImpl(Set.of(typeInfo));
+        assertEquals("[org.e2immu.analyser.resolver.testexample.ExplicitConstructorInvocation_2.C2]",
+                parseResult.descendants(C1, false).toString());
+        Set<TypeInfo> descendants = parseResult.descendants(C1, true);
+        assertTrue(descendants.contains(C2));
+        assertTrue(descendants.contains(C3));
+        assertEquals(2, descendants.size());
     }
 }

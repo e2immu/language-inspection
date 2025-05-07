@@ -2,14 +2,17 @@ package org.e2immu.language.inspection.integration.java.other;
 
 import org.e2immu.language.cst.api.info.MethodInfo;
 import org.e2immu.language.cst.api.info.TypeInfo;
+import org.e2immu.language.cst.api.statement.ExpressionAsStatement;
 import org.e2immu.language.cst.api.statement.ForEachStatement;
 import org.e2immu.language.cst.api.statement.LocalVariableCreation;
 import org.e2immu.language.cst.api.statement.Statement;
+import org.e2immu.language.inspection.api.parser.ErasedExpression;
 import org.e2immu.language.inspection.integration.java.CommonTest;
 import org.intellij.lang.annotations.Language;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
 public class TestVar extends CommonTest {
 
@@ -110,6 +113,30 @@ public class TestVar extends CommonTest {
         MethodInfo methodInfo = typeInfo.findUniqueMethod("method", 1);
         ForEachStatement fe = (ForEachStatement) methodInfo.methodBody().lastStatement();
         assertEquals("Type String", fe.initializer().localVariable().parameterizedType().toString());
+    }
+
+
+    @Language("java")
+    private static final String INPUT3 = """
+            package a.b;
+            import java.util.ArrayList;
+            import java.util.List;
+            
+            class X {
+                void method(List<String> list) {
+                    var newList = new ArrayList<>();
+                    newList.add(list.getFirst());
+                }
+            }
+            """;
+
+    @Test
+    public void test3() {
+        TypeInfo typeInfo = javaInspector.parse(INPUT3);
+        MethodInfo methodInfo = typeInfo.findUniqueMethod("method", 1);
+        LocalVariableCreation lvc = (LocalVariableCreation) methodInfo.methodBody().statements().getFirst();
+        assertFalse(lvc.localVariable().assignmentExpression() instanceof ErasedExpression);
+        assertEquals("Type java.util.ArrayList<Object>", lvc.localVariable().parameterizedType().toString());
     }
 
 }

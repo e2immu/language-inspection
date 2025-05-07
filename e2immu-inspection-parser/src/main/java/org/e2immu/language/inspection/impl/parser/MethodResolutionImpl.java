@@ -126,7 +126,8 @@ public class MethodResolutionImpl implements MethodResolution {
                                          Source unparsedObjectSource,
                                          List<Object> unparsedArguments,
                                          List<ParameterizedType> methodTypeArguments,
-                                         boolean complain) {
+                                         boolean complain,
+                                         boolean useObjectForUndefinedTypeParameters) {
         ContextAndScope cas = determineTypeContextAndScope(contextIn, index, unparsedObject);
         Context context = cas.context;
         // FIXME cas.scope.pt() has type parameters, which we should add to the expectedConcreteType?
@@ -153,7 +154,7 @@ public class MethodResolutionImpl implements MethodResolution {
             // there's only one method left, so we can derive the parameterized type from the parameters
             Set<ParameterizedType> typeParametersResolved = new HashSet<>(formalType.parameters());
             finalParameterizedType = tryToResolveTypeParameters(formalType, candidate.method(),
-                    typeParametersResolved, candidate.newParameterExpressions());
+                    typeParametersResolved, candidate.newParameterExpressions(), useObjectForUndefinedTypeParameters);
             if (finalParameterizedType == null) {
                 return null;
             }
@@ -176,7 +177,8 @@ public class MethodResolutionImpl implements MethodResolution {
     private ParameterizedType tryToResolveTypeParameters(ParameterizedType formalType,
                                                          MethodTypeParameterMap method,
                                                          Set<ParameterizedType> typeParametersResolved,
-                                                         List<Expression> newParameterExpressions) {
+                                                         List<Expression> newParameterExpressions,
+                                                         boolean useObjectForUnresolvedTypeParameters) {
         int i = 0;
         Map<NamedType, ParameterizedType> map = new HashMap<>();
         for (Expression parameterExpression : newParameterExpressions) {
@@ -191,6 +193,12 @@ public class MethodResolutionImpl implements MethodResolution {
                         .toList();
                 return runtime.newParameterizedType(formalType.typeInfo(), concreteParameters);
             }
+        }
+        if (useObjectForUnresolvedTypeParameters) {
+            List<ParameterizedType> concreteParameters = formalType.parameters().stream()
+                    .map(pt -> runtime.objectParameterizedType()).toList();
+            // FIXME this does not do the correct recursions; we should translate "unknown" to "Object"
+            return runtime.newParameterizedType(formalType.typeInfo(), concreteParameters);
         }
         return null;
     }
@@ -256,8 +264,17 @@ public class MethodResolutionImpl implements MethodResolution {
         LOGGER.debug("Resulting method is {}", resolvedMethod);
 
         boolean scopeIsThis = scope.expression() instanceof VariableExpression ve && ve.variable() instanceof This;
-        Expression newScope = scope.ensureExplicit(runtime, hierarchyHelper, resolvedMethod,
-                scopeIsThis, context, context.enclosingType(), unparsedScopeSource);
+        Expression newScope;
+        if (scope.expression() != null && containsErasedExpressions(scope.expression())) {
+            TypeParameterMap tpm = extra.merge(new TypeParameterMap(candidate.mapExpansion));
+            newScope = reEvaluateErasedScope(context, index, scope.expression(), unparsedScope, tpm);
+        } else {
+            newScope = scope.ensureExplicit(runtime, hierarchyHelper, resolvedMethod,
+                    scopeIsThis, context, context.enclosingType(), unparsedScopeSource);
+        }
+        if (containsErasedExpressions(newScope)) {
+            throw new UnsupportedOperationException("Scope still contains erased expressions");
+        }
         ParameterizedType returnType = candidate.returnType(runtime, context.enclosingType().primaryType(), extra);
         LOGGER.debug("Concrete return type of {} is {}", methodName, returnType.detailedString());
 
@@ -506,7 +523,9 @@ public class MethodResolutionImpl implements MethodResolution {
 
             Expression reParsed = context.resolver().parseHelper().parseExpression(context, index, newForward,
                     expressions.get(i));
-            assert !containsErasedExpressions(reParsed);
+            if (containsErasedExpressions(reParsed)) {
+                throw new UnsupportedOperationException("Argument at position " + i + " contains erased expressions");
+            }
             newParameterExpressions[i] = reParsed;
 
             ParameterInfo pi = parameters.get(Math.min(i, parameters.size() - 1));
@@ -532,6 +551,21 @@ public class MethodResolutionImpl implements MethodResolution {
         }
         return Arrays.stream(newParameterExpressions).toList();
     }
+
+    private Expression reEvaluateErasedScope(Context context, String index, Expression expressionWithErasedType,
+                                             Object constuctorCallObject,
+                                             TypeParameterMap tpm) {
+        ForwardType newForward;
+        ParameterizedType parameterizedType = expressionWithErasedType.parameterizedType();
+        if (tpm.map().isEmpty()) {
+            newForward = new ForwardTypeImpl(parameterizedType, false, tpm);
+        } else {
+            ParameterizedType translated = parameterizedType.applyTranslation(runtime, tpm.map());
+            newForward = new ForwardTypeImpl(translated, false, tpm);
+        }
+        return context.resolver().parseHelper().parseExpression(context, index, newForward, constuctorCallObject);
+    }
+
 
     private void noCandidatesError(TypeInfo typeInfo,
                                    String methodName,
@@ -691,7 +725,7 @@ public class MethodResolutionImpl implements MethodResolution {
                                     int c = callIsAssignableFrom(formalTypeReplaced, objectPt);
                                     assert c >= 0;
                                     // See MethodCall_66, resp. _74 for the '-' and the '1000'
-                                    compatible = varargsPenalty + 1000 - c;
+                                    compatible = varargsPenalty + 10000 - c;
                                 }
                             } else if (paramIsErasure && actualTypeReplaced != actualType) {
                                 /*

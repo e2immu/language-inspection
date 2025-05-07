@@ -9,7 +9,14 @@ import org.e2immu.language.inspection.api.parser.GenericsHelper;
 import org.e2immu.language.inspection.api.parser.MethodTypeParameterMap;
 import org.e2immu.language.inspection.api.parser.TypeParameterMap;
 
-public record ForwardTypeImpl(ParameterizedType type, boolean erasure, TypeParameterMap extra) implements ForwardType {
+public record ForwardTypeImpl(ParameterizedType type,
+                              boolean erasure,
+                              boolean erasureOnFailure,
+                              TypeParameterMap extra) implements ForwardType {
+
+    public ForwardTypeImpl(ParameterizedType type, boolean erasure, TypeParameterMap extra) {
+        this(type, erasure, erasure, extra);
+    }
 
     @Override
     public MethodTypeParameterMap computeSAM(Runtime runtime, GenericsHelper genericsHelper, TypeInfo primaryType) {

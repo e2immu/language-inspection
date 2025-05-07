@@ -277,7 +277,11 @@ public class ListMethodAndConstructorCandidates {
                               String index,
                               Object unparsedScope,
                               TypeParameterMap extra) {
-        ForwardType forward = new ForwardTypeImpl(null, false, extra);
+        /*
+        erasure on failure: in the case of constructor calls with unknown type parameters, we want to have
+        the opportunity to re-try.
+         */
+        ForwardType forward = new ForwardTypeImpl(null, false, true, extra);
         Expression scope = unparsedScope == null ? null
                 : parseHelper.parseExpression(context, index, forward, unparsedScope);
         // depending on the object, we'll need to find the method somewhere

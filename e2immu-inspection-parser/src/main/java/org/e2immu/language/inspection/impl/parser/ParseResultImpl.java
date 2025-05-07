@@ -3,6 +3,7 @@ package org.e2immu.language.inspection.impl.parser;
 import org.e2immu.language.cst.api.info.Info;
 import org.e2immu.language.cst.api.info.MethodInfo;
 import org.e2immu.language.cst.api.info.TypeInfo;
+import org.e2immu.language.cst.api.type.ParameterizedType;
 import org.e2immu.language.inspection.api.parser.ParseResult;
 
 import java.util.HashMap;
@@ -14,9 +15,11 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 public class ParseResultImpl implements ParseResult {
+    private static final Set<TypeInfo> NO_CHILDREN = Set.of();
     private final Set<TypeInfo> types;
     private final Map<String, TypeInfo> typesByFQN;
     private final Map<String, Set<TypeInfo>> primaryTypesOfPackage;
+    private final Map<TypeInfo, Set<TypeInfo>> children;
 
     public ParseResultImpl(Set<TypeInfo> types) {
         this.types = types;
@@ -28,6 +31,36 @@ public class ParseResultImpl implements ParseResult {
                 t -> new HashSet<>()).add(ti));
         mutableTypesOfPackage.replaceAll((k, s) -> Set.copyOf(s));
         primaryTypesOfPackage = Map.copyOf(mutableTypesOfPackage);
+        Map<TypeInfo, Set<TypeInfo>> children = new HashMap<>();
+        types.stream().flatMap(TypeInfo::recursiveSubTypeStream).forEach(t -> {
+            if (t.parentClass() != null && !t.parentClass().typeInfo().isJavaLangObject()) {
+                children.computeIfAbsent(t.parentClass().typeInfo(), type -> new HashSet<>()).add(t);
+            }
+            for (ParameterizedType pt : t.interfacesImplemented()) {
+                children.computeIfAbsent(pt.typeInfo(), type -> new HashSet<>()).add(t);
+            }
+        });
+        this.children = Map.copyOf(children);
+    }
+
+    @Override
+    public Set<TypeInfo> descendants(TypeInfo typeInfo, boolean recurse) {
+        if (recurse) {
+            Set<TypeInfo> all = new HashSet<>();
+            recursivelyComputeDescendants(typeInfo, all, new HashSet<>());
+            return all;
+        }
+        return this.children.getOrDefault(typeInfo, NO_CHILDREN);
+    }
+
+    private void recursivelyComputeDescendants(TypeInfo typeInfo, Set<TypeInfo> all, Set<Object> seen) {
+        if (seen.add(typeInfo)) {
+            Set<TypeInfo> descendants = children.getOrDefault(typeInfo, NO_CHILDREN);
+            all.addAll(descendants);
+            for (TypeInfo child : descendants) {
+                recursivelyComputeDescendants(child, all, seen);
+            }
+        }
     }
 
     @Override

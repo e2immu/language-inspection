@@ -32,7 +32,8 @@ public interface MethodResolution {
                                   Source unparsedObjectSource,
                                   List<Object> unparsedArguments,
                                   List<ParameterizedType> methodTypeArguments,
-                                  boolean complain);
+                                  boolean complain,
+                                  boolean useObjectForUndefinedTypeParameters);
 
     Expression resolveMethod(Context context,
                              List<Comment> comments,
