@@ -10,8 +10,7 @@ import org.intellij.lang.annotations.Language;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class TestMethodCall8 extends CommonTest {
 
@@ -22,28 +21,29 @@ public class TestMethodCall8 extends CommonTest {
             public class MethodCall_81 {
                 @FunctionalInterface
                 interface Customizer<T> {
-                    T customize();
-                    static <T> Customizer<T> withDefaults();
+                    void customize(T t);
+                    static <T> Customizer<T> withDefaults() { return null; }
                 }
                 interface HttpSecurityBuilder<H extends HttpSecurityBuilder<H>> { }
                 static abstract class AbstractHttpConfigurer<T extends AbstractHttpConfigurer<T,B>,
-                                                             B extends HttpSecurityBuilder<B>> {
-                    B disable();
-                    T withObjectPostProcessor();
+                        B extends HttpSecurityBuilder<B>> {
+                    B disable() { return null; }
+                    T withObjectPostProcessor() { return null; }
                 }
                 interface CorsConfigurer<H extends HttpSecurityBuilder<H>> { }
                 static abstract class CsrfConfigurer<H extends HttpSecurityBuilder<H>>
-                    extends AbstractHttpConfigurer<CsrfConfigurer<H>, H> { }
-            
+                        extends AbstractHttpConfigurer<CsrfConfigurer<H>, H> { }
+        
                 interface HttpSecurity extends HttpSecurityBuilder<HttpSecurity> {
                     HttpSecurity cors(Customizer<CorsConfigurer<HttpSecurity>> customizer);
                     HttpSecurity csrf(Customizer<CsrfConfigurer<HttpSecurity>> csrfCustomizer) throws Exception;
                 }
-            
-                public void method(HttpSecurity httpSecurity) {
+        
+                public void method(HttpSecurity httpSecurity) throws Exception {
                     httpSecurity.cors(Customizer.withDefaults())
-                      .csrf(AbstractHttpConfigurer::disable);
+                            .csrf(AbstractHttpConfigurer::disable);
                 }
+            }
             }
             """;
 
@@ -53,7 +53,6 @@ public class TestMethodCall8 extends CommonTest {
         TypeInfo customizer = typeInfo.findSubType("Customizer");
         assertTrue(customizer.isFunctionalInterface());
     }
-
 
     @Language("java")
     private static final String INPUT2 = """
@@ -72,6 +71,7 @@ public class TestMethodCall8 extends CommonTest {
             
                 interface ConfigurableMockMvcBuilder<B extends ConfigurableMockMvcBuilder<B>> extends MockMvcBuilder {
                     <T extends B> T apply(MockMvcConfigurer configurer);
+                    <T extends B> T dispatchOptions(boolean dispatchOptions);
                 }
             
                 static abstract class AbstractMockMvcBuilder<B extends AbstractMockMvcBuilder<B>>
@@ -82,12 +82,12 @@ public class TestMethodCall8 extends CommonTest {
                     @Override
                     MockMvc build();
                 }
-                static abstract class DefaultMockMvcBuilder extends AbstractMockMvcBuilder<DefaultMockMvcBuilder> {
-            
+                static class DefaultMockMvcBuilder extends AbstractMockMvcBuilder<DefaultMockMvcBuilder> {
+                    DefaultMockMvcBuilder(WebApplicationContext webAppContext) { }
                 }
                 static class MockMvcBuilders {
                     static DefaultMockMvcBuilder webAppContextSetup(WebApplicationContext context) {
-                        return null;
+                        return new DefaultMockMvcBuilder(context);
                     }
                 }
                 MockMvc method() {
@@ -99,10 +99,14 @@ public class TestMethodCall8 extends CommonTest {
     @Test
     public void test2() {
         TypeInfo typeInfo = javaInspector.parse(INPUT2);
+        TypeInfo ConfigurableMockMvcBuilder = typeInfo.findSubType("ConfigurableMockMvcBuilder");
+        assertFalse(ConfigurableMockMvcBuilder.isFunctionalInterface());
+        TypeInfo MockMvcBuilder = typeInfo.findSubType("MockMvcBuilder");
+        assertTrue(MockMvcBuilder.isFunctionalInterface());
+
         MethodInfo methodInfo = typeInfo.findUniqueMethod("method", 0);
         Statement statement = methodInfo.methodBody().lastStatement();
         if (statement.expression() instanceof MethodCall mc) {
-            // FIXME this should be T extends DefaultMockMvcBuilder
             assertEquals("""
                     Type param T extends B extends org.e2immu.test.MethodCall_82.AbstractMockMvcBuilder<B>\
                     """, mc.object().parameterizedType().toString());
@@ -240,4 +244,38 @@ public class TestMethodCall8 extends CommonTest {
     }
 
 
+    @Language("java")
+    private static final String INPUT6 = """
+            package a.b;
+            import java.util.Set;
+            import java.util.List;
+            class X {
+                record R(Set<String> set, List<Integer> list, int i) {}
+                static class Builder {
+                    Set<String> stringSet;
+                    List<Integer> intList;
+                    int j;
+                    Builder setStringSet(Set<String> set) { stringSet = set; return this; }
+                    Builder setIntList(List<Integer>list) { intList = list; return this; }
+                    Builder setJ(int k) { j = k; return this; }
+                    R build() { return new R(stringSet, intList, j); }
+                }
+                R method(Set<String> in) {
+                    Builder b = new Builder().setJ(3).setIntList(List.of(0, 1)).setStringSet(in);
+                    R r = b.build();
+                    return r;
+                }
+            }
+            """;
+    @DisplayName("which version of list?")
+    @Test
+    public void test6() {
+        TypeInfo X = javaInspector.parse(INPUT6);
+        MethodInfo method = X.findUniqueMethod("method", 1);
+        LocalVariableCreation lvc0 = (LocalVariableCreation) method.methodBody().statements().getFirst();
+        MethodCall setStringSet = (MethodCall) lvc0.localVariable().assignmentExpression();
+        MethodCall setIntList = (MethodCall) setStringSet.object();
+        MethodCall listOf = (MethodCall) setIntList.parameterExpressions().getFirst();
+        assertEquals("java.util.List.of(E,E)", listOf.methodInfo().fullyQualifiedName());
+    }
 }

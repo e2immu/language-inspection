@@ -40,6 +40,8 @@ public abstract class CommonTest {
                 .addClassPath(JAR_WITH_PATH_PREFIX + "ch/qos/logback/classic")
                 .addClassPath(JAR_WITH_PATH_PREFIX + "org/opentest4j")
                 .addClassPath(JAR_WITH_PATH_PREFIX + "org/assertj/core")
+                .addClassPath(JAR_WITH_PATH_PREFIX + "org/springframework/core")
+                .addClassPath(JAR_WITH_PATH_PREFIX + "org/springframework/test")
                 .build();
         javaInspector.initialize(inputConfiguration);
         javaInspector.parse(JavaInspectorImpl.FAIL_FAST);

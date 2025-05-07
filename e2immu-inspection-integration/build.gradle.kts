@@ -53,6 +53,8 @@ dependencies {
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.9.3")
 
     testImplementation("org.assertj:assertj-core:3.27.3")
+    testImplementation("org.springframework:spring-test:6.1.19")
+    testImplementation("org.springframework:spring-core:6.1.19")
 }
 
 tasks.test {

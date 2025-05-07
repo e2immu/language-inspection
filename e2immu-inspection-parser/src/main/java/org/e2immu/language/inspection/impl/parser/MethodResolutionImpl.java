@@ -261,7 +261,8 @@ public class MethodResolutionImpl implements MethodResolution {
             throw new Summary.ParseException(context.info(), "Failed to find a unique method candidate");
         }
         MethodInfo resolvedMethod = candidate.method.methodInfo();
-        LOGGER.debug("Resulting method is {}", resolvedMethod);
+        //LOGGER.info("Resulting method is {}, type params {}", resolvedMethod, resolvedMethod.typeParameters()
+        //        .stream().map(TypeParameter::toStringWithTypeBounds).collect(Collectors.joining(", ")));
 
         boolean scopeIsThis = scope.expression() instanceof VariableExpression ve && ve.variable() instanceof This;
         Expression newScope;
@@ -275,8 +276,12 @@ public class MethodResolutionImpl implements MethodResolution {
         if (containsErasedExpressions(newScope)) {
             throw new UnsupportedOperationException("Scope still contains erased expressions");
         }
+        //LOGGER.info("- Type's type parameters {}", resolvedMethod.typeInfo().typeParameters().stream()
+        //        .map(TypeParameter::toStringWithTypeBounds).collect(Collectors.joining(", ")));
+        //LOGGER.info("- Evaluated scope is {}, type {}, extra {}", newScope, newScope.parameterizedType().detailedString(),
+        //        extra.map());
         ParameterizedType returnType = candidate.returnType(runtime, context.enclosingType().primaryType(), extra);
-        LOGGER.debug("Concrete return type of {} is {}", methodName, returnType.detailedString());
+        //LOGGER.info("- Concrete return type of {} is {}", methodName, returnType.detailedString());
 
         DetailedSources.Builder detailedSourcesBuilder = context.newDetailedSourcesBuilder();
         if (detailedSourcesBuilder != null) {
@@ -300,11 +305,19 @@ public class MethodResolutionImpl implements MethodResolution {
         ParameterizedType returnType(Runtime runtime,
                                      TypeInfo primaryType,
                                      TypeParameterMap extra) {
-            ParameterizedType pt = mapExpansion.isEmpty()
-                    ? method.getConcreteReturnType(runtime)
-                    : method.expand(runtime, primaryType, mapExpansion).getConcreteReturnType(runtime);
+            //LOGGER.info(" - mapExpansion {}", mapExpansion);
+            //LOGGER.info(" - method concrete type map {}", method.concreteTypes());
+            ParameterizedType pt;
+            if (mapExpansion.isEmpty()) {
+                pt = method.getConcreteReturnType(runtime);
+            } else {
+                MethodTypeParameterMap expand = method.expand(runtime, primaryType, mapExpansion);
+                //LOGGER.info(" - expand = {}", expand);
+                pt = expand.getConcreteReturnType(runtime);
+            }
             ParameterizedType withExtra = pt.applyTranslation(runtime, extra.map());
             // See TypeParameter_4
+            //LOGGER.info(" - withExtra: {}", withExtra.detailedString());
             return withExtra.isUnboundWildcard() ? runtime.objectParameterizedType() : withExtra;
         }
     }
@@ -695,7 +708,7 @@ public class MethodResolutionImpl implements MethodResolution {
                             break;
                         } // else: we have another one to try!
                         // see Constructor_18 for example where varargsPenalty is important
-                        varargsPenalty = 50;
+                        varargsPenalty = 500;
                     } else {
                         varargsPenalty = 0;
                     }
