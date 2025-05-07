@@ -2,6 +2,7 @@
 includeBuild("../util-external/e2immu-external-support")
 includeBuild("../util-internal/e2immu-internal-graph")
 includeBuild("../util-internal/e2immu-internal-util")
+includeBuild("../language-cst/e2immu-cst-analysis")
 includeBuild("../language-cst/e2immu-cst-api")
 includeBuild("../language-cst/e2immu-cst-impl")
 includeBuild("../language-cst/e2immu-cst-print")
