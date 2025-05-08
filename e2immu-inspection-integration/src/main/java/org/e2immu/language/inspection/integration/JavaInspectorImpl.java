@@ -5,10 +5,12 @@ import org.e2immu.language.cst.api.element.CompilationUnit;
 import org.e2immu.language.cst.api.element.FingerPrint;
 import org.e2immu.language.cst.api.element.SourceSet;
 import org.e2immu.language.cst.api.info.ImportComputer;
+import org.e2immu.language.cst.api.info.InfoMap;
 import org.e2immu.language.cst.api.info.TypeInfo;
 import org.e2immu.language.cst.api.output.Formatter;
 import org.e2immu.language.cst.api.output.OutputBuilder;
 import org.e2immu.language.cst.api.runtime.Runtime;
+import org.e2immu.language.cst.impl.info.InfoMapImpl;
 import org.e2immu.language.cst.print.FormattingOptionsImpl;
 import org.e2immu.language.cst.print.formatter2.Formatter2Impl;
 import org.e2immu.language.inspection.api.integration.JavaInspector;
@@ -38,11 +40,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+
+import static org.e2immu.language.inspection.api.integration.JavaInspector.InvalidationState.*;
 
 /*
 from input configuration
@@ -85,17 +88,17 @@ public class JavaInspectorImpl implements JavaInspector {
 
     public static final String TEST_PROTOCOL_PREFIX = TEST_PROTOCOL + ":";
     public static final ParseOptions FAIL_FAST = new ParseOptions(true, false,
-            false, typeInfo -> false);
+            false, typeInfo -> UNCHANGED);
 
     public static class ParseOptionsBuilder implements JavaInspector.ParseOptionsBuilder {
         private boolean failFast;
         private boolean detailedSources;
         private boolean allowCreationOfStubTypes;
-        private Predicate<TypeInfo> unchanged;
+        private Invalidated invalidated;
 
         @Override
-        public ParseOptionsBuilder setUnchanged(Predicate<TypeInfo> unchanged) {
-            this.unchanged = unchanged;
+        public ParseOptionsBuilder setInvalidated(Invalidated invalidated) {
+            this.invalidated = invalidated;
             return this;
         }
 
@@ -119,7 +122,7 @@ public class JavaInspectorImpl implements JavaInspector {
 
         @Override
         public ParseOptions build() {
-            return new ParseOptions(failFast, detailedSources, allowCreationOfStubTypes, unchanged);
+            return new ParseOptions(failFast, detailedSources, allowCreationOfStubTypes, invalidated);
         }
     }
 
@@ -151,6 +154,34 @@ public class JavaInspectorImpl implements JavaInspector {
             throw new IOException(e);
         }
         return List.copyOf(initializationProblems);
+    }
+
+    /*
+    Strategy:
+    Load all sourceFiles from the source path.
+    On the basis of the source fingerprints, eep track of
+    - types that are new. Action: add to sourceFiles; no need to report, since the code compiles.
+    - types that have been removed. Action: remove from sourceFiles; no need to report, since the code compiles.
+    - types that have been changed. Report this change, so that the Invalidated parse option can return
+        INVALID for this type, and that the dependents can be computed so that they are rewired.
+     */
+    public ReloadResult reloadSources(InputConfiguration inputConfiguration) throws IOException {
+        List<InitializationProblem> initializationProblems = new LinkedList<>();
+        Set<TypeInfo> changed = new HashSet<>();
+        try {
+            Resources sourcePath = assemblePath(inputConfiguration.workingDirectory(), inputConfiguration.sourceSets(),
+                    inputConfiguration.alternativeJREDirectory(), "Source path", initializationProblems);
+            List<SourceFile> sourceFiles = computeSourceURIs(sourcePath);
+
+            sourceFiles.forEach(sf -> {
+                // FIXME ADD CODE
+                this.sourceFiles.put(sf, List.of());
+            });
+        } catch (URISyntaxException e) {
+            LOGGER.error("Caught URISyntaxException, transforming into IOException", e);
+            throw new IOException(e);
+        }
+        return new ReloadResult(List.copyOf(initializationProblems), Set.copyOf(changed));
     }
 
     private List<SourceFile> computeSourceURIs(Resources sourcePath) {
@@ -386,20 +417,33 @@ public class JavaInspectorImpl implements JavaInspector {
 
         // PHASE 1: scanning all the types, call CongoCC parser
 
-        Predicate<TypeInfo> unchanged = parseOptions.unchanged();
+        Invalidated invalidated = parseOptions.invalidated();
 
         List<SourceFile> sourceFilesToParse = new ArrayList<>(sourceFiles.size());
+        Set<TypeInfo> typesToRewire = new HashSet<>();
         this.sourceFiles.forEach((sf, typeInfos) -> {
             if (typeInfos.isEmpty()) {
                 sourceFilesToParse.add(sf);
-            } else if (typeInfos.stream().allMatch(unchanged)) {
-                typeInfos.forEach(ti -> summary.addType(ti, true));
             } else {
-                typeInfos.forEach(ti -> sourceTypeMap.invalidate(ti.fullyQualifiedName()));
-                sourceFilesToParse.add(sf);
+                // TODO if there are multiple primary types here, and only one is invalid, we must make sure that
+                //   all the descendants of the other must be rewired. This is an edge case.
+                if (typeInfos.stream().anyMatch(ti -> invalidated.apply(ti) == INVALID)) {
+                    typeInfos.forEach(ti -> sourceTypeMap.invalidate(ti.fullyQualifiedName()));
+                    sourceFilesToParse.add(sf);
+                } else {
+                    typeInfos.forEach(ti -> {
+                        InvalidationState state = invalidated.apply(ti);
+                        if (state == UNCHANGED) {
+                            summary.addType(ti, true);
+                        } else if (state == REWIRE) {
+                            typesToRewire.add(ti);
+                        }
+                    });
+                }
             }
         });
         List<SourceFileCompilationUnit> list = new ArrayList<>(sourceFilesToParse.size());
+
         for (SourceFile sourceFile : sourceFilesToParse) {
             String uriString = sourceFile.uri().toString();
             SourceFileCompilationUnit sfCu;
@@ -424,12 +468,22 @@ public class JavaInspectorImpl implements JavaInspector {
 
         // PHASE 2: actual parsing of types, methods, fields
 
+        InfoMap infoMap = new InfoMapImpl(typesToRewire);
         for (SourceFileCompilationUnit sfCu : list) {
             ParseCompilationUnit parseCompilationUnit = new ParseCompilationUnit(rootContext);
             LOGGER.debug("Parsing {}", sfCu.sourceFile().uri());
             List<TypeInfo> types = parseCompilationUnit.parse(sfCu.parsedCu, sfCu.cu);
-            types.forEach(ti -> summary.addType(ti, true));
+            types.forEach(ti -> {
+                summary.addType(ti, true);
+                infoMap.put(ti);
+            });
             sourceFiles.put(sfCu.sourceFile, List.copyOf(types));
+        }
+
+        for (TypeInfo typeInfo : typesToRewire) {
+            TypeInfo rewired = infoMap.typeInfoRecurseAllPhases(typeInfo);
+            sourceTypeMap.put(rewired);
+            summary.addType(rewired, true);
         }
 
         // PHASE 3: resolving: content of methods, field initializers

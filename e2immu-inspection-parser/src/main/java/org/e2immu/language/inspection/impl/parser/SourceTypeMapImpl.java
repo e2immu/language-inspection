@@ -11,6 +11,10 @@ import java.util.TreeMap;
 public class SourceTypeMapImpl implements SourceTypeMap {
     private final TreeMap<String, TypeInfo> map = new TreeMap<>();
 
+    public void put(TypeInfo rewired) {
+        map.put(rewired.fullyQualifiedName(), rewired);
+    }
+
     public void putAll(Map<String, TypeInfo> map) {
         this.map.putAll(map);
     }
@@ -30,7 +34,7 @@ public class SourceTypeMapImpl implements SourceTypeMap {
         List<TypeInfo> result = new LinkedList<>();
         Map.Entry<String, TypeInfo> lower = map.ceilingEntry(packageName);
         while (lower != null && lower.getKey().startsWith(packageName)) {
-            if(lower.getValue().isPrimaryType()) {
+            if (lower.getValue().isPrimaryType()) {
                 result.add(lower.getValue());
             }
             lower = map.higherEntry(lower.getKey());

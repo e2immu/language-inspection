@@ -14,7 +14,7 @@ import java.net.URI;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Predicate;
+import java.util.function.Function;
 
 /*
 
@@ -23,8 +23,22 @@ public interface JavaInspector {
 
     String TEST_PROTOCOL = "test-protocol";
 
+    @FunctionalInterface
+    interface Invalidated extends Function<TypeInfo, InvalidationState> {
+    }
+
     record ParseOptions(boolean failFast, boolean detailedSources, boolean allowCreationOfStubTypes,
-                        Predicate<TypeInfo> unchanged) {
+                        Invalidated invalidated) {
+    }
+
+    /*
+    Was there a change to this type?
+    from high to low in the dependency tree of types: unchanged, invalid/removed, rewire
+
+    REWIRE = the type isn't changed at all, but it accesses invalidated (and hence re-parsed, new) type info objects.
+     */
+    enum InvalidationState {
+        UNCHANGED, INVALID, REWIRE, REMOVED
     }
 
     interface ParseOptionsBuilder {
@@ -35,7 +49,7 @@ public interface JavaInspector {
 
         ParseOptionsBuilder setAllowCreationOfStubTypes(boolean allowCreationOfStubTypes);
 
-        ParseOptionsBuilder setUnchanged(Predicate<TypeInfo> unchanged);
+        ParseOptionsBuilder setInvalidated(Invalidated invalidated);
 
         ParseOptions build();
     }
@@ -77,4 +91,7 @@ public interface JavaInspector {
 
     Set<SourceFile> sourceFiles();
 
+    record ReloadResult(List<InitializationProblem> problems, Set<TypeInfo> sourceHasChanged) {}
+
+    ReloadResult reloadSources(InputConfiguration inputConfiguration) throws IOException;
 }
