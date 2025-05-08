@@ -17,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.*;
 public class TestInvalidate extends CommonTest2 {
 
     private static final String PROCESSOR_FQN = "a.b.util.Processor";
+    private static final String ISOURCE_FQN = "a.b.ISource";
 
     @Language("java")
     String PROCESSOR = """
@@ -42,6 +43,15 @@ public class TestInvalidate extends CommonTest2 {
             """;
 
     @Language("java")
+    String ISOURCE_CHANGED = """
+            package a.b;
+            import a.b.util.Processor;
+            public interface ISource {
+                Processor.ProcessResult processResult(); 
+            }
+            """;
+
+    @Language("java")
     String SOURCE = """
             package a.b;
             import a.b.util.Processor;
@@ -52,10 +62,32 @@ public class TestInvalidate extends CommonTest2 {
 
 
     @Test
-    public void test1() throws IOException {
-        Map<String, String> sourcesByFqn = Map.of("a.b.ISource", ISOURCE, "a.b.Source", SOURCE,
+    public void testReload() throws IOException {
+        Map<String, String> sourcesByFqn = Map.of(ISOURCE_FQN, ISOURCE, "a.b.Source", SOURCE,
                 PROCESSOR_FQN, PROCESSOR);
         ParseResult pr1 = init(sourcesByFqn);
+        TypeInfo iSource = pr1.findType(ISOURCE_FQN);
+        assertEquals("5qzB4ttzbH5oaGHwsCf4Qw==", iSource.compilationUnit().fingerPrintOrNull().toString());
+        assertEquals(3, pr1.primaryTypes().size());
+
+        Map<String, String> sourcesByFqn2 = Map.of(ISOURCE_FQN, ISOURCE_CHANGED, "a.b.Source", SOURCE,
+                PROCESSOR_FQN, PROCESSOR);
+        Map<String, String> sourcesByURIString = sourcesByURIString(sourcesByFqn2);
+        JavaInspector.ReloadResult rr = javaInspector.reloadSources(makeInputConfiguration(sourcesByURIString)
+                , sourcesByURIString);
+        assertEquals(0, rr.problems().size());
+        assertEquals(1, rr.sourceHasChanged().size());
+        assertEquals("[a.b.ISource]", rr.sourceHasChanged().toString());
+    }
+
+    @Test
+    public void test1() throws IOException {
+        Map<String, String> sourcesByFqn = Map.of(ISOURCE_FQN, ISOURCE, "a.b.Source", SOURCE,
+                PROCESSOR_FQN, PROCESSOR);
+        ParseResult pr1 = init(sourcesByFqn);
+        TypeInfo processor = pr1.findType(PROCESSOR_FQN);
+        assertEquals("swTzAiYtIXTHZ/quxa3mFQ==", processor.compilationUnit().fingerPrintOrNull().toString());
+
         assertEquals(3, pr1.primaryTypes().size());
         Map<String, String> sourcesByURIString = sourcesByURIString(sourcesByFqn);
 
@@ -148,7 +180,8 @@ public class TestInvalidate extends CommonTest2 {
             } else {
                 assertNotSame(pt1, pt2);
                 assertEquals(pt1.fullyQualifiedName(), pt2.fullyQualifiedName());
-                if("ISource".equals(pt1.simpleName())) {
+                assertEquals(pt1.compilationUnit(), pt2.compilationUnit());
+                if ("ISource".equals(pt1.simpleName())) {
                     assertNotSame(pt1.compilationUnit(), pt2.compilationUnit());
                 } else {
                     assertSame(pt1.compilationUnit(), pt2.compilationUnit());

@@ -93,5 +93,5 @@ public interface JavaInspector {
 
     record ReloadResult(List<InitializationProblem> problems, Set<TypeInfo> sourceHasChanged) {}
 
-    ReloadResult reloadSources(InputConfiguration inputConfiguration) throws IOException;
+    ReloadResult reloadSources(InputConfiguration inputConfiguration, Map<String, String> sourcesByTestProtocolURIString) throws IOException;
 }

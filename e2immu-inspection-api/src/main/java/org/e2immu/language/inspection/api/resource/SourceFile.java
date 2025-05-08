@@ -4,8 +4,20 @@ import org.e2immu.language.cst.api.element.FingerPrint;
 import org.e2immu.language.cst.api.element.SourceSet;
 
 import java.net.URI;
+import java.util.Objects;
 
 public record SourceFile(String path, URI uri, SourceSet sourceSet, FingerPrint fingerPrint) {
+
+    @Override
+    public boolean equals(Object o) {
+        if (!(o instanceof SourceFile that)) return false;
+        return Objects.equals(uri(), that.uri()) && Objects.equals(sourceSet(), that.sourceSet());
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(uri(), sourceSet());
+    }
 
     public static String ensureDotClass(String substring) {
         if (!substring.endsWith(".class")) {
@@ -16,6 +28,10 @@ public record SourceFile(String path, URI uri, SourceSet sourceSet, FingerPrint 
 
     public String stripDotClass() {
         return Resources.stripDotClass(path);
+    }
+
+    public SourceFile withFingerprint(FingerPrint fingerPrint) {
+        return new SourceFile(path, uri, sourceSet, fingerPrint);
     }
 
     public SourceFile withPath(String path) {

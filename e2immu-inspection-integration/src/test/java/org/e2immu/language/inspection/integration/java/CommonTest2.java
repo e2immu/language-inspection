@@ -33,7 +33,13 @@ public abstract class CommonTest2 {
 
     public ParseResult init(Map<String, String> sourcesByFqn) throws IOException {
         Map<String, String> sourcesByURIString = sourcesByURIString(sourcesByFqn);
+        InputConfiguration inputConfiguration = makeInputConfiguration(sourcesByURIString);
         javaInspector = new JavaInspectorImpl(true);
+        javaInspector.initialize(inputConfiguration);
+        return javaInspector.parse(sourcesByURIString, JavaInspectorImpl.FAIL_FAST).parseResult();
+    }
+
+    public static InputConfiguration makeInputConfiguration(Map<String, String> sourcesByURIString) {
         InputConfiguration.Builder inputConfigurationBuilder = new InputConfigurationImpl.Builder()
                 .addClassPath(InputConfigurationImpl.GRADLE_DEFAULT)
                 // NOTE: no access to ToolChain here; this is rather exceptional
@@ -45,8 +51,6 @@ public abstract class CommonTest2 {
                 .addClassPath(JAR_WITH_PATH_PREFIX + "ch/qos/logback/classic")
                 .addClassPath(JAR_WITH_PATH_PREFIX + "org/opentest4j");
         sourcesByURIString.keySet().forEach(inputConfigurationBuilder::addSources);
-        InputConfiguration inputConfiguration = inputConfigurationBuilder.build();
-        javaInspector.initialize(inputConfiguration);
-        return javaInspector.parse(sourcesByURIString, JavaInspectorImpl.FAIL_FAST).parseResult();
+        return inputConfigurationBuilder.build();
     }
 }

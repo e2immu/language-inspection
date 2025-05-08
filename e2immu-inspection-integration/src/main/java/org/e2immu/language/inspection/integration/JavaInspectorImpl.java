@@ -35,11 +35,13 @@ import java.io.StringWriter;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -164,19 +166,49 @@ public class JavaInspectorImpl implements JavaInspector {
     - types that have been removed. Action: remove from sourceFiles; no need to report, since the code compiles.
     - types that have been changed. Report this change, so that the Invalidated parse option can return
         INVALID for this type, and that the dependents can be computed so that they are rewired.
+
+    The code that computes the Rewired types will have to make use of a type dependency graph.
      */
-    public ReloadResult reloadSources(InputConfiguration inputConfiguration) throws IOException {
+    public ReloadResult reloadSources(InputConfiguration inputConfiguration,
+                                      Map<String, String> sourcesByTestProtocolURIString) throws IOException {
+        if (!computeFingerPrints) {
+            throw new UnsupportedOperationException("The reloadSources method requires fingerprints to be computed");
+        }
         List<InitializationProblem> initializationProblems = new LinkedList<>();
         Set<TypeInfo> changed = new HashSet<>();
         try {
             Resources sourcePath = assemblePath(inputConfiguration.workingDirectory(), inputConfiguration.sourceSets(),
                     inputConfiguration.alternativeJREDirectory(), "Source path", initializationProblems);
+            Set<SourceFile> removed = new HashSet<>(this.sourceFiles.keySet());
             List<SourceFile> sourceFiles = computeSourceURIs(sourcePath);
-
+            AtomicInteger sourceFilesChanged = new AtomicInteger();
+            AtomicInteger newSourceFiles = new AtomicInteger();
             sourceFiles.forEach(sf -> {
-                // FIXME ADD CODE
-                this.sourceFiles.put(sf, List.of());
+                List<TypeInfo> current = this.sourceFiles.get(sf);
+                if (current != null) {
+                    removed.remove(sf);
+                    FingerPrint currentFingerprint = current.getFirst().compilationUnit().fingerPrintOrNull();
+                    String sourceCode = loadSource(sf, sourcesByTestProtocolURIString,
+                            sf.sourceSet().sourceEncoding(),
+                            e -> initializationProblems.add(new InitializationProblem("parsing", e)));
+                    FingerPrint newFingerprint = sourceCode == null ? MD5FingerPrint.NO_FINGERPRINT : MD5FingerPrint.compute(sourceCode);
+                    assert currentFingerprint != null && currentFingerprint != MD5FingerPrint.NO_FINGERPRINT;
+                    if (!currentFingerprint.equals(newFingerprint)) {
+                        // CHANGE
+                        this.sourceFiles.put(sf, List.of());
+                        changed.addAll(current);
+                        sourceFilesChanged.incrementAndGet();
+                    } // else: UNCHANGED
+                } else {
+                    // NEW
+                    this.sourceFiles.put(sf, List.of());
+                    newSourceFiles.incrementAndGet();
+                }
             });
+            // those that remain in "removed" are not present anymore, they should go.
+            LOGGER.info("Reloaded sources: {} source file(s) removed, {} new, {} of {} remaining changed",
+                    removed.size(), newSourceFiles.get(), sourceFilesChanged.get(), sourceFiles.size());
+            this.sourceFiles.keySet().removeAll(removed);
         } catch (URISyntaxException e) {
             LOGGER.error("Caught URISyntaxException, transforming into IOException", e);
             throw new IOException(e);
@@ -374,7 +406,7 @@ public class JavaInspectorImpl implements JavaInspector {
     public Summary parse(URI uri, ParseOptions parseOptions) {
         Summary summary = new SummaryImpl(true); // once stable, change to false
 
-        try (InputStreamReader isr = makeInputStreamReader(uri); StringWriter sw = new StringWriter()) {
+        try (InputStreamReader isr = makeInputStreamReader(uri, StandardCharsets.UTF_8); StringWriter sw = new StringWriter()) {
             isr.transferTo(sw);
             String sourceCode = sw.toString();
             SourceFile sourceFile = new SourceFile(uri.toString(), uri, null, MD5FingerPrint.compute(sourceCode));
@@ -396,8 +428,8 @@ public class JavaInspectorImpl implements JavaInspector {
                                              CompilationUnit parsedCu) {
     }
 
-    private InputStreamReader makeInputStreamReader(URI uri) throws IOException {
-        return new InputStreamReader(uri.toURL().openStream(), StandardCharsets.UTF_8);
+    private InputStreamReader makeInputStreamReader(URI uri, Charset charset) throws IOException {
+        return new InputStreamReader(uri.toURL().openStream(), charset);
     }
 
     @Override
@@ -419,52 +451,38 @@ public class JavaInspectorImpl implements JavaInspector {
 
         Invalidated invalidated = parseOptions.invalidated();
 
-        List<SourceFile> sourceFilesToParse = new ArrayList<>(sourceFiles.size());
+        Map<SourceFile, String> sourceFilesToParse = new HashMap<>();
         Set<TypeInfo> typesToRewire = new HashSet<>();
         this.sourceFiles.forEach((sf, typeInfos) -> {
-            if (typeInfos.isEmpty()) {
-                sourceFilesToParse.add(sf);
+            // TODO if there are multiple primary types here, and only one is invalid, we must make sure that
+            //   all the descendants of the other must be rewired. This is an edge case.
+            if (typeInfos.isEmpty() || typeInfos.stream().anyMatch(ti -> invalidated.apply(ti) == INVALID)) {
+                typeInfos.forEach(ti -> sourceTypeMap.invalidate(ti.fullyQualifiedName()));
+                String sourceCode = loadSource(sf, sourcesByTestProtocolURIString,
+                        sf.sourceSet().sourceEncoding(),
+                        summary::addParserError);
+                if (sourceCode != null) {
+                    FingerPrint fingerPrint = MD5FingerPrint.compute(sourceCode);
+                    sourceFilesToParse.put(sf.withFingerprint(fingerPrint), sourceCode);
+                }
             } else {
-                // TODO if there are multiple primary types here, and only one is invalid, we must make sure that
-                //   all the descendants of the other must be rewired. This is an edge case.
-                if (typeInfos.stream().anyMatch(ti -> invalidated.apply(ti) == INVALID)) {
-                    typeInfos.forEach(ti -> sourceTypeMap.invalidate(ti.fullyQualifiedName()));
-                    sourceFilesToParse.add(sf);
-                } else {
-                    typeInfos.forEach(ti -> {
-                        InvalidationState state = invalidated.apply(ti);
-                        if (state == UNCHANGED) {
-                            summary.addType(ti, true);
-                        } else if (state == REWIRE) {
-                            typesToRewire.add(ti);
-                        }
-                    });
+                for (TypeInfo ti : typeInfos) {
+                    InvalidationState state = invalidated.apply(ti);
+                    if (state == UNCHANGED) {
+                        summary.addType(ti, true);
+                    } else if (state == REWIRE) {
+                        typesToRewire.add(ti);
+                    }
                 }
             }
         });
         List<SourceFileCompilationUnit> list = new ArrayList<>(sourceFilesToParse.size());
 
-        for (SourceFile sourceFile : sourceFilesToParse) {
-            String uriString = sourceFile.uri().toString();
-            SourceFileCompilationUnit sfCu;
-            if (uriString.startsWith(TEST_PROTOCOL_PREFIX)) {
-                String sourceCode = sourcesByTestProtocolURIString.get(uriString);
-                sfCu = parseSourceString(sourceFile, sourceFile.sourceSet(), sourceCode, summary,
-                        parseOptions.detailedSources());
-                list.add(sfCu);
-            } else {
-                try (InputStreamReader isr = makeInputStreamReader(sourceFile.uri()); StringWriter sw = new StringWriter()) {
-                    isr.transferTo(sw);
-                    String sourceCode = sw.toString();
-                    sfCu = parseSourceString(sourceFile, sourceFile.sourceSet(), sourceCode, summary,
-                            parseOptions.detailedSources());
-                    list.add(sfCu);
-                } catch (IOException io) {
-                    LOGGER.error("Caught IO exception", io);
-                    summary.addParserError(io);
-                }
-            }
-        }
+        sourceFilesToParse.forEach((sourceFile, sourceCode) -> {
+            SourceFileCompilationUnit sfCu = parseSourceString(sourceFile, sourceFile.sourceSet(), sourceCode, summary,
+                    parseOptions.detailedSources());
+            list.add(sfCu);
+        });
 
         // PHASE 2: actual parsing of types, methods, fields
 
@@ -492,6 +510,24 @@ public class JavaInspectorImpl implements JavaInspector {
         return summary;
     }
 
+    private String loadSource(SourceFile sourceFile,
+                              Map<String, String> sourcesByTestProtocolURIString,
+                              Charset sourceEncoding,
+                              Consumer<IOException> summary) {
+        String uriString = sourceFile.uri().toString();
+        if (uriString.startsWith(TEST_PROTOCOL_PREFIX)) {
+            return sourcesByTestProtocolURIString.get(uriString);
+        }
+        try (InputStreamReader isr = makeInputStreamReader(sourceFile.uri(), sourceEncoding); StringWriter sw = new StringWriter()) {
+            isr.transferTo(sw);
+            return sw.toString();
+        } catch (IOException io) {
+            LOGGER.error("Caught IO exception", io);
+            summary.accept(io);
+            return null;
+        }
+    }
+
     private SourceFileCompilationUnit parseSourceString(SourceFile sourceFile, SourceSet sourceSet, String sourceCode,
                                                         Summary summary, boolean addDetailedSources) {
         assert sourceCode != null;
@@ -501,7 +537,8 @@ public class JavaInspectorImpl implements JavaInspector {
         ScanCompilationUnit scanCompilationUnit = new ScanCompilationUnit(summary, runtime);
         org.parsers.java.ast.CompilationUnit cu = parser.CompilationUnit();
         LOGGER.debug("Scanning {}", sourceFile.uri());
-        FingerPrint fingerPrint = MD5FingerPrint.compute(sourceCode);
+        FingerPrint fingerPrint = sourceFile.fingerPrint() == null
+                ? MD5FingerPrint.compute(sourceCode) : sourceFile.fingerPrint();
         ScanCompilationUnit.ScanResult sr = scanCompilationUnit.scan(sourceFile.uri(), sourceSet, fingerPrint, cu,
                 addDetailedSources);
         sourceTypeMap.putAll(sr.sourceTypes());
