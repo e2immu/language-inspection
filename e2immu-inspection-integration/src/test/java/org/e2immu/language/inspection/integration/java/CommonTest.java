@@ -44,6 +44,6 @@ public abstract class CommonTest {
                 .addClassPath(JAR_WITH_PATH_PREFIX + "org/springframework/test")
                 .build();
         javaInspector.initialize(inputConfiguration);
-        javaInspector.parse(JavaInspectorImpl.FAIL_FAST);
+        javaInspector.parse(new JavaInspectorImpl.ParseOptionsBuilder().setFailFast(true).setDetailedSources(true).build());
     }
 }

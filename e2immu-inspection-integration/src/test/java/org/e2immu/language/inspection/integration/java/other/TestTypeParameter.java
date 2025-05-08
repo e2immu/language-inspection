@@ -97,6 +97,7 @@ public class TestTypeParameter extends CommonTest {
     @Test
     public void test1() {
         TypeInfo typeInfo = javaInspector.parse(INPUT1);
+        assertFalse(typeInfo.hasImplicitParent());
     }
 
     @Language("java")

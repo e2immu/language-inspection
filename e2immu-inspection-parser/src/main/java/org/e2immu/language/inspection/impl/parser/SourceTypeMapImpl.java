@@ -16,6 +16,11 @@ public class SourceTypeMapImpl implements SourceTypeMap {
     }
 
     @Override
+    public void invalidate(String fullyQualifiedName) {
+        map.remove(fullyQualifiedName);
+    }
+
+    @Override
     public TypeInfo get(String fullyQualifiedName) {
         return map.get(fullyQualifiedName);
     }

@@ -38,11 +38,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /*
 from input configuration
@@ -56,8 +56,7 @@ public class JavaInspectorImpl implements JavaInspector {
     private static final Logger LOGGER = LoggerFactory.getLogger(JavaInspectorImpl.class);
 
     private Runtime runtime;
-    private List<SourceFile> sourceURIs;
-    private List<SourceFile> testURIs;
+    private Map<SourceFile, List<TypeInfo>> sourceFiles;
     private final SourceTypeMapImpl sourceTypeMap = new SourceTypeMapImpl();
     private CompiledTypesManager compiledTypesManager;
     private final boolean computeFingerPrints;
@@ -86,12 +85,19 @@ public class JavaInspectorImpl implements JavaInspector {
 
     public static final String TEST_PROTOCOL_PREFIX = TEST_PROTOCOL + ":";
     public static final ParseOptions FAIL_FAST = new ParseOptions(true, false,
-            false);
+            false, typeInfo -> false);
 
     public static class ParseOptionsBuilder implements JavaInspector.ParseOptionsBuilder {
         private boolean failFast;
         private boolean detailedSources;
         private boolean allowCreationOfStubTypes;
+        private Predicate<TypeInfo> unchanged;
+
+        @Override
+        public ParseOptionsBuilder setUnchanged(Predicate<TypeInfo> unchanged) {
+            this.unchanged = unchanged;
+            return this;
+        }
 
         @Override
         public JavaInspector.ParseOptionsBuilder setFailFast(boolean failFast) {
@@ -113,7 +119,7 @@ public class JavaInspectorImpl implements JavaInspector {
 
         @Override
         public ParseOptions build() {
-            return new ParseOptions(failFast, detailedSources, allowCreationOfStubTypes);
+            return new ParseOptions(failFast, detailedSources, allowCreationOfStubTypes, unchanged);
         }
     }
 
@@ -135,17 +141,11 @@ public class JavaInspectorImpl implements JavaInspector {
                 preload(packageName);
             }
 
-            List<SourceSet> sourcePathSourceSets = inputConfiguration.sourceSets().stream()
-                    .filter(set -> !set.test()).toList();
-            Resources sourcePath = assemblePath(inputConfiguration.workingDirectory(), sourcePathSourceSets,
+            Resources sourcePath = assemblePath(inputConfiguration.workingDirectory(), inputConfiguration.sourceSets(),
                     inputConfiguration.alternativeJREDirectory(), "Source path", initializationProblems);
-            List<SourceSet> testSourcePathSourceSets = inputConfiguration.sourceSets().stream().filter(SourceSet::test)
-                    .toList();
-            Resources testSourcePath = assemblePath(inputConfiguration.workingDirectory(), testSourcePathSourceSets,
-                    inputConfiguration.alternativeJREDirectory(), "Test source path", initializationProblems);
-
-            sourceURIs = computeSourceURIs(sourcePath, "source path");
-            testURIs = computeSourceURIs(testSourcePath, "test source path");
+            List<SourceFile> sourceFiles = computeSourceURIs(sourcePath);
+            this.sourceFiles = new HashMap<>();
+            sourceFiles.forEach(sf -> this.sourceFiles.put(sf, List.of()));
         } catch (URISyntaxException e) {
             LOGGER.error("Caught URISyntaxException, transforming into IOException", e);
             throw new IOException(e);
@@ -153,7 +153,7 @@ public class JavaInspectorImpl implements JavaInspector {
         return List.copyOf(initializationProblems);
     }
 
-    private List<SourceFile> computeSourceURIs(Resources sourcePath, String what) {
+    private List<SourceFile> computeSourceURIs(Resources sourcePath) {
         List<SourceFile> sourceFiles = new LinkedList<>();
         AtomicInteger ignored = new AtomicInteger();
         sourcePath.visit(new String[0], (parts, list) -> {
@@ -163,7 +163,7 @@ public class JavaInspectorImpl implements JavaInspector {
                 if (name.endsWith(".java") && !"package-info.java".equals(name)) {
                     String typeName = name.substring(0, name.length() - 5);
                     String packageName = Arrays.stream(parts).limit(n).collect(Collectors.joining("."));
-                    SourceFile sourceFile = list.get(0);
+                    SourceFile sourceFile = list.getFirst();
                     if (sourceFile.sourceSet().acceptSource(packageName, typeName)) {
                         sourceFiles.add(sourceFile);
                         parts[n] = typeName;
@@ -173,7 +173,7 @@ public class JavaInspectorImpl implements JavaInspector {
                 }
             }
         });
-        LOGGER.info("Found {} .java files in {}, skipped {}", sourceFiles.size(), what, ignored);
+        LOGGER.info("Found {} .java files in {}, skipped {}", sourceFiles.size(), "source path", ignored);
         return List.copyOf(sourceFiles);
     }
 
@@ -305,7 +305,7 @@ public class JavaInspectorImpl implements JavaInspector {
         try {
             URI uri = new URI("input");
             SourceFile sourceFile = new SourceFile(null, uri, null, MD5FingerPrint.compute(input));
-            return internalParse(failFastSummary, sourceFile, () -> {
+            return internalParseSingleInput(failFastSummary, sourceFile, () -> {
                 JavaParser parser = new JavaParser(input);
                 parser.setParserTolerant(false);
                 return parser;
@@ -315,10 +315,11 @@ public class JavaInspectorImpl implements JavaInspector {
         }
     }
 
-    private List<TypeInfo> internalParse(Summary summary,
-                                         SourceFile sourceFile,
-                                         Supplier<JavaParser> parser,
-                                         ParseOptions parseOptions) {
+    // not the primary endpoint!
+    private List<TypeInfo> internalParseSingleInput(Summary summary,
+                                                    SourceFile sourceFile,
+                                                    Supplier<JavaParser> parser,
+                                                    ParseOptions parseOptions) {
         Resolver resolver = new ResolverImpl(runtime.computeMethodOverrides(), new ParseHelperImpl(runtime));
         TypeContextImpl typeContext = new TypeContextImpl(runtime, compiledTypesManager, sourceTypeMap,
                 parseOptions.allowCreationOfStubTypes());
@@ -346,7 +347,7 @@ public class JavaInspectorImpl implements JavaInspector {
             isr.transferTo(sw);
             String sourceCode = sw.toString();
             SourceFile sourceFile = new SourceFile(uri.toString(), uri, null, MD5FingerPrint.compute(sourceCode));
-            internalParse(summary, sourceFile, () -> {
+            internalParseSingleInput(summary, sourceFile, () -> {
                 JavaParser parser = new JavaParser(sourceCode);
                 parser.setParserTolerant(false);
                 return parser;
@@ -359,7 +360,9 @@ public class JavaInspectorImpl implements JavaInspector {
         return summary;
     }
 
-    private record URICompilationUnit(URI uri, org.parsers.java.ast.CompilationUnit cu, CompilationUnit parsedCu) {
+    private record SourceFileCompilationUnit(SourceFile sourceFile,
+                                             org.parsers.java.ast.CompilationUnit cu,
+                                             CompilationUnit parsedCu) {
     }
 
     private InputStreamReader makeInputStreamReader(URI uri) throws IOException {
@@ -375,6 +378,7 @@ public class JavaInspectorImpl implements JavaInspector {
     public Summary parse(Map<String, String> sourcesByTestProtocolURIString, ParseOptions parseOptions) {
         Summary summary = new SummaryImpl(true); // once stable, change to false
         Resolver resolver = new ResolverImpl(runtime.computeMethodOverrides(), new ParseHelperImpl(runtime));
+
         TypeContextImpl typeContext = new TypeContextImpl(runtime, compiledTypesManager, sourceTypeMap,
                 parseOptions.allowCreationOfStubTypes());
         Context rootContext = ContextImpl.create(runtime, summary, resolver, typeContext,
@@ -382,21 +386,35 @@ public class JavaInspectorImpl implements JavaInspector {
 
         // PHASE 1: scanning all the types, call CongoCC parser
 
-        List<SourceFile> allURIs = Stream.concat(sourceURIs.stream(), testURIs.stream()).toList();
+        Predicate<TypeInfo> unchanged = parseOptions.unchanged();
 
-        List<URICompilationUnit> list = new ArrayList<>(allURIs.size());
-        for (SourceFile sourceFile : allURIs) {
+        List<SourceFile> sourceFilesToParse = new ArrayList<>(sourceFiles.size());
+        this.sourceFiles.forEach((sf, typeInfos) -> {
+            if (typeInfos.isEmpty()) {
+                sourceFilesToParse.add(sf);
+            } else if (typeInfos.stream().allMatch(unchanged)) {
+                typeInfos.forEach(ti -> summary.addType(ti, true));
+            } else {
+                typeInfos.forEach(ti -> sourceTypeMap.invalidate(ti.fullyQualifiedName()));
+                sourceFilesToParse.add(sf);
+            }
+        });
+        List<SourceFileCompilationUnit> list = new ArrayList<>(sourceFilesToParse.size());
+        for (SourceFile sourceFile : sourceFilesToParse) {
             String uriString = sourceFile.uri().toString();
+            SourceFileCompilationUnit sfCu;
             if (uriString.startsWith(TEST_PROTOCOL_PREFIX)) {
                 String sourceCode = sourcesByTestProtocolURIString.get(uriString);
-                parseSourceString(sourceFile.uri(), sourceFile.sourceSet(), sourceCode, summary,
-                        list, parseOptions.detailedSources());
+                sfCu = parseSourceString(sourceFile, sourceFile.sourceSet(), sourceCode, summary,
+                        parseOptions.detailedSources());
+                list.add(sfCu);
             } else {
                 try (InputStreamReader isr = makeInputStreamReader(sourceFile.uri()); StringWriter sw = new StringWriter()) {
                     isr.transferTo(sw);
                     String sourceCode = sw.toString();
-                    parseSourceString(sourceFile.uri(), sourceFile.sourceSet(), sourceCode, summary, list,
+                    sfCu = parseSourceString(sourceFile, sourceFile.sourceSet(), sourceCode, summary,
                             parseOptions.detailedSources());
+                    list.add(sfCu);
                 } catch (IOException io) {
                     LOGGER.error("Caught IO exception", io);
                     summary.addParserError(io);
@@ -406,11 +424,12 @@ public class JavaInspectorImpl implements JavaInspector {
 
         // PHASE 2: actual parsing of types, methods, fields
 
-        for (URICompilationUnit uc : list) {
+        for (SourceFileCompilationUnit sfCu : list) {
             ParseCompilationUnit parseCompilationUnit = new ParseCompilationUnit(rootContext);
-            LOGGER.debug("Parsing {}", uc.uri);
-            List<TypeInfo> types = parseCompilationUnit.parse(uc.parsedCu, uc.cu);
+            LOGGER.debug("Parsing {}", sfCu.sourceFile().uri());
+            List<TypeInfo> types = parseCompilationUnit.parse(sfCu.parsedCu, sfCu.cu);
             types.forEach(ti -> summary.addType(ti, true));
+            sourceFiles.put(sfCu.sourceFile, List.copyOf(types));
         }
 
         // PHASE 3: resolving: content of methods, field initializers
@@ -419,22 +438,21 @@ public class JavaInspectorImpl implements JavaInspector {
         return summary;
     }
 
-    private void parseSourceString(URI uri, SourceSet sourceSet, String sourceCode,
-                                   Summary summary, List<URICompilationUnit> list,
-                                   boolean addDetailedSources) {
+    private SourceFileCompilationUnit parseSourceString(SourceFile sourceFile, SourceSet sourceSet, String sourceCode,
+                                                        Summary summary, boolean addDetailedSources) {
         assert sourceCode != null;
         JavaParser parser = new JavaParser(sourceCode);
         parser.setParserTolerant(false);
 
         ScanCompilationUnit scanCompilationUnit = new ScanCompilationUnit(summary, runtime);
         org.parsers.java.ast.CompilationUnit cu = parser.CompilationUnit();
-        LOGGER.debug("Scanning {}", uri);
+        LOGGER.debug("Scanning {}", sourceFile.uri());
         FingerPrint fingerPrint = MD5FingerPrint.compute(sourceCode);
-        ScanCompilationUnit.ScanResult sr = scanCompilationUnit.scan(uri, sourceSet, fingerPrint, cu, addDetailedSources);
+        ScanCompilationUnit.ScanResult sr = scanCompilationUnit.scan(sourceFile.uri(), sourceSet, fingerPrint, cu,
+                addDetailedSources);
         sourceTypeMap.putAll(sr.sourceTypes());
         CompilationUnit compilationUnit = sr.compilationUnit();
-        URICompilationUnit uc = new URICompilationUnit(uri, cu, compilationUnit);
-        list.add(uc);
+        return new SourceFileCompilationUnit(sourceFile, cu, compilationUnit);
     }
 
     @Override
@@ -448,14 +466,10 @@ public class JavaInspectorImpl implements JavaInspector {
     }
 
     @Override
-    public List<SourceFile> sourceURIs() {
-        return sourceURIs;
+    public Set<SourceFile> sourceFiles() {
+        return sourceFiles.keySet();
     }
 
-    @Override
-    public List<SourceFile> testURIs() {
-        return testURIs;
-    }
 
     @Override
     public ImportComputer importComputer(int minStar) {

@@ -14,5 +14,7 @@ public interface SourceTypeMap {
 
     TypeInfo get(String fullyQualifiedName);
 
+    void invalidate(String fullyQualifiedName);
+
     List<TypeInfo> primaryTypesInPackage(String packageName);
 }

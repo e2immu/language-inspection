@@ -26,10 +26,13 @@ public abstract class CommonTest2 {
         ((Logger) LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME)).setLevel(Level.INFO);
     }
 
+    public Map<String, String> sourcesByURIString(Map<String, String> sourcesByFqn) {
+        return sourcesByFqn.entrySet().stream().collect(Collectors.toUnmodifiableMap(
+                e -> TEST_PROTOCOL_PREFIX + e.getKey(), Map.Entry::getValue));
+    }
+
     public ParseResult init(Map<String, String> sourcesByFqn) throws IOException {
-        Map<String, String> sourcesByURIString = sourcesByFqn.entrySet()
-                .stream().collect(Collectors.toUnmodifiableMap(
-                        e -> TEST_PROTOCOL_PREFIX + e.getKey(), Map.Entry::getValue));
+        Map<String, String> sourcesByURIString = sourcesByURIString(sourcesByFqn);
         javaInspector = new JavaInspectorImpl(true);
         InputConfiguration.Builder inputConfigurationBuilder = new InputConfigurationImpl.Builder()
                 .addClassPath(InputConfigurationImpl.GRADLE_DEFAULT)

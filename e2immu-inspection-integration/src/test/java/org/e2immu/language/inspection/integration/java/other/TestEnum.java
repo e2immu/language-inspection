@@ -44,6 +44,8 @@ public class TestEnum extends CommonTest {
     @Test
     public void test() {
         TypeInfo typeInfo = javaInspector.parse(INPUT1);
-
+        assertTrue(typeInfo.hasImplicitParent());
+        TypeInfo state = typeInfo.findSubType("State");
+        assertTrue(state.hasImplicitParent());
     }
 }

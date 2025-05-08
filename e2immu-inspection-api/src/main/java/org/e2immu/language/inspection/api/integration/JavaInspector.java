@@ -13,6 +13,8 @@ import java.io.IOException;
 import java.net.URI;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.function.Predicate;
 
 /*
 
@@ -21,7 +23,8 @@ public interface JavaInspector {
 
     String TEST_PROTOCOL = "test-protocol";
 
-    record ParseOptions(boolean failFast, boolean detailedSources, boolean allowCreationOfStubTypes) {
+    record ParseOptions(boolean failFast, boolean detailedSources, boolean allowCreationOfStubTypes,
+                        Predicate<TypeInfo> unchanged) {
     }
 
     interface ParseOptionsBuilder {
@@ -31,6 +34,8 @@ public interface JavaInspector {
         ParseOptionsBuilder setDetailedSources(boolean detailedSources);
 
         ParseOptionsBuilder setAllowCreationOfStubTypes(boolean allowCreationOfStubTypes);
+
+        ParseOptionsBuilder setUnchanged(Predicate<TypeInfo> unchanged);
 
         ParseOptions build();
     }
@@ -70,7 +75,6 @@ public interface JavaInspector {
 
     CompiledTypesManager compiledTypesManager();
 
-    List<SourceFile> sourceURIs();
+    Set<SourceFile> sourceFiles();
 
-    List<SourceFile> testURIs();
 }
