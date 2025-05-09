@@ -3,6 +3,7 @@ package org.e2immu.language.inspection.api.integration;
 
 import org.e2immu.language.cst.api.info.ImportComputer;
 import org.e2immu.language.cst.api.info.TypeInfo;
+import org.e2immu.language.cst.api.output.Qualification;
 import org.e2immu.language.cst.api.runtime.Runtime;
 import org.e2immu.language.inspection.api.parser.Summary;
 import org.e2immu.language.inspection.api.resource.CompiledTypesManager;
@@ -84,6 +85,8 @@ public interface JavaInspector {
     List<TypeInfo> parseReturnAll(String input, ParseOptions parseOptions);
 
     String print2(TypeInfo typeInfo);
+
+    String print2(TypeInfo typeInfo, Qualification.Decorator decorator);
 
     Runtime runtime();
 

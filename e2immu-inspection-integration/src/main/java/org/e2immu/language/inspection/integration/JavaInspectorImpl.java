@@ -9,6 +9,7 @@ import org.e2immu.language.cst.api.info.InfoMap;
 import org.e2immu.language.cst.api.info.TypeInfo;
 import org.e2immu.language.cst.api.output.Formatter;
 import org.e2immu.language.cst.api.output.OutputBuilder;
+import org.e2immu.language.cst.api.output.Qualification;
 import org.e2immu.language.cst.api.runtime.Runtime;
 import org.e2immu.language.cst.impl.info.InfoMapImpl;
 import org.e2immu.language.cst.print.FormattingOptionsImpl;
@@ -573,8 +574,13 @@ public class JavaInspectorImpl implements JavaInspector {
 
     @Override
     public String print2(TypeInfo typeInfo) {
+        return print2(typeInfo, null);
+    }
+
+    @Override
+    public String print2(TypeInfo typeInfo, Qualification.Decorator decorator) {
         OutputBuilder ob = runtime.newTypePrinter(typeInfo, true).print(importComputer(4),
-                runtime.qualificationQualifyFromPrimaryType(null), true);
+                runtime.qualificationQualifyFromPrimaryType(decorator), true);
         Formatter formatter = new Formatter2Impl(runtime, new FormattingOptionsImpl.Builder().build());
         return formatter.write(ob);
     }
