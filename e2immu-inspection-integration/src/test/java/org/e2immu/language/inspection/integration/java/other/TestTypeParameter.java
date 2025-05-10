@@ -5,11 +5,18 @@ import org.e2immu.language.cst.api.expression.VariableExpression;
 import org.e2immu.language.cst.api.info.MethodInfo;
 import org.e2immu.language.cst.api.info.TypeInfo;
 import org.e2immu.language.cst.api.statement.ReturnStatement;
+import org.e2immu.language.cst.api.type.ParameterizedType;
 import org.e2immu.language.cst.api.type.TypeParameter;
 import org.e2immu.language.cst.api.variable.This;
+import org.e2immu.language.cst.impl.output.QualificationImpl;
 import org.e2immu.language.inspection.integration.java.CommonTest;
 import org.intellij.lang.annotations.Language;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+
+import java.lang.invoke.TypeDescriptor;
+import java.util.Arrays;
+import java.util.HashSet;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -18,40 +25,40 @@ public class TestTypeParameter extends CommonTest {
     @Language("java")
     private static final String INPUT1 = """
             package org.e2immu.analyser.resolver.testexample;
-
+            
             import org.e2immu.annotation.Modified;
             import org.e2immu.annotation.NotModified;
             import org.e2immu.annotation.NotNull;
             import org.e2immu.annotation.eventual.Only;
             import org.e2immu.support.Freezable;
-
+            
             import java.util.*;
             import java.util.function.BiConsumer;
-
+            
             public class TypeParameter_0 <T> extends Freezable {
-
+            
             private static class Node<S> {
                 List<S> dependsOn;
                 final S t;
-
+            
                 private Node(S t) {
                     this.t = t;
                 }
-
+            
                 private Node(S t, List<S> dependsOn) {
                     this.t = t;
                     this.dependsOn = dependsOn;
                 }
             }
-
+            
                 @NotModified(after = "frozen")
                 private final Map<T, Node<T>> nodeMap = new HashMap<>();
-
+            
                 @NotModified
                 public int size() {
                     return nodeMap.size();
                 }
-
+            
                 @NotModified
                 public boolean isEmpty() {
                     return nodeMap.isEmpty();
@@ -69,12 +76,12 @@ public class TestTypeParameter extends CommonTest {
                     }
                     return node;
                 }
-
+            
                 @NotModified(contract = true)
                 public void visit(@NotNull BiConsumer<T, List<T>> consumer) {
                     nodeMap.values().forEach(n -> consumer.accept(n.t, n.dependsOn));
                 }
-
+            
                 @Only(before = "frozen")
                 @Modified
                 public void addNode(@NotNull @NotModified T t, @NotNull(content = true) Collection<T> dependsOn, boolean bidirectional) {
@@ -90,7 +97,7 @@ public class TestTypeParameter extends CommonTest {
                         }
                     }
                 }
-
+            
             }
             """;
 
@@ -103,38 +110,38 @@ public class TestTypeParameter extends CommonTest {
     @Language("java")
     private static final String INPUT2 = """
             package org.e2immu.analyser.resolver.testexample;
-
+            
             import org.e2immu.annotation.Modified;
             import org.e2immu.annotation.NotModified;
             import org.e2immu.annotation.NotNull;
             import org.e2immu.annotation.eventual.Only;
             import org.e2immu.support.Freezable;
-
+            
             import java.util.*;
-
+            
             /*
             type parameter has a bit of a weird name, to facilitate debugging.
             T as a name is too common, and processing of byte code will also go through ParameterizedTypeFactory.
              */
             public class TypeParameter_1<TP0> extends Freezable {
-
+            
                 private static class Node<TP0> {
                     List<TP0> dependsOn;
                     final TP0 t;
-
+            
                     private Node(TP0 t) {
                         this.t = t;
                     }
-
+            
                     private Node(TP0 t, List<TP0> dependsOn) {
                         this.t = t;
                         this.dependsOn = dependsOn;
                     }
                 }
-
+            
                 @NotModified(after = "frozen")
                 private final Map<TP0, Node<TP0>> nodeMap = new HashMap<>();
-
+            
                 @NotNull
                 @Modified
                 @Only(before = "frozen")
@@ -148,7 +155,7 @@ public class TestTypeParameter extends CommonTest {
                     }
                     return node;
                 }
-
+            
                 @Only(before = "frozen")
                 @Modified
                 public void addNode(@NotNull @NotModified TP0 t, @NotNull(content = true) Collection<TP0> dependsOn, boolean bidirectional) {
@@ -171,14 +178,14 @@ public class TestTypeParameter extends CommonTest {
     @Language("java")
     private static final String INPUT3 = """
             package org.e2immu.analyser.resolver.testexample;
-
+            
             import java.lang.reflect.Array;
-
+            
             public class TypeParameter_2 {
-
+            
                 static class WithId implements Cloneable {
                     int id;
-
+            
                     @Override
                     public Object clone() {
                         try {
@@ -188,7 +195,7 @@ public class TestTypeParameter extends CommonTest {
                         }
                     }
                 }
-
+            
                 public static <T extends WithId> T[] method(T[] withIds) {
                     T[] result = (T[]) Array.newInstance(withIds.getClass().getComponentType(), withIds.length);
                     for (int i = 0;i < withIds.length;++i) {
@@ -210,9 +217,9 @@ public class TestTypeParameter extends CommonTest {
     @Language("java")
     private static final String INPUT4 = """
             package org.e2immu.analyser.resolver.testexample;
-
+            
             import java.io.Serializable;
-
+            
             public class TypeParameter_4 {
                 static class QName implements Serializable {
                     String localPart;
@@ -228,7 +235,7 @@ public class TestTypeParameter extends CommonTest {
                     }
                     public QName getName() { return name; }
                 }
-
+            
                 public String method(Object object, String name) {
                     if (object instanceof JAXBElement && name.equalsIgnoreCase(((JAXBElement<?>) object).getName().getLocalPart())) {
                         return ((JAXBElement<?>) object).getValue().toString();
@@ -245,17 +252,17 @@ public class TestTypeParameter extends CommonTest {
 
     @Language("java")
     private static final String INPUT5 = """
-
+            
             package org.e2immu.analyser.resolver.testexample;
-
+            
             import java.util.HashMap;
-
+            
             public class TypeParameter_5 {
-
+            
                 interface Base {
                     long getId();
                 }
-
+            
                 static class MyHashMap<T> extends HashMap<Long, T> {
                     @Override
                     public T put(Long key, T value) {
@@ -264,7 +271,7 @@ public class TestTypeParameter extends CommonTest {
                         return super.put(key, value);
                     }
                 }
-
+            
                 static <T extends Base> MyHashMap<T> mapDataByID(T[] data) {
                     MyHashMap<T> result = new MyHashMap<>();
                     for (int i = 0; i < data.length; ++i) {
@@ -272,7 +279,7 @@ public class TestTypeParameter extends CommonTest {
                     }
                     return result;
                 }
-
+            
                 <T extends Base> void method1(T[] data) {
                     MyHashMap objById = mapDataByID(data);
                 }
@@ -346,5 +353,91 @@ public class TestTypeParameter extends CommonTest {
         assertEquals("I=TP#1 in X", typeInfo.typeParameters().get(1).toString());
         MethodInfo method = typeInfo.findUniqueMethod("method", 2);
         assertEquals(0, method.typeParameters().size());
+    }
+
+    @Language("java")
+    public static final String INPUT8 = """
+            package a.b;
+            import java.util.Collection;
+            class X<T extends X<T>> {
+                public T method() {
+                    return null;
+                }
+                public static <T extends X<T>> T staticMethod(T t) { return null; }
+            }
+            """;
+
+    @DisplayName("verify type parameter bounds")
+    @Test
+    public void test8() {
+        TypeInfo typeInfo = javaInspector.parse(INPUT8);
+        {
+            assertEquals(1, typeInfo.typeParameters().size());
+            TypeParameter tp0 = typeInfo.typeParameters().getFirst();
+            assertEquals("T=TP#0 in X", tp0.toString());
+            assertEquals(1, tp0.typeBounds().size());
+            ParameterizedType tb = tp0.typeBounds().getFirst();
+            assertEquals("Type a.b.X<T extends a.b.X<T>>", tb.toString());
+
+            String print = javaInspector.print2(typeInfo);
+            String expect = """
+                    package a.b;
+                    class X<T extends X<T>> {
+                        public T method() { return null; }
+                        public static <T extends X<T>> T staticMethod(T t) { return null; }
+                    }
+                    """;
+            assertEquals(expect, print);
+        }
+        {
+            TypeInfo typeDescriptor = javaInspector.compiledTypesManager().getOrLoad(TypeDescriptor.class);
+            TypeInfo ofField = typeDescriptor.findSubType("OfField");
+            assertEquals("Type java.lang.invoke.TypeDescriptor.OfField<F extends java.lang.invoke.TypeDescriptor.OfField<F>>",
+                    ofField.asParameterizedType().toString());
+
+            TypeInfo ofMethod = typeDescriptor.findSubType("OfMethod");
+            assertEquals("""
+                            Type java.lang.invoke.TypeDescriptor.OfMethod<F extends java.lang.invoke.TypeDescriptor.OfField<F>,\
+                            M extends java.lang.invoke.TypeDescriptor.OfMethod<F,M>>\
+                            """,
+                    ofMethod.asParameterizedType().toString());
+            TypeParameter tp0 = ofMethod.typeParameters().getFirst();
+            assertEquals("""
+                    F extends java.lang.invoke.TypeDescriptor.OfField<F>\
+                    """, tp0.print(QualificationImpl.FULLY_QUALIFIED_NAMES, new HashSet<>()).toString());
+            ParameterizedType tb0 = tp0.typeBounds().getFirst();
+            assertSame(ofField, tb0.typeInfo());
+            ParameterizedType tb0p0 = tb0.parameters().getFirst();
+            assertSame(tp0, tb0p0.typeParameter());
+
+            TypeParameter tp1 = ofMethod.typeParameters().get(1);
+            assertEquals("""
+                    M extends java.lang.invoke.TypeDescriptor.OfMethod<F extends java.lang.invoke.TypeDescriptor.OfField<F>,M>\
+                    """, tp1.print(QualificationImpl.FULLY_QUALIFIED_NAMES, new HashSet<>()).toString());
+            ParameterizedType tb1 = tp1.typeBounds().getFirst();
+            assertSame(ofMethod, tb1.typeInfo());
+            ParameterizedType tb1p0 = tb1.parameters().getFirst();
+            assertSame(tp0, tb1p0.typeParameter());
+            ParameterizedType tb1p1 = tb1.parameters().get(1);
+            assertSame(tp1, tb1p1.typeParameter());
+        }
+        {
+            TypeInfo arrays = javaInspector.compiledTypesManager().getOrLoad(Arrays.class);
+            MethodInfo parallelSort = arrays.methodStream()
+                    .filter(mi -> "parallelSort".equals(mi.name())
+                                  && mi.parameters().size() == 3
+                                  && mi.parameters().getFirst().parameterizedType().isTypeParameter()).findFirst().orElseThrow();
+            assertEquals("java.util.Arrays.parallelSort(T extends Comparable<? super T>[],int,int)",
+                    parallelSort.fullyQualifiedName());
+            TypeParameter tp0 = parallelSort.typeParameters().getFirst();
+
+            ParameterizedType pt0 = parallelSort.parameters().getFirst().parameterizedType();
+            assertSame(tp0, pt0.typeParameter());
+
+            ParameterizedType tb0 = tp0.typeBounds().getFirst();
+            assertEquals("java.lang.Comparable", tb0.typeInfo().fullyQualifiedName());
+            ParameterizedType tb0p0 = tb0.parameters().getFirst();
+            assertSame(tp0, tb0p0.typeParameter());
+        }
     }
 }

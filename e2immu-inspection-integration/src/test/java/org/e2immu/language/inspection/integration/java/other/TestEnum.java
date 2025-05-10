@@ -1,5 +1,6 @@
 package org.e2immu.language.inspection.integration.java.other;
 
+import org.e2immu.language.cst.api.info.FieldInfo;
 import org.e2immu.language.cst.api.info.MethodInfo;
 import org.e2immu.language.cst.api.info.TypeInfo;
 import org.e2immu.language.cst.api.statement.Statement;
@@ -47,5 +48,12 @@ public class TestEnum extends CommonTest {
         assertTrue(typeInfo.hasImplicitParent());
         TypeInfo state = typeInfo.findSubType("State");
         assertTrue(state.hasImplicitParent());
+
+        assertEquals("Type Enum<a.b.X.State>", state.parentClass().toString());
+        TypeInfo enumType = state.parentClass().typeInfo();
+        assertEquals("Type Enum<E extends Enum<E>>", enumType.asParameterizedType().toString());
+
+        FieldInfo start = state.getFieldByName("START", true);
+        assertEquals("Type a.b.X.State", start.type().toString());
     }
 }
