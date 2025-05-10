@@ -107,9 +107,7 @@ public class TestMethodCall8 extends CommonTest {
         MethodInfo methodInfo = typeInfo.findUniqueMethod("method", 0);
         Statement statement = methodInfo.methodBody().lastStatement();
         if (statement.expression() instanceof MethodCall mc) {
-            assertEquals("""
-                    Type param T extends B extends org.e2immu.test.MethodCall_82.AbstractMockMvcBuilder<B>\
-                    """, mc.object().parameterizedType().toString());
+            assertEquals("Type param T extends B", mc.object().parameterizedType().toString());
         }
     }
 
@@ -171,6 +169,29 @@ public class TestMethodCall8 extends CommonTest {
     @Test
     public void test3() {
         javaInspector.parse(INPUT3);
+        TypeInfo aca = javaInspector.compiledTypesManager().getOrLoad("org.assertj.core.api.AbstractCollectionAssert");
+        String print = javaInspector.print2(aca);
+        @Language("java")
+        String expected = """
+                package org.assertj.core.api;
+                import java.util.Collection;
+                import org.assertj.core.annotations.Beta; public abstract class AbstractCollectionAssert<
+                    SELF extends AbstractCollectionAssert<SELF, ACTUAL, ELEMENT, ELEMENT_ASSERT>,
+                    ACTUAL extends Collection<? extends ELEMENT>,
+                    ELEMENT,
+                    ELEMENT_ASSERT extends AbstractAssert<ELEMENT_ASSERT, ELEMENT>> extends AbstractIterableAssert<
+                    SELF,
+                    ACTUAL,
+                    ELEMENT,
+                    ELEMENT_ASSERT> {
+                    protected AbstractCollectionAssert(ACTUAL actual, Class<?> selfType) { }
+                    @Beta public SELF isUnmodifiable() { }
+                    private void assertIsUnmodifiable() { }
+                    private void expectUnsupportedOperationException(Runnable runnable, String method) { }
+                    private <E extends ELEMENT> Collection<E> emptyCollection() { }
+                }
+                """;
+        assertEquals(expected, print);
     }
 
     @Language("java")

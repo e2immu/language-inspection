@@ -46,4 +46,15 @@ public class TestByteCode extends CommonTest {
                 close.fullyQualifiedName());
         assertEquals("Type param X extends Throwable", close.exceptionTypes().getFirst().toString());
     }
+
+    @Test
+    public void testLongRotateRight() {
+        TypeInfo typeInfo = javaInspector.compiledTypesManager().getOrLoad(Long.class);
+        MethodInfo rotateRight = typeInfo.findUniqueMethod("rotateRight", 2);
+        assertEquals("java.lang.Long.rotateRight(long,int)", rotateRight.fullyQualifiedName());
+        assertEquals("i", rotateRight.parameters().getFirst().name());
+        // automatically assigned name
+        assertEquals("i1", rotateRight.parameters().get(1).name());
+    }
+
 }

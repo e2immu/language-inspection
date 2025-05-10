@@ -404,7 +404,7 @@ public class TestTypeParameter extends CommonTest {
             TypeParameter tp0 = ofMethod.typeParameters().getFirst();
             assertEquals("""
                     F extends java.lang.invoke.TypeDescriptor.OfField<F>\
-                    """, tp0.print(QualificationImpl.FULLY_QUALIFIED_NAMES, new HashSet<>()).toString());
+                    """, tp0.print(QualificationImpl.FULLY_QUALIFIED_NAMES, true).toString());
             ParameterizedType tb0 = tp0.typeBounds().getFirst();
             assertSame(ofField, tb0.typeInfo());
             ParameterizedType tb0p0 = tb0.parameters().getFirst();
@@ -412,8 +412,8 @@ public class TestTypeParameter extends CommonTest {
 
             TypeParameter tp1 = ofMethod.typeParameters().get(1);
             assertEquals("""
-                    M extends java.lang.invoke.TypeDescriptor.OfMethod<F extends java.lang.invoke.TypeDescriptor.OfField<F>,M>\
-                    """, tp1.print(QualificationImpl.FULLY_QUALIFIED_NAMES, new HashSet<>()).toString());
+                    M extends java.lang.invoke.TypeDescriptor.OfMethod<F,M>\
+                    """, tp1.print(QualificationImpl.FULLY_QUALIFIED_NAMES, true).toString());
             ParameterizedType tb1 = tp1.typeBounds().getFirst();
             assertSame(ofMethod, tb1.typeInfo());
             ParameterizedType tb1p0 = tb1.parameters().getFirst();
