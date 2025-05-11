@@ -86,7 +86,7 @@ public interface JavaInspector {
 
     String print2(TypeInfo typeInfo);
 
-    String print2(TypeInfo typeInfo, Qualification.Decorator decorator);
+    String print2(TypeInfo typeInfo, Qualification.Decorator decorator, ImportComputer importComputer);
 
     Runtime runtime();
 
