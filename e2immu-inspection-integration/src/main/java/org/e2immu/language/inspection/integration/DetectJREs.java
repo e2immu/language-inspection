@@ -24,7 +24,7 @@ Homebrew-17.0.4=openjdk-17.0.4
 IBMCorporation-17.0.9=openjdk-17.0.4
 
 it maps the actual JRE shortname as computed below to the directories in the resources of the
-e2immu-shallow-aapi/src/main/resources/org/.../jdk directory.
+e2immu-aapi-archive/src/main/resources/org/.../jdk directory.
 
 IMPORTANT: remove the .e2immu.java_home.xml cache file when your JREs have been updated.
  */
