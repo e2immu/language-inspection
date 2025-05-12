@@ -85,7 +85,7 @@ public class RuntimeWithCompiledTypesManager extends RuntimeImpl {
         String methodName = methodNameOfFunctionalInterface(inputParameters, hasReturnValue,
                 returnType.isBooleanOrBoxedBoolean());
         MethodInfo sam = newMethod(typeInfo, methodName, methodTypeAbstractMethod());
-        sam.analysis().set(PropertyImpl.MODIFIED_METHOD, ValueImpl.BoolImpl.TRUE);
+        sam.analysis().set(PropertyImpl.NON_MODIFYING_METHOD, ValueImpl.BoolImpl.FALSE);
         sam.builder()
                 .setSynthetic(true)
                 .setAccess(accessPublic())
