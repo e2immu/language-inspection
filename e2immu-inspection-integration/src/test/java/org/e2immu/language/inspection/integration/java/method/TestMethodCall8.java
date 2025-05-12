@@ -175,7 +175,8 @@ public class TestMethodCall8 extends CommonTest {
         String expected = """
                 package org.assertj.core.api;
                 import java.util.Collection;
-                import org.assertj.core.annotations.Beta; public abstract class AbstractCollectionAssert<
+                import org.assertj.core.annotations.Beta; 
+                public abstract class AbstractCollectionAssert<
                     SELF extends AbstractCollectionAssert<SELF, ACTUAL, ELEMENT, ELEMENT_ASSERT>,
                     ACTUAL extends Collection<? extends ELEMENT>,
                     ELEMENT,
