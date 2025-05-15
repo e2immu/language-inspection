@@ -80,7 +80,7 @@ public class DetectJREs {
         }
     }
 
-    private static final Pattern UBUNTU = Pattern.compile("/usr/lib/jvm/java-(\\d+)-(\\S+)-(\\S+)/bin/java");
+    private static final Pattern UBUNTU = Pattern.compile("(/usr/lib/jvm/java-(\\d+)-(\\S+)-(\\S+))/bin/java");
 
     private static List<ToolChain.JRE> parseLinuxOutput(String lines) {
         List<ToolChain.JRE> list = new ArrayList<>();
@@ -88,11 +88,12 @@ public class DetectJREs {
             if (!line.isBlank()) {
                 Matcher m = UBUNTU.matcher(line);
                 if (m.matches()) {
-                    String version = m.group(1);
+                    String version = m.group(2);
                     int mainVersion = Integer.parseInt(version);
-                    String vendor = m.group(2);
+                    String vendor = m.group(3);
                     String shortName = vendor + "-" + version;
-                    ToolChain.JRE jre = new ToolChain.JRE(mainVersion, version, vendor, line, shortName);
+                    String path = m.group(1);
+                    ToolChain.JRE jre = new ToolChain.JRE(mainVersion, version, vendor, path, shortName);
                     list.add(jre);
                 }
             }
