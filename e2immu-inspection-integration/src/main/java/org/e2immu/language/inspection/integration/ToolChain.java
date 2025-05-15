@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import static org.e2immu.language.inspection.integration.JavaInspectorImpl.JAR_WITH_PATH_PREFIX;
 
@@ -77,7 +78,10 @@ public class ToolChain {
         String home = System.getProperty("java.home");
         return JRES.stream().filter(jre -> jre.path.equals(home))
                 .findFirst()
-                .orElseThrow(() -> new UnsupportedOperationException("Toolchain not found"));
+                .orElseThrow(() -> new UnsupportedOperationException(
+                        String.format("Toolchain not found - expected JRE = %s, available JREs = %s\n",
+                                      home,
+                                      JRES.stream().map(jre -> jre.path).collect(Collectors.joining(",")))));
     }
 
     public static int currentJdkMainVersion() {
