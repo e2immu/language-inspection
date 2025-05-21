@@ -94,7 +94,7 @@ public class GetSetUtil {
             FieldInfo fieldInfo = typeInfo.builder().fields().stream()
                     .filter(f -> fieldName.equals(f.name())).findFirst().orElse(null);
             FieldInfo getSetField;
-            boolean setter = mi.isVoid() || isComputeFluent(mi);
+            boolean setter = isSetter(mi);
             int parameterIndexOfIndex = parameterIndexOfIndex(mi, setter);
             if (fieldInfo == null) {
                 LOGGER.debug("Create synthetic field for {}, named {}", mi, fieldName);
@@ -113,6 +113,11 @@ public class GetSetUtil {
             }
             runtime.setGetSetField(mi, getSetField, setter, parameterIndexOfIndex);
         }
+    }
+
+    public static boolean isSetter(MethodInfo mi) {
+        // there could be an accessor called "set()", so for that to be a setter, it must have at least one parameter
+        return mi.isVoid() || isComputeFluent(mi) || mi.name().startsWith("set") && !mi.parameters().isEmpty();
     }
 
     public static boolean isComputeFluent(MethodInfo mi) {
