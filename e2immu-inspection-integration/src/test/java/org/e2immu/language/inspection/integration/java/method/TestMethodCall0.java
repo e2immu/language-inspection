@@ -46,13 +46,13 @@ public class TestMethodCall0 extends CommonTest {
         FieldInfo fieldInfo = typeInfo.getFieldByName("list", true);
         assertEquals("java.util.List", fieldInfo.type().typeInfo().fullyQualifiedName());
         MethodInfo add = typeInfo.findUniqueMethod("add", 1);
-        if (add.methodBody().statements().get(0) instanceof ExpressionAsStatement eas
+        if (add.methodBody().statements().getFirst() instanceof ExpressionAsStatement eas
             && eas.expression() instanceof MethodCall mc) {
             assertEquals("java.util.List.add(E)", mc.methodInfo().fullyQualifiedName());
         } else fail();
 
         MethodInfo get = typeInfo.findUniqueMethod("get", 1);
-        if (get.methodBody().statements().get(0) instanceof ReturnStatement rs
+        if (get.methodBody().statements().getFirst() instanceof ReturnStatement rs
             && rs.expression() instanceof MethodCall mc) {
             assertEquals("java.util.List.get(int)", mc.methodInfo().fullyQualifiedName());
         } else fail();
@@ -95,13 +95,13 @@ public class TestMethodCall0 extends CommonTest {
         TypeInfo typeInfo = javaInspector.parse(INPUT2);
         TypeInfo subType = typeInfo.findSubType("Get");
         MethodInfo accept = typeInfo.findUniqueMethod("accept", 1);
-        ParameterInfo list = accept.parameters().get(0);
-        assertSame(subType, list.parameterizedType().parameters().get(0).typeInfo());
-        if (accept.methodBody().statements().get(0) instanceof ExpressionAsStatement eas
+        ParameterInfo list = accept.parameters().getFirst();
+        assertSame(subType, list.parameterizedType().parameters().getFirst().typeInfo());
+        if (accept.methodBody().statements().getFirst() instanceof ExpressionAsStatement eas
             && eas.expression() instanceof MethodCall mc) {
             assertEquals("java.lang.Iterable.forEach(java.util.function.Consumer<? super T>)",
                     mc.methodInfo().fullyQualifiedName());
-            if (mc.parameterExpressions().get(0) instanceof Lambda lambda) {
+            if (mc.parameterExpressions().getFirst() instanceof Lambda lambda) {
                 assertEquals("Type java.util.function.Consumer<org.e2immu.analyser.resolver.testexample.MethodCall_0.Get>",
                         lambda.concreteFunctionalType().toString());
             } else fail();

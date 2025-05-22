@@ -133,13 +133,13 @@ public class GetSetUtil {
     public static int parameterIndexOfIndex(MethodInfo mi, boolean setter) {
         if (setter) {
             if (2 == mi.parameters().size()) {
-                if (mi.parameters().get(0).parameterizedType().isInt()) return 0;
+                if (mi.parameters().getFirst().parameterizedType().isInt()) return 0;
                 if (mi.parameters().get(1).parameterizedType().isInt()) return 1;
             }
             return -1;
         }
         // getter
-        return mi.parameters().size() == 1 && mi.parameters().get(0).parameterizedType().isInt() ? 0 : -1;
+        return mi.parameters().size() == 1 && mi.parameters().getFirst().parameterizedType().isInt() ? 0 : -1;
     }
 
     private static ParameterizedType extractFieldType(MethodInfo mi, boolean setter, int parameterIndexOfIndex) {
@@ -151,9 +151,9 @@ public class GetSetUtil {
         if (mi.parameters().size() == 1) {
             if (setter) {
                 // void setT(T t)
-                return mi.parameters().get(0).parameterizedType();
+                return mi.parameters().getFirst().parameterizedType();
             }
-            if (mi.parameters().get(0).parameterizedType().isInt()) {
+            if (mi.parameters().getFirst().parameterizedType().isInt()) {
                 // T getT(int i)   INDEXED
                 int a = mi.returnType().arrays();
                 return mi.returnType().copyWithArrays(a + 1);

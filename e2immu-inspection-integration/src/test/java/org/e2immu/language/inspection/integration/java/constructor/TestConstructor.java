@@ -373,7 +373,7 @@ public class TestConstructor extends CommonTest {
     public void test11() {
         TypeInfo typeInfo = javaInspector.parse(INPUT11);
         MethodInfo copy = typeInfo.findUniqueMethod("copy", 1);
-        if (copy.methodBody().statements().get(0) instanceof ReturnStatement rs
+        if (copy.methodBody().statements().getFirst() instanceof ReturnStatement rs
             && rs.expression() instanceof ConstructorCall cc) {
             assertEquals("c", cc.object().toString());
         } else fail();

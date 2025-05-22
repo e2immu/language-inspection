@@ -66,7 +66,7 @@ public class TestMethodCall7 extends CommonTest {
         for (int i = 0; i < 2; i++) {
             ExpressionAsStatement eas0 = (ExpressionAsStatement) b1.methodBody().statements().get(i);
             MethodCall mc = (MethodCall) eas0.expression();
-            Expression p0 = mc.parameterExpressions().get(0);
+            Expression p0 = mc.parameterExpressions().getFirst();
             assertInstanceOf(BinaryOperator.class, p0);
             assertEquals("Type String", p0.parameterizedType().toString());
             assertEquals("java.io.PrintStream.println(String)", mc.methodInfo().fullyQualifiedName());
@@ -114,7 +114,7 @@ public class TestMethodCall7 extends CommonTest {
     public void test5() {
         TypeInfo ti = javaInspector.parse(INPUT5);
         MethodInfo methodInfo = ti.findUniqueMethod("method", 1);
-        LocalVariableCreation lvc = (LocalVariableCreation) methodInfo.methodBody().statements().get(0);
+        LocalVariableCreation lvc = (LocalVariableCreation) methodInfo.methodBody().statements().getFirst();
         LocalVariable classes = lvc.localVariable();
         ParameterizedType classesPt = classes.parameterizedType();
         assertEquals("Class[]", classesPt.fullyQualifiedName());
@@ -158,9 +158,9 @@ public class TestMethodCall7 extends CommonTest {
 
         TypeInfo ti = javaInspector.parse(INPUT6);
         MethodInfo methodInfo = ti.findUniqueMethod("method", 1);
-        TryStatement ts = (TryStatement) methodInfo.methodBody().statements().get(0);
+        TryStatement ts = (TryStatement) methodInfo.methodBody().statements().getFirst();
         assertEquals(1, ts.resources().size());
-        LocalVariableCreation lvc = (LocalVariableCreation) ts.resources().get(0);
+        LocalVariableCreation lvc = (LocalVariableCreation) ts.resources().getFirst();
         MethodCall nfs = (MethodCall) lvc.localVariable().assignmentExpression();
         Expression arg1 = nfs.parameterExpressions().get(1);
         assertEquals("Collections.emptyMap()", arg1.toString()); // TODO have no type parameters on method call (yet)

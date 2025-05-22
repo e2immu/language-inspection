@@ -244,7 +244,7 @@ public class ResourcesImpl implements Resources {
             parts[i] += extension;
             List<SourceFile> sourceFiles = data.get(parts);
             if (sourceFiles != null && !sourceFiles.isEmpty()) {
-                SourceFile sf0 = sourceFiles.get(0);
+                SourceFile sf0 = sourceFiles.getFirst();
                 return sf0.withPath(String.join("/", parts));
             }
         }

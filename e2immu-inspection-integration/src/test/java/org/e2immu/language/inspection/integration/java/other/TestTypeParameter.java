@@ -320,7 +320,7 @@ public class TestTypeParameter extends CommonTest {
         TypeInfo typeInfo = javaInspector.parse(INPUT6);
         MethodInfo method = typeInfo.findUniqueMethod("method", 2);
         assertEquals(2, method.typeParameters().size());
-        TypeParameter tp0 = method.typeParameters().get(0);
+        TypeParameter tp0 = method.typeParameters().getFirst();
         assertEquals("T=TP#0 in X.method", tp0.toString());
         assertEquals("[Type java.util.Collection<I>]", tp0.typeBounds().toString());
         assertEquals("I=TP#1 in X.method", method.typeParameters().get(1).toString());
@@ -347,7 +347,7 @@ public class TestTypeParameter extends CommonTest {
     public void test7() {
         TypeInfo typeInfo = javaInspector.parse(INPUT7);
         assertEquals(2, typeInfo.typeParameters().size());
-        TypeParameter tp0 = typeInfo.typeParameters().get(0);
+        TypeParameter tp0 = typeInfo.typeParameters().getFirst();
         assertEquals("T=TP#0 in X", tp0.toString());
         assertEquals("[Type java.util.Collection<I>]", tp0.typeBounds().toString());
         assertEquals("I=TP#1 in X", typeInfo.typeParameters().get(1).toString());

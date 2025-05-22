@@ -33,19 +33,19 @@ public class TestOverload1 extends CommonTest {
     @Test
     public void test() {
         TypeInfo typeInfo = javaInspector.parse(INPUT1);
-        MethodInfo add1 = typeInfo.methods().get(0);
+        MethodInfo add1 = typeInfo.methods().getFirst();
         assertTrue(add1.isPubliclyAccessible());
         MethodInfo add2 = typeInfo.methods().get(1);
         assertFalse(add2.isPubliclyAccessible());
 
         {
             MethodInfo test1 = typeInfo.findUniqueMethod("test1", 1);
-            Statement s0 = test1.methodBody().statements().get(0);
+            Statement s0 = test1.methodBody().statements().getFirst();
             assertSame(add1, mc(s0).methodInfo());
         }
         {
             MethodInfo test2 = typeInfo.findUniqueMethod("test2", 1);
-            Statement s0 = test2.methodBody().statements().get(0);
+            Statement s0 = test2.methodBody().statements().getFirst();
             assertSame(add2, mc(s0).methodInfo());
         }
     }
@@ -72,12 +72,12 @@ public class TestOverload1 extends CommonTest {
 
         {
             MethodInfo test1 = typeInfo.findUniqueMethod("test1", 2);
-            Statement s0 = test1.methodBody().statements().get(0);
+            Statement s0 = test1.methodBody().statements().getFirst();
             assertEquals("java.security.MessageDigest.update(byte)", mc(s0).methodInfo().fullyQualifiedName());
         }
         {
             MethodInfo test2 = typeInfo.findUniqueMethod("test2", 2);
-            Statement s0 = test2.methodBody().statements().get(0);
+            Statement s0 = test2.methodBody().statements().getFirst();
             assertEquals("java.security.MessageDigest.update(byte[])", mc(s0).methodInfo().fullyQualifiedName());
         }
     }
@@ -129,17 +129,17 @@ public class TestOverload1 extends CommonTest {
 
         {
             MethodInfo test1 = typeInfo.findUniqueMethod("test1", 1);
-            Statement s0 = test1.methodBody().statements().get(0);
+            Statement s0 = test1.methodBody().statements().getFirst();
             assertEquals("java.security.MessageDigest.update(byte)", mc(s0).methodInfo().fullyQualifiedName());
         }
         {
             MethodInfo test2 = typeInfo.findUniqueMethod("test2", 1);
-            Statement s0 = test2.methodBody().statements().get(0);
+            Statement s0 = test2.methodBody().statements().getFirst();
             assertEquals("java.security.MessageDigest.update(byte[])", mc(s0).methodInfo().fullyQualifiedName());
         }
         {
             MethodInfo test3 = typeInfo.findUniqueMethod("test3", 2);
-            Statement s0 = test3.methodBody().statements().get(0);
+            Statement s0 = test3.methodBody().statements().getFirst();
             assertEquals("java.security.MessageDigest.update(byte[])", mc(s0).methodInfo().fullyQualifiedName());
         }
         {
