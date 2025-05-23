@@ -10,7 +10,10 @@ import javax.xml.parsers.SAXParser;
 import javax.xml.parsers.SAXParserFactory;
 import java.io.*;
 import java.nio.file.Files;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.regex.Matcher;
@@ -122,13 +125,13 @@ public class DetectJREs {
             }
             return parseMacOsXml(xmlString);
         } catch (IOException | InterruptedException | ParserConfigurationException | SAXException e) {
-            e.printStackTrace();
-            throw new UnsupportedOperationException("Cannot detect JREs: " + e.getMessage());
+            throw new UnsupportedOperationException("Cannot detect JREs: ", e);
         }
     }
 
     private static List<ToolChain.JRE> parseMacOsXml(String xmlString) throws IOException, ParserConfigurationException, SAXException {
         SAXParserFactory factory = SAXParserFactory.newInstance();
+        factory.setValidating(false);
         SAXParser saxParser = factory.newSAXParser();
         Handler handler = new Handler();
         try (InputStream is = new ByteArrayInputStream(xmlString.getBytes())) {
