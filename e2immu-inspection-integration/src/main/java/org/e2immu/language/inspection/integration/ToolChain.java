@@ -47,9 +47,11 @@ public class ToolChain {
             JAR_WITH_PATH_PREFIX + "org/e2immu/language/inspection/impl/parser",
             JAR_WITH_PATH_PREFIX + "org/e2immu/language/inspection/integration",
             JAR_WITH_PATH_PREFIX + "org/e2immu/language/inspection/resource",
-            JAR_WITH_PATH_PREFIX + "org/e2immu/analyzer/modification/linkedvariables",
+            JAR_WITH_PATH_PREFIX + "org/e2immu/analyzer/modification/common",
+            JAR_WITH_PATH_PREFIX + "org/e2immu/analyzer/modification/io",
             JAR_WITH_PATH_PREFIX + "org/e2immu/analyzer/modification/prepwork",
-            JAR_WITH_PATH_PREFIX + "org/e2immu/analyzer/shallow/analyzer"};
+            JAR_WITH_PATH_PREFIX + "org/e2immu/analyzer/modification/linkedvariables"
+    };
 
     public static String currentJdkAnalyzedPackages() {
         String currentJreShortName = currentJre().shortName();
