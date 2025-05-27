@@ -303,7 +303,10 @@ public class TestConstructor extends CommonTest {
 
     @Test
     public void test9() {
-        javaInspector.parse(INPUT9);
+        TypeInfo typeInfo = javaInspector.parse(INPUT9);
+        TypeInfo pair = typeInfo.findSubType("Pair");
+        MethodInfo accessorK = pair.findUniqueMethod("k", 0);
+        assertEquals("Type param K", accessorK.returnType().toString());
     }
 
 

@@ -33,12 +33,13 @@ public class TestLambda extends CommonTest {
         MethodInfo method1 = typeInfo.findUniqueMethod("method1", 1);
         if (method1.methodBody().statements().get(1) instanceof LocalVariableCreation lvc
             && lvc.localVariable().assignmentExpression() instanceof MethodCall mc
-            && mc.parameterExpressions().get(0) instanceof Lambda lambda) {
+            && mc.parameterExpressions().getFirst() instanceof Lambda lambda) {
             MethodInfo mi = lambda.methodInfo();
+            assertEquals("7-43:7-54", mi.methodBody().source().compact2());
             TypeInfo ti = mi.typeInfo();
             assertEquals("C.$0", ti.fullyQualifiedName());
             assertEquals(1, ti.interfacesImplemented().size());
-            assertEquals("java.util.function.Predicate<String>", ti.interfacesImplemented().get(0).fullyQualifiedName());
+            assertEquals("java.util.function.Predicate<String>", ti.interfacesImplemented().getFirst().fullyQualifiedName());
         } else fail();
     }
 
