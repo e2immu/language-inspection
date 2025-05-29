@@ -1063,6 +1063,14 @@ public class MethodResolutionImpl implements MethodResolution {
         return genericsHelper;
     }
 
+    /*
+    with regard to generics:
+     - there is information from the forward type;
+     - there is information from the method (formal) and scope (concrete).
+
+    we aim to provide the newly created MethodReference object with the most specific information.
+
+     */
     @Override
     public Expression resolveMethodReference(Context context, List<Comment> comments, Source source, String index,
                                              ForwardType forwardType,
@@ -1072,30 +1080,89 @@ public class MethodResolutionImpl implements MethodResolution {
                 context.enclosingType());
         assert sam != null && sam.isSingleAbstractMethod();
 
-        int parametersPresented = sam.methodInfo().parameters().size();
-        ParameterizedType parameterizedType = scope.parameterizedType();
-
+        ParameterizedType scopeType = scope.parameterizedType();
         boolean isConstructor = "new".equals(methodName);
-        boolean scopeIsAType = scope instanceof TypeExpression;
-
-        Map<MethodTypeParameterMap, Integer> methodCandidates;
-        ListMethodAndConstructorCandidates list = new ListMethodAndConstructorCandidates(runtime,
-                context.typeContext().importMap());
-        if (isConstructor) {
-            if (parameterizedType.arrays() > 0) {
-                return arrayConstruction(comments, source, parameterizedType);
-            }
-            Map<NamedType, ParameterizedType> typeMap = parameterizedType.initialTypeParameterMap();
-            methodCandidates = list.resolveConstructor(parameterizedType, parameterizedType, parametersPresented, typeMap);
-        } else {
-            Map<NamedType, ParameterizedType> typeMap = parameterizedType.initialTypeParameterMap();
-            ListMethodAndConstructorCandidates.ScopeNature scopeNature = scopeIsAType
-                    ? ListMethodAndConstructorCandidates.ScopeNature.STATIC
-                    : ListMethodAndConstructorCandidates.ScopeNature.INSTANCE;
-            methodCandidates = new HashMap<>();
-            list.recursivelyResolveOverloadedMethods(parameterizedType, methodName, parametersPresented,
-                    scopeIsAType, typeMap, methodCandidates, scopeNature);
+        if (isConstructor && scopeType.arrays() > 0) {
+            return arrayConstruction(comments, source, scopeType);
         }
+        boolean scopeIsAType = scope instanceof TypeExpression;
+        int numParametersInForwardSam = sam.methodInfo().parameters().size();
+
+        MethodTypeParameterMap method = methodTypeParameterMapForMethodReference(context, methodName, scopeType,
+                isConstructor, numParametersInForwardSam, scopeIsAType, sam);
+
+        List<ParameterizedType> typesOfParametersFromMethod = inputTypes(method.methodInfo(), method,
+                numParametersInForwardSam);
+        List<ParameterizedType> typesOfParametersFromForward = sam.getConcreteTypeOfParameters(runtime);
+        ParameterizedType returnTypeFromMethod;
+        ParameterizedType returnTypeFromForward = sam.getConcreteReturnType(runtime);
+        if (isConstructor) {
+            returnTypeFromMethod = scopeType;
+        } else {
+            returnTypeFromMethod = method.getConcreteReturnType(runtime);
+        }
+
+        ParameterizedType functionalType = inferFunctionalTypeMR(context.enclosingType().primaryType(),
+                returnTypeFromMethod, returnTypeFromForward, sam,
+                typesOfParametersFromMethod, typesOfParametersFromForward);
+
+        return runtime.newMethodReferenceBuilder().setSource(source).addComments(comments)
+                .setMethod(method.methodInfo())
+                .setScope(scope)
+                .setConcreteReturnType(functionalType)
+                .build();
+    }
+
+    private ParameterizedType inferFunctionalTypeMR(TypeInfo currentPrimaryType,
+                                                    ParameterizedType returnTypeFromMethod,
+                                                    ParameterizedType returnTypeFromForward,
+                                                    MethodTypeParameterMap sam,
+                                                    List<ParameterizedType> typesOfParametersFromMethod,
+                                                    List<ParameterizedType> typesOfParametersFromForward) {
+        ParameterizedType returnType = bestType(currentPrimaryType, returnTypeFromMethod, returnTypeFromForward);
+        int max = Math.max(typesOfParametersFromForward.size(), typesOfParametersFromMethod.size());
+        List<ParameterizedType> typesOfParameters = new ArrayList<>(max);
+        for (int i = 0; i < max; ++i) {
+            ParameterizedType add;
+            if (i >= typesOfParametersFromForward.size()) add = typesOfParametersFromMethod.get(i);
+            else if (i >= typesOfParametersFromMethod.size()) add = typesOfParametersFromForward.get(i);
+            else add = bestType(currentPrimaryType, typesOfParametersFromMethod.get(i),
+                        typesOfParametersFromForward.get(i));
+            typesOfParameters.add(add);
+        }
+        return sam.inferFunctionalType(runtime, typesOfParameters, returnType);
+    }
+
+    private ParameterizedType bestType(TypeInfo currentPrimaryType,
+                                       ParameterizedType mostConcrete,
+                                       ParameterizedType middle) {
+        if (mostConcrete.equals(middle)) return mostConcrete; // no point in doing any work
+        ParameterizedType pt = mostConcrete.mostSpecific(runtime, currentPrimaryType, middle);
+
+        // what if we're missing type parameters?
+        if (pt.typeInfo() != null && !pt.typeInfo().typeParameters().isEmpty() && pt.parameters().isEmpty()) {
+            Map<NamedType, ParameterizedType> map1 = genericsHelper
+                    .translateMap(middle.typeInfo().asParameterizedType(), middle, true);
+            // one of the two has the best type parameters
+            Map<NamedType, ParameterizedType> map2 = genericsHelper
+                    .mapInTermsOfParametersOfSubType(pt.bestTypeInfo(), middle);
+            Map<NamedType, ParameterizedType> map = genericsHelper.combineMaps(map1, map2);
+
+            // can we derive type parameters from middle? or are our own best?
+            return pt.typeInfo().asParameterizedType().applyTranslation(runtime, map);
+        }
+        return pt;
+    }
+
+    private MethodTypeParameterMap methodTypeParameterMapForMethodReference(Context context,
+                                                                            String methodName,
+                                                                            ParameterizedType scopeType,
+                                                                            boolean isConstructor,
+                                                                            int numParametersInForwardSam,
+                                                                            boolean scopeIsAType,
+                                                                            MethodTypeParameterMap sam) {
+        Map<MethodTypeParameterMap, Integer> methodCandidates = methodCandidatesForMethodReference(context, methodName,
+                scopeType, isConstructor, numParametersInForwardSam, scopeIsAType);
         if (methodCandidates.isEmpty()) {
             throw new Summary.ParseException(context.info(), "Cannot find a candidate for " + methodName);
         }
@@ -1108,36 +1175,31 @@ public class MethodResolutionImpl implements MethodResolution {
         if (sorted.isEmpty()) {
             throw new Summary.ParseException(context.info(), "I've killed all the candidates myself??");
         }
-        MethodTypeParameterMap method = sorted.getFirst();
-        MethodInfo methodInfo = method.methodInfo();
-        ParameterizedType formalMethodType = methodInfo.typeInfo().asParameterizedType();
+        return sorted.getFirst();
+    }
 
-        List<ParameterizedType> types = inputTypes(formalMethodType, method, parametersPresented);
+    private Map<MethodTypeParameterMap, Integer> methodCandidatesForMethodReference(Context context,
+                                                                                    String methodName,
+                                                                                    ParameterizedType scopeType,
+                                                                                    boolean isConstructor,
+                                                                                    int numParametersInForwardSam,
+                                                                                    boolean scopeIsAType) {
+        ListMethodAndConstructorCandidates list = new ListMethodAndConstructorCandidates(runtime,
+                context.typeContext().importMap());
+        Map<NamedType, ParameterizedType> typeMap = scopeType.initialTypeParameterMap();
 
-        ParameterizedType concreteReturnType;
+        Map<MethodTypeParameterMap, Integer> methodCandidates;
         if (isConstructor) {
-            concreteReturnType = parameterizedType;
+            methodCandidates = list.resolveConstructor(scopeType, scopeType, numParametersInForwardSam, typeMap);
         } else {
-            concreteReturnType = method.getConcreteReturnType(runtime);
+            ListMethodAndConstructorCandidates.ScopeNature scopeNature = scopeIsAType
+                    ? ListMethodAndConstructorCandidates.ScopeNature.STATIC
+                    : ListMethodAndConstructorCandidates.ScopeNature.INSTANCE;
+            methodCandidates = new HashMap<>();
+            list.recursivelyResolveOverloadedMethods(scopeType, methodName, numParametersInForwardSam,
+                    scopeIsAType, typeMap, methodCandidates, scopeNature);
         }
-        ParameterizedType connected;
-        if (concreteReturnType.hasTypeParameters()) {
-            ParameterizedType formalReturnType = method.methodInfo().returnType();
-            Map<NamedType, ParameterizedType> matched = sam.formalOfSamToConcreteTypes(method.methodInfo(), runtime);
-            // Lambda_18
-            connected = formalReturnType.applyTranslation(runtime, matched);
-        } else {
-            // MethodReference_2
-            connected = concreteReturnType;
-        }
-
-        ParameterizedType functionalType = sam.inferFunctionalType(runtime, types, connected);
-
-        return runtime.newMethodReferenceBuilder().setSource(source).addComments(comments)
-                .setMethod(methodInfo)
-                .setScope(scope)
-                .setConcreteReturnType(functionalType)
-                .build();
+        return methodCandidates;
     }
 
     @Override
@@ -1259,12 +1321,13 @@ public class MethodResolutionImpl implements MethodResolution {
      * In this method we provide the types that the "inferFunctionalType" method will use to determine
      * the functional type. We must provide a concrete type for each of the real method's parameters.
      */
-    private List<ParameterizedType> inputTypes(ParameterizedType parameterizedType,
+    private List<ParameterizedType> inputTypes(MethodInfo methodInfo,
                                                MethodTypeParameterMap method,
                                                int parametersPresented) {
+        ParameterizedType formalMethodType = methodInfo.typeInfo().asParameterizedType();
         List<ParameterizedType> types = new ArrayList<>();
         if (method.methodInfo().parameters().size() < parametersPresented) {
-            types.add(parameterizedType);
+            types.add(formalMethodType);
         }
         method.methodInfo().parameters().stream()
                 .map(Variable::parameterizedType)

@@ -33,6 +33,8 @@ public interface MethodTypeParameterMap {
 
     ParameterizedType getConcreteTypeOfParameter(Runtime runtime, int i);
 
+    List<ParameterizedType> getConcreteTypeOfParameters(Runtime runtime);
+
     ParameterizedType inferFunctionalType(Runtime runtime,
                                           List<ParameterizedType> types,
                                           ParameterizedType inferredReturnType);

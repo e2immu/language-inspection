@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 // use GenericsHelper to construct
 class MethodTypeParameterMapImpl implements MethodTypeParameterMap {
@@ -75,8 +76,15 @@ class MethodTypeParameterMapImpl implements MethodTypeParameterMap {
     }
 
     @Override
+    public List<ParameterizedType> getConcreteTypeOfParameters(Runtime runtime) {
+        return IntStream.range(0, methodInfo.parameters().size())
+                .mapToObj(i -> getConcreteTypeOfParameter(runtime, i))
+                .toList();
+    }
+
+    @Override
     public MethodTypeParameterMap expand(Runtime runtime, TypeInfo primaryType,
-                                             Map<NamedType, ParameterizedType> mapExpansion) {
+                                         Map<NamedType, ParameterizedType> mapExpansion) {
         Map<NamedType, ParameterizedType> join = new HashMap<>(concreteTypes);
         mapExpansion.forEach((k, v) -> join.merge(k, v, (v1, v2) -> v1.mostSpecific(runtime, primaryType, v2)));
         return new MethodTypeParameterMapImpl(methodInfo, Map.copyOf(join));
