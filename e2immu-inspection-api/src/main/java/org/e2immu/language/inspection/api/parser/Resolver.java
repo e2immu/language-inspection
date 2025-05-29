@@ -19,8 +19,12 @@ public interface Resolver {
 
     void add(TypeInfo.Builder builder);
 
-    void addAnnotationTodo(Info.Builder<?> infoBuilder, AnnotationExpression.Builder ab, int indexInAnnotationList,
-                           Object annotation, Context context);
+    void addAnnotationTodo(Info.Builder<?> infoBuilder,
+                           TypeInfo annotationType,
+                           AnnotationExpression.Builder ab,
+                           int indexInAnnotationList,
+                           Object annotation,
+                           Context context);
 
     // add to the to-do list, but only for overrides
     void addRecordAccessor(MethodInfo accessor);

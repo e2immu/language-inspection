@@ -34,8 +34,12 @@ public class ResolverImpl implements Resolver {
                 Context context) {
     }
 
-    record AnnotationTodo(Info.Builder<?> infoBuilder, AnnotationExpression.Builder annotationExpressionBuilder,
-                          int indexInAnnotationList, Object annotation, Context context) {
+    record AnnotationTodo(Info.Builder<?> infoBuilder,
+                          TypeInfo annotationType,
+                          AnnotationExpression.Builder annotationExpressionBuilder,
+                          int indexInAnnotationList,
+                          Object annotation,
+                          Context context) {
     }
 
     private final List<Todo> todos = new LinkedList<>();
@@ -56,9 +60,12 @@ public class ResolverImpl implements Resolver {
     }
 
     @Override
-    public void addAnnotationTodo(Info.Builder<?> infoBuilder, AnnotationExpression.Builder ab, int indexInAnnotationList,
+    public void addAnnotationTodo(Info.Builder<?> infoBuilder,
+                                  TypeInfo annotationType,
+                                  AnnotationExpression.Builder ab,
+                                  int indexInAnnotationList,
                                   Object annotation, Context context) {
-        annotationTodos.add(new AnnotationTodo(infoBuilder, ab, indexInAnnotationList, annotation, context));
+        annotationTodos.add(new AnnotationTodo(infoBuilder, annotationType, ab, indexInAnnotationList, annotation, context));
     }
 
     @Override
@@ -129,7 +136,8 @@ public class ResolverImpl implements Resolver {
     }
 
     private AnnotationExpression parseAnnotationExpression(AnnotationTodo at) {
-        List<AnnotationExpression.KV> kvs = parseHelper.parseAnnotationExpression(at.annotation, at.context);
+        List<AnnotationExpression.KV> kvs = parseHelper.parseAnnotationExpression(at.annotationType, at.annotation,
+                at.context);
         at.annotationExpressionBuilder.setKeyValuesPairs(kvs);
         return at.annotationExpressionBuilder().build();
     }
