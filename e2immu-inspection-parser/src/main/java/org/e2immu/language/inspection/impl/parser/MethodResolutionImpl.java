@@ -1091,7 +1091,8 @@ public class MethodResolutionImpl implements MethodResolution {
         MethodTypeParameterMap method = methodTypeParameterMapForMethodReference(context, methodName, scopeType,
                 isConstructor, numParametersInForwardSam, scopeIsAType, sam);
 
-        List<ParameterizedType> typesOfParametersFromMethod = inputTypes(method.methodInfo(), method,
+        MethodInfo methodInfo = method.methodInfo();
+        List<ParameterizedType> typesOfParametersFromMethod = inputTypes(methodInfo, method,
                 numParametersInForwardSam);
         List<ParameterizedType> typesOfParametersFromForward = sam.getConcreteTypeOfParameters(runtime);
         ParameterizedType returnTypeFromMethod;
@@ -1102,23 +1103,36 @@ public class MethodResolutionImpl implements MethodResolution {
             returnTypeFromMethod = method.getConcreteReturnType(runtime);
         }
 
-        ParameterizedType functionalType = inferFunctionalTypeMR(context.enclosingType().primaryType(),
+        FT ft = inferFunctionalTypeMR(context.enclosingType().primaryType(),
                 returnTypeFromMethod, returnTypeFromForward, sam,
                 typesOfParametersFromMethod, typesOfParametersFromForward);
 
         return runtime.newMethodReferenceBuilder().setSource(source).addComments(comments)
-                .setMethod(method.methodInfo())
+                .setMethod(methodInfo)
                 .setScope(scope)
-                .setConcreteReturnType(functionalType)
+                .setConcreteFunctionalType(ft.functionalType)
+                .setConcreteParameterTypes(ft.concreteTypesOfParametersCorrected(methodInfo))
+                .setConcreteReturnType(ft.concreteReturnType)
                 .build();
     }
 
-    private ParameterizedType inferFunctionalTypeMR(TypeInfo currentPrimaryType,
-                                                    ParameterizedType returnTypeFromMethod,
-                                                    ParameterizedType returnTypeFromForward,
-                                                    MethodTypeParameterMap sam,
-                                                    List<ParameterizedType> typesOfParametersFromMethod,
-                                                    List<ParameterizedType> typesOfParametersFromForward) {
+    private record FT(ParameterizedType functionalType, ParameterizedType concreteReturnType,
+                      List<ParameterizedType> concreteTypesOfParameters) {
+        public List<ParameterizedType> concreteTypesOfParametersCorrected(MethodInfo methodInfo) {
+            int n = methodInfo.parameters().size();
+            int c = concreteTypesOfParameters.size();
+            assert n == c || n == c - 1;
+            if (n == 0) return List.of();
+            return n == c ? concreteTypesOfParameters : concreteTypesOfParameters.subList(1, c);
+        }
+    }
+
+    private FT inferFunctionalTypeMR(TypeInfo currentPrimaryType,
+                                     ParameterizedType returnTypeFromMethod,
+                                     ParameterizedType returnTypeFromForward,
+                                     MethodTypeParameterMap sam,
+                                     List<ParameterizedType> typesOfParametersFromMethod,
+                                     List<ParameterizedType> typesOfParametersFromForward) {
         ParameterizedType returnType = bestType(currentPrimaryType, returnTypeFromMethod, returnTypeFromForward);
         int max = Math.max(typesOfParametersFromForward.size(), typesOfParametersFromMethod.size());
         List<ParameterizedType> typesOfParameters = new ArrayList<>(max);
@@ -1130,7 +1144,8 @@ public class MethodResolutionImpl implements MethodResolution {
                         typesOfParametersFromForward.get(i));
             typesOfParameters.add(add);
         }
-        return sam.inferFunctionalType(runtime, typesOfParameters, returnType);
+        ParameterizedType ft = sam.inferFunctionalType(runtime, typesOfParameters, returnType);
+        return new FT(ft, returnType, typesOfParameters);
     }
 
     private ParameterizedType bestType(TypeInfo currentPrimaryType,
@@ -1141,6 +1156,7 @@ public class MethodResolutionImpl implements MethodResolution {
 
         // what if we're missing type parameters?
         if (pt.typeInfo() != null && !pt.typeInfo().typeParameters().isEmpty() && pt.parameters().isEmpty()) {
+            if (middle.typeInfo() == null) return pt;
             Map<NamedType, ParameterizedType> map1 = genericsHelper
                     .translateMap(middle.typeInfo().asParameterizedType(), middle, true);
             // one of the two has the best type parameters
@@ -1347,7 +1363,7 @@ public class MethodResolutionImpl implements MethodResolution {
         return runtime.newMethodReferenceBuilder().setSource(source).addComments(comments)
                 .setMethod(methodInfo)
                 .setScope(runtime.newTypeExpression(parameterizedType, runtime.diamondNo()))
-                .setConcreteReturnType(concreteReturnType)
+                .setConcreteFunctionalType(concreteReturnType)
                 .build();
     }
 }
