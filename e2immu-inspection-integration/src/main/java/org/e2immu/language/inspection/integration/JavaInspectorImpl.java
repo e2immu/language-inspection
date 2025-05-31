@@ -22,6 +22,7 @@ import org.e2immu.language.inspection.api.resource.*;
 import org.e2immu.language.inspection.impl.parser.*;
 import org.e2immu.language.inspection.resource.CompiledTypesManagerImpl;
 import org.e2immu.language.inspection.resource.ResourcesImpl;
+import org.e2immu.language.inspection.resource.SourceSetImpl;
 import org.e2immu.parser.java.ParseCompilationUnit;
 import org.e2immu.parser.java.ParseHelperImpl;
 import org.e2immu.parser.java.ScanCompilationUnit;
@@ -368,7 +369,10 @@ public class JavaInspectorImpl implements JavaInspector {
         Summary failFastSummary = new SummaryImpl(true);
         try {
             URI uri = new URI("input");
-            SourceFile sourceFile = new SourceFile(null, uri, null, MD5FingerPrint.compute(input));
+            SourceSet dummy = new SourceSetImpl("test", List.of(), URI.create("file:doesNotExist"),
+                    StandardCharsets.UTF_8, false, false, false, false,
+                    false, Set.of(), Set.of());
+            SourceFile sourceFile = new SourceFile(null, uri, dummy, MD5FingerPrint.compute(input));
             return internalParseSingleInput(failFastSummary, sourceFile, () -> {
                 JavaParser parser = new JavaParser(input);
                 parser.setParserTolerant(false);
