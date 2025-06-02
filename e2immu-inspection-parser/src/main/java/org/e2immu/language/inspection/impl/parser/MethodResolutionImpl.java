@@ -1107,7 +1107,18 @@ public class MethodResolutionImpl implements MethodResolution {
                 returnTypeFromMethod, returnTypeFromForward, sam,
                 typesOfParametersFromMethod, typesOfParametersFromForward);
 
-        return runtime.newMethodReferenceBuilder().setSource(source).addComments(comments)
+        // the exact methodInfo().name() string must be added to the detailed sources
+        DetailedSources.Builder dsb = context.newDetailedSourcesBuilder();
+        Source sourceWithMethodName;
+        if (dsb != null) {
+            Source sourceOfMethodName = source.detailedSources().detail(methodName);
+            dsb.addAll(source.detailedSources())
+                    .put(methodInfo.name(), sourceOfMethodName);
+            sourceWithMethodName = source.mergeDetailedSources(dsb.build());
+        } else {
+            sourceWithMethodName = source;
+        }
+        return runtime.newMethodReferenceBuilder().setSource(sourceWithMethodName).addComments(comments)
                 .setMethod(methodInfo)
                 .setScope(scope)
                 .setConcreteFunctionalType(ft.functionalType)

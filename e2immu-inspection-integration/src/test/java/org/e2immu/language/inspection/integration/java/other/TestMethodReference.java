@@ -7,6 +7,7 @@ import org.e2immu.language.cst.api.info.MethodInfo;
 import org.e2immu.language.cst.api.info.TypeInfo;
 import org.e2immu.language.cst.api.statement.LocalVariableCreation;
 import org.e2immu.language.cst.api.statement.ReturnStatement;
+import org.e2immu.language.inspection.integration.JavaInspectorImpl;
 import org.e2immu.language.inspection.integration.java.CommonTest;
 import org.intellij.lang.annotations.Language;
 import org.junit.jupiter.api.DisplayName;
@@ -105,13 +106,15 @@ public class TestMethodReference extends CommonTest {
     @Test
     @DisplayName("concrete type of MR from method")
     public void test1B() {
-        TypeInfo typeInfo = javaInspector.parse(INPUT1B);
+        TypeInfo typeInfo = javaInspector.parse(INPUT1B, new JavaInspectorImpl.ParseOptionsBuilder().setDetailedSources(true).build());
         MethodInfo methodInfo = typeInfo.findUniqueMethod("m7", 1);
         ReturnStatement rs = (ReturnStatement) methodInfo.methodBody().statements().getFirst();
         MethodCall mc = (MethodCall) rs.expression();
         MethodReference mr = (MethodReference) mc.parameterExpressions().getFirst();
         assertEquals("Type java.util.function.IntFunction<T>",
                 mr.parameterizedType().toString());
+
+        assertEquals("6-47:6-49", mr.source().detailedSources().detail(mr.methodInfo().name()).compact2());
     }
 
     @Language("java")
