@@ -5,6 +5,7 @@ import org.e2immu.language.cst.api.info.FieldInfo;
 import org.e2immu.language.cst.api.info.MethodInfo;
 import org.e2immu.language.cst.api.info.TypeInfo;
 import org.e2immu.language.cst.api.statement.ReturnStatement;
+import org.e2immu.language.inspection.integration.JavaInspectorImpl;
 import org.e2immu.language.inspection.integration.java.CommonTest;
 import org.intellij.lang.annotations.Language;
 import org.junit.jupiter.api.DisplayName;
@@ -656,8 +657,18 @@ public class TestConstructor extends CommonTest {
     @Language("java")
     public static final String INPUT21 = """
             package a.b;
-            public class X {
+            class X {
                 record Pair<F, G>(F f, G g) {
+                    Pair(F f, G g) {
+                        this.f = f;
+                        this.g = g;
+                        System.out.println(f + " " + g);
+                    }
+                    Pair(F f, G g, String msg) {
+                        this.f = f;
+                        this.g = g;
+                        System.out.println(msg+": " + f + " " + g);
+                    }
                 }
                 record R<F, G>(Pair<F, G> pair) {
                     public R {
@@ -673,14 +684,25 @@ public class TestConstructor extends CommonTest {
     @DisplayName("parameter-less record constructor")
     @Test
     public void test21() {
-        TypeInfo X = javaInspector.parse(INPUT21);
+        TypeInfo X = javaInspector.parse(INPUT21, new JavaInspectorImpl.ParseOptionsBuilder()
+                .setDetailedSources(true).build());
+
+        TypeInfo pair = X.findSubType("Pair");
+        assertEquals(2, pair.constructors().size());
+        MethodInfo cPair = pair.findConstructor(2);
+        assertFalse(cPair.isSynthetic());
+        assertEquals("4-9:4-12", cPair.source().detailedSources().detail(cPair.name()).compact2());
+
         TypeInfo R = X.findSubType("R");
         assertEquals(2, R.constructors().size());
 
         MethodInfo cR = R.findConstructor(1);
         assertFalse(cR.isCompactConstructor());
+        assertTrue(cR.isSynthetic());
 
         MethodInfo cc = R.findConstructor(0);
         assertTrue(cc.isCompactConstructor());
+        assertFalse(cc.isSynthetic());
+        assertEquals("16-16:16-16", cc.source().detailedSources().detail(cc.name()).compact2());
     }
 }
