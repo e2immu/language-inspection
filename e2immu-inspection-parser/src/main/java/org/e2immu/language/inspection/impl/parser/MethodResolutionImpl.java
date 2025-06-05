@@ -1090,22 +1090,18 @@ public class MethodResolutionImpl implements MethodResolution {
 
         MethodTypeParameterMap method = methodTypeParameterMapForMethodReference(context, methodName, scopeType,
                 isConstructor, numParametersInForwardSam, scopeIsAType, sam);
+        // the typeMap in method is the result of the recursive procedure to find methods in the hierarchy
+        // we still must make the connection between the method's parameters and the sam's
 
         MethodInfo methodInfo = method.methodInfo();
-        List<ParameterizedType> typesOfParametersFromMethod = inputTypes(methodInfo, method,
-                numParametersInForwardSam);
-        List<ParameterizedType> typesOfParametersFromForward = sam.getConcreteTypeOfParameters(runtime);
-        ParameterizedType returnTypeFromMethod;
-        ParameterizedType returnTypeFromForward = sam.getConcreteReturnType(runtime);
-        if (isConstructor) {
-            returnTypeFromMethod = scopeType;
-        } else {
-            returnTypeFromMethod = method.getConcreteReturnType(runtime);
-        }
+        Map<NamedType, ParameterizedType> methodMap = new HashMap<>(method.concreteTypes());
 
-        FT ft = inferFunctionalTypeMR(context.enclosingType().primaryType(),
-                returnTypeFromMethod, returnTypeFromForward, sam,
-                typesOfParametersFromMethod, typesOfParametersFromForward);
+        // there are 2 possible paths
+        // we can solve the types from the parameters, and use that info to solve the return type
+        // or, we can solve the return type, and then use that info to solve the parameters
+        // TODO only one implemented at the moment: from parameters to return type
+        FT ft = computeFunctionalType(context, methodInfo, method, numParametersInForwardSam, sam, isConstructor,
+                scopeType, methodMap);
 
         // the exact methodInfo().name() string must be added to the detailed sources
         DetailedSources.Builder dsb = context.newDetailedSourcesBuilder();
@@ -1138,25 +1134,73 @@ public class MethodResolutionImpl implements MethodResolution {
         }
     }
 
-    private FT inferFunctionalTypeMR(TypeInfo currentPrimaryType,
-                                     ParameterizedType returnTypeFromMethod,
-                                     ParameterizedType returnTypeFromForward,
+    // this is one direction: assume that the inference comes from the parameters, and helps sort out the return value
+    // See TestMethodCall8,7B,7C
+    private FT computeFunctionalType(Context context,
+                                     MethodInfo methodInfo,
+                                     MethodTypeParameterMap method,
+                                     int numParametersInForwardSam,
                                      MethodTypeParameterMap sam,
-                                     List<ParameterizedType> typesOfParametersFromMethod,
-                                     List<ParameterizedType> typesOfParametersFromForward) {
-        ParameterizedType returnType = bestType(currentPrimaryType, returnTypeFromMethod, returnTypeFromForward);
+                                     boolean isConstructor,
+                                     ParameterizedType scopeType,
+                                     Map<NamedType, ParameterizedType> methodMap) {
+        List<ParameterizedType> typesOfParametersFromMethod = inputTypes(methodInfo, method,
+                numParametersInForwardSam);
+        List<ParameterizedType> typesOfParametersFromForward = sam.getConcreteTypeOfParameters(runtime);
+
         int max = Math.max(typesOfParametersFromForward.size(), typesOfParametersFromMethod.size());
         List<ParameterizedType> typesOfParameters = new ArrayList<>(max);
         for (int i = 0; i < max; ++i) {
             ParameterizedType add;
             if (i >= typesOfParametersFromForward.size()) add = typesOfParametersFromMethod.get(i);
             else if (i >= typesOfParametersFromMethod.size()) add = typesOfParametersFromForward.get(i);
-            else add = bestType(currentPrimaryType, typesOfParametersFromMethod.get(i),
-                        typesOfParametersFromForward.get(i));
+            else add = bestType(context.enclosingType().primaryType(), typesOfParametersFromMethod.get(i),
+                        typesOfParametersFromForward.get(i), methodMap);
             typesOfParameters.add(add);
         }
+
+        ParameterizedType returnTypeFromMethod;
+        ParameterizedType returnTypeFromForward = sam.getConcreteReturnType(runtime);
+        if (isConstructor) {
+            returnTypeFromMethod = scopeType;
+        } else {
+            returnTypeFromMethod = method.methodInfo().returnType().applyTranslation(runtime, methodMap);
+        }
+        ParameterizedType returnType = bestType(context.enclosingType().primaryType(),
+                returnTypeFromMethod, returnTypeFromForward);
+
         ParameterizedType ft = sam.inferFunctionalType(runtime, typesOfParameters, returnType);
         return new FT(ft, returnType, typesOfParameters);
+    }
+
+
+    private void infer(Map<NamedType, ParameterizedType> map, ParameterizedType best, ParameterizedType worse) {
+        LOGGER.info("Trying to learn from {} <- {}", best, worse);
+        if (best.typeParameter() == null && worse.typeParameter() != null) {
+            map.put(worse.typeParameter(), best);
+            return;
+        }
+        if (best.typeParameter() != null) return;
+        if (best.typeInfo() == worse.typeInfo()) {
+            Map<NamedType, ParameterizedType> m = worse.formalToConcrete(best);
+            map.putAll(m);
+            return;
+        }
+        ParameterizedType concrete = best.concreteSuperType(worse);
+        if (concrete != null) {
+            Map<NamedType, ParameterizedType> m = worse.formalToConcrete(concrete);
+            map.putAll(m);
+        }
+    }
+
+    private ParameterizedType bestType(TypeInfo currentPrimaryType,
+                                       ParameterizedType mostConcrete,
+                                       ParameterizedType middle,
+                                       Map<NamedType, ParameterizedType> inferred) {
+        ParameterizedType best = bestType(currentPrimaryType, mostConcrete, middle);
+        if (best != mostConcrete) infer(inferred, best, mostConcrete);
+        if (best != middle) infer(inferred, best, middle);
+        return best;
     }
 
     private ParameterizedType bestType(TypeInfo currentPrimaryType,

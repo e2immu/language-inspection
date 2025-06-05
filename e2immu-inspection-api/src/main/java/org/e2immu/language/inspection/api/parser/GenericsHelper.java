@@ -1,14 +1,12 @@
 package org.e2immu.language.inspection.api.parser;
 
 import org.e2immu.annotation.Fluent;
-import org.e2immu.language.cst.api.analysis.Property;
 import org.e2immu.language.cst.api.element.Element;
 import org.e2immu.language.cst.api.element.Source;
 import org.e2immu.language.cst.api.expression.Expression;
 import org.e2immu.language.cst.api.expression.Lambda;
 import org.e2immu.language.cst.api.info.MethodInfo;
 import org.e2immu.language.cst.api.info.TypeInfo;
-import org.e2immu.language.cst.api.runtime.Runtime;
 import org.e2immu.language.cst.api.type.NamedType;
 import org.e2immu.language.cst.api.type.ParameterizedType;
 import org.e2immu.language.cst.api.variable.Variable;
@@ -24,9 +22,8 @@ public interface GenericsHelper {
 
     M2: K(map) -> K(hashmap), M1: K(hashmap) -> String
     */
-    Map<NamedType, ParameterizedType> combineMaps(Map<NamedType,
-            ParameterizedType> m1, Map<NamedType,
-            ParameterizedType> m2);
+    Map<NamedType, ParameterizedType> combineMaps(Map<NamedType, ParameterizedType> m1,
+                                                  Map<NamedType, ParameterizedType> m2);
 
     MethodTypeParameterMap findSingleAbstractMethodOfInterface(ParameterizedType parameterizedType);
 
