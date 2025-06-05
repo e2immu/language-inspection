@@ -1375,6 +1375,8 @@ public class MethodResolutionImpl implements MethodResolution {
                 .setMethod(methodInfo)
                 .setScope(runtime.newTypeExpression(parameterizedType, runtime.diamondNo()))
                 .setConcreteFunctionalType(concreteReturnType)
+                .setConcreteReturnType(parameterizedType)
+                .setConcreteParameterTypes(List.of(runtime.intParameterizedType()))
                 .build();
     }
 }

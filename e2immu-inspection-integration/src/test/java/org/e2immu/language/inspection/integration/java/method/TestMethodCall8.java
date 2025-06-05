@@ -1,9 +1,11 @@
 package org.e2immu.language.inspection.integration.java.method;
 
 import org.e2immu.language.cst.api.expression.MethodCall;
+import org.e2immu.language.cst.api.expression.MethodReference;
 import org.e2immu.language.cst.api.info.MethodInfo;
 import org.e2immu.language.cst.api.info.TypeInfo;
 import org.e2immu.language.cst.api.statement.LocalVariableCreation;
+import org.e2immu.language.cst.api.statement.ReturnStatement;
 import org.e2immu.language.cst.api.statement.Statement;
 import org.e2immu.language.inspection.integration.java.CommonTest;
 import org.intellij.lang.annotations.Language;
@@ -33,12 +35,12 @@ public class TestMethodCall8 extends CommonTest {
                 interface CorsConfigurer<H extends HttpSecurityBuilder<H>> { }
                 static abstract class CsrfConfigurer<H extends HttpSecurityBuilder<H>>
                         extends AbstractHttpConfigurer<CsrfConfigurer<H>, H> { }
-        
+            
                 interface HttpSecurity extends HttpSecurityBuilder<HttpSecurity> {
                     HttpSecurity cors(Customizer<CorsConfigurer<HttpSecurity>> customizer);
                     HttpSecurity csrf(Customizer<CsrfConfigurer<HttpSecurity>> csrfCustomizer) throws Exception;
                 }
-        
+            
                 public void method(HttpSecurity httpSecurity) throws Exception {
                     httpSecurity.cors(Customizer.withDefaults())
                             .csrf(AbstractHttpConfigurer::disable);
@@ -289,6 +291,7 @@ public class TestMethodCall8 extends CommonTest {
                 }
             }
             """;
+
     @DisplayName("which version of list?")
     @Test
     public void test6() {
@@ -299,5 +302,116 @@ public class TestMethodCall8 extends CommonTest {
         MethodCall setIntList = (MethodCall) setStringSet.object();
         MethodCall listOf = (MethodCall) setIntList.parameterExpressions().getFirst();
         assertEquals("java.util.List.of(E,E)", listOf.methodInfo().fullyQualifiedName());
+    }
+
+    @Language("java")
+    private static final String INPUT7 = """
+            package a.b;
+            import java.util.stream.Stream;
+            import java.util.List;
+            import java.util.Collection;
+            class X {
+                Stream<String> method(List<List<String>> stringLists) {
+                    return stringLists.stream().flatMap(Collection::stream);
+                }
+            }
+            """;
+
+    @DisplayName("type parameter forwarding")
+    @Test
+    public void test7() {
+        TypeInfo X = javaInspector.parse(INPUT7);
+        MethodInfo method = X.findUniqueMethod("method", 1);
+        ReturnStatement rs = (ReturnStatement) method.methodBody().statements().getFirst();
+        MethodCall flatMap = (MethodCall) rs.expression();
+        MethodCall stream = (MethodCall) flatMap.object();
+        assertEquals("Type java.util.List<java.util.List<String>>", stream.object().parameterizedType().toString());
+        assertEquals("Type java.util.stream.Stream<java.util.List<String>>", stream.concreteReturnType().toString());
+        MethodReference mrMap0 = (MethodReference) flatMap.parameterExpressions().getFirst();
+        assertEquals("Type java.util.stream.Stream<String>", mrMap0.concreteReturnType().toString());
+        assertEquals("[]", mrMap0.concreteParameterTypes().toString());
+        assertEquals("Type java.util.function.Function<java.util.List<String>,java.util.stream.Stream<String>>",
+                mrMap0.parameterizedType().toString());
+
+        assertEquals("Type java.util.stream.Stream<String>", flatMap.concreteReturnType().toString());
+    }
+
+
+    @Language("java")
+    private static final String INPUT7B = """
+            package a.b;
+            import java.util.stream.Stream;
+            import java.util.List;
+            import java.util.Collection;
+            class X {
+                Stream<String> method(List<List<String>> stringLists) {
+                    return stringLists.stream()
+                        .flatMap(Collection::stream)
+                        .map(String::toLowerCase);
+                }
+            }
+            """;
+
+    @DisplayName("type parameter forwarding, 2")
+    @Test
+    public void test7B() {
+        TypeInfo X = javaInspector.parse(INPUT7B);
+        MethodInfo method = X.findUniqueMethod("method", 1);
+        ReturnStatement rs = (ReturnStatement) method.methodBody().statements().getFirst();
+        MethodCall map = (MethodCall) rs.expression();
+        MethodCall flatMap = (MethodCall) map.object();
+        MethodCall stream = (MethodCall) flatMap.object();
+        assertEquals("Type java.util.List<java.util.List<String>>", stream.object().parameterizedType().toString());
+        assertEquals("Type java.util.stream.Stream<java.util.List<String>>", stream.concreteReturnType().toString());
+
+        // the first forward type
+        assertEquals("Type java.util.stream.Stream<String>", map.concreteReturnType().toString());
+        assertEquals("Type java.util.stream.Stream<String>", map.object().parameterizedType().toString());
+
+        // that should be enough to make a forward type for the second
+        MethodReference mrMap0 = (MethodReference) flatMap.parameterExpressions().getFirst();
+        assertEquals("Type java.util.stream.Stream<String>", mrMap0.concreteReturnType().toString());
+        assertEquals("[]", mrMap0.concreteParameterTypes().toString());
+        assertEquals("Type java.util.function.Function<java.util.List<String>,java.util.stream.Stream<String>>",
+                mrMap0.parameterizedType().toString());
+
+        assertEquals("Type java.util.stream.Stream<String>", flatMap.concreteReturnType().toString());
+    }
+
+    @Language("java")
+    private static final String INPUT7C = """
+            package a.b;
+            import java.util.Collection;
+            import java.util.List;
+            class X {
+                List<String> method(List<List<String>> stringLists) {
+                    return stringLists.stream()
+                        .flatMap(Collection::stream)
+                        .map(String::toLowerCase)
+                        .toList();
+                }
+            }
+            """;
+
+    @DisplayName("type parameter forwarding, 3")
+    @Test
+    public void test7C() {
+        TypeInfo X = javaInspector.parse(INPUT7C);
+        MethodInfo method = X.findUniqueMethod("method", 1);
+        ReturnStatement rs = (ReturnStatement) method.methodBody().statements().getFirst();
+        MethodCall toList = (MethodCall) rs.expression();
+        MethodCall map = (MethodCall) toList.object();
+        MethodCall flatMap = (MethodCall) map.object();
+        MethodCall stream = (MethodCall) flatMap.object();
+        assertEquals("Type java.util.List<String>", toList.concreteReturnType().toString());
+        assertEquals("Type java.util.List<java.util.List<String>>", stream.object().parameterizedType().toString());
+        assertEquals("Type java.util.stream.Stream<java.util.List<String>>", stream.concreteReturnType().toString());
+        assertEquals("Type java.util.stream.Stream<String>", map.concreteReturnType().toString());
+        MethodReference mrMap0 = (MethodReference) map.parameterExpressions().getFirst();
+        assertEquals("Type String", mrMap0.concreteReturnType().toString());
+        assertEquals("[]", mrMap0.concreteParameterTypes().toString());
+        assertEquals("Type java.util.function.Function<String,String>", mrMap0.parameterizedType().toString());
+
+        assertEquals("Type java.util.stream.Stream<String>", flatMap.concreteReturnType().toString());
     }
 }
