@@ -5,6 +5,7 @@ import org.e2immu.language.cst.api.element.JavaDoc;
 import org.e2immu.language.cst.api.expression.AnnotationExpression;
 import org.e2immu.language.cst.api.expression.Expression;
 import org.e2immu.language.cst.api.info.*;
+import org.e2immu.language.cst.api.type.TypeParameter;
 import org.e2immu.language.inspection.api.parser.Context;
 import org.e2immu.language.inspection.api.parser.ForwardType;
 import org.e2immu.language.inspection.api.parser.ParseHelper;
@@ -101,6 +102,10 @@ public class ResolverImpl implements Resolver {
             AnnotationExpression ae = parseAnnotationExpression(annotationTodo);
             annotationTodo.infoBuilder.setAnnotationExpression(annotationTodo.indexInAnnotationList, ae);
         }
+        for (JavaDocToDo javaDocToDo : javaDocs) {
+            JavaDoc resolved = resolveJavaDoc(javaDocToDo);
+            javaDocToDo.infoBuilder.setJavaDoc(resolved);
+        }
 
         int cnt = 0;
         try {
@@ -132,11 +137,6 @@ public class ResolverImpl implements Resolver {
             LOGGER.error("Failed after resolving {} of {} fields/methods", cnt, todos.size());
             throw re;
         }
-
-        for (JavaDocToDo javaDocToDo : javaDocs) {
-            JavaDoc resolved = resolveJavaDoc(javaDocToDo);
-            javaDocToDo.infoBuilder.setJavaDoc(resolved);
-        }
         for (FieldInfo recordField : recordFields) {
             recordField.builder().commit();
         }
@@ -154,12 +154,26 @@ public class ResolverImpl implements Resolver {
             if (tag.identifier().isReference()) {
                 return parseHelper.parseJavaDocReferenceInTag(javaDocToDo.context, javaDocToDo.info, tag);
             }
-            if (tag.identifier() == JavaDoc.TagIdentifier.PARAM && javaDocToDo.info instanceof MethodInfo mi) {
+            if (tag.identifier() == JavaDoc.TagIdentifier.PARAM) {
                 String trimmedContent = tag.content();
-                ParameterInfo pi = mi.parameters().stream()
-                        .filter(p -> p.name().equals(trimmedContent))
-                        .findFirst().orElse(null);
-                return tag.withResolvedReference(pi);
+                if (trimmedContent.startsWith("<") && trimmedContent.endsWith(">")) {
+                    String typeParameterName = trimmedContent.substring(1, trimmedContent.length() - 1);
+                    List<TypeParameter> typeParameters;
+                    if (javaDocToDo.info instanceof TypeInfo ti) typeParameters = ti.typeParameters();
+                    else if (javaDocToDo.info instanceof MethodInfo mi) typeParameters = mi.typeParameters();
+                    else typeParameters = null;
+                    if (typeParameters != null) {
+                        TypeParameter typeParameter = typeParameters.stream()
+                                .filter(tp -> typeParameterName.equals(tp.simpleName()))
+                                .findFirst().orElse(null);
+                        return tag.withResolvedReference(typeParameter);
+                    }
+                } else if (javaDocToDo.info instanceof MethodInfo mi) {
+                    ParameterInfo pi = mi.parameters().stream()
+                            .filter(p -> p.name().equals(trimmedContent))
+                            .findFirst().orElse(null);
+                    return tag.withResolvedReference(pi);
+                }
             }
             return tag;
         }).toList();
