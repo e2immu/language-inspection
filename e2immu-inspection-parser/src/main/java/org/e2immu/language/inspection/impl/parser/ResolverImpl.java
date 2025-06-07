@@ -1,6 +1,7 @@
 package org.e2immu.language.inspection.impl.parser;
 
 
+import org.e2immu.language.cst.api.element.JavaDoc;
 import org.e2immu.language.cst.api.expression.AnnotationExpression;
 import org.e2immu.language.cst.api.expression.Expression;
 import org.e2immu.language.cst.api.info.*;
@@ -42,11 +43,15 @@ public class ResolverImpl implements Resolver {
                           Context context) {
     }
 
+    record JavaDocToDo(Info.Builder<?> infoBuilder, Context context, JavaDoc javaDoc) {
+    }
+
     private final List<Todo> todos = new LinkedList<>();
     private final List<AnnotationTodo> annotationTodos = new LinkedList<>();
     private final List<TypeInfo.Builder> types = new LinkedList<>();
     private final List<MethodInfo> recordAccessors = new LinkedList<>();
     private final List<FieldInfo> recordFields = new LinkedList<>();
+    private final List<JavaDocToDo> javaDocs = new LinkedList<>();
 
     @Override
     public Resolver newEmpty() {
@@ -57,6 +62,11 @@ public class ResolverImpl implements Resolver {
     public void add(Info info, Info.Builder<?> infoBuilder, ForwardType forwardType, Object eci, Object expression,
                     Context context) {
         todos.add(new Todo(info, infoBuilder, forwardType, eci, expression, context));
+    }
+
+    @Override
+    public void addJavadoc(Info.Builder<?> infoBuilder, Context context, JavaDoc javaDoc) {
+        javaDocs.add(new JavaDocToDo(infoBuilder, context, javaDoc));
     }
 
     @Override
@@ -123,6 +133,10 @@ public class ResolverImpl implements Resolver {
             throw re;
         }
 
+        for (JavaDocToDo javaDocToDo : javaDocs) {
+            JavaDoc resolved = resolveJavaDoc(javaDocToDo);
+            javaDocToDo.infoBuilder.setJavaDoc(resolved);
+        }
         for (FieldInfo recordField : recordFields) {
             recordField.builder().commit();
         }
@@ -133,6 +147,16 @@ public class ResolverImpl implements Resolver {
         for (TypeInfo.Builder builder : types) {
             builder.commit();
         }
+    }
+
+    private JavaDoc resolveJavaDoc(JavaDocToDo javaDocToDo) {
+        List<JavaDoc.Tag> newTags = javaDocToDo.javaDoc.tags().stream().map(tag -> {
+            if (tag.identifier().isReference()) {
+                return parseHelper.parseJavaDocReferenceInTag(javaDocToDo.context, javaDocToDo.infoBuilder, tag);
+            }
+            return tag;
+        }).toList();
+        return javaDocToDo.javaDoc.withTags(newTags);
     }
 
     private AnnotationExpression parseAnnotationExpression(AnnotationTodo at) {
