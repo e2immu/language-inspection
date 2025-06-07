@@ -81,7 +81,7 @@ public class TestTranslateAnonymousType extends CommonTest {
             assertSame(xAnon, xPreDir.typeInfo());
         }
         {
-            TypeInfo translated = X.translate(tm);
+            TypeInfo translated = X.translate(tm).getFirst();
             assertNotSame(X, translated);
             MethodInfo tMethod = translated.findUniqueMethod("method", 1);
             ExpressionAsStatement tEas = (ExpressionAsStatement) tMethod.methodBody().statements().get(0);

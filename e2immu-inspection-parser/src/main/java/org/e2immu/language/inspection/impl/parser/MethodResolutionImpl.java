@@ -1175,7 +1175,6 @@ public class MethodResolutionImpl implements MethodResolution {
 
 
     private void infer(Map<NamedType, ParameterizedType> map, ParameterizedType best, ParameterizedType worse) {
-        LOGGER.info("Trying to learn from {} <- {}", best, worse);
         if (best.typeParameter() == null && worse.typeParameter() != null) {
             map.put(worse.typeParameter(), best);
             return;
