@@ -15,7 +15,7 @@ public interface ParseHelper {
 
     Expression parseExpression(Context context, String index, ForwardType forward, Object expression);
 
-    JavaDoc.Tag parseJavaDocReferenceInTag(Context context, Info.Builder<?> infoBuilder, JavaDoc.Tag tag);
+    JavaDoc.Tag parseJavaDocReferenceInTag(Context context, Info info, JavaDoc.Tag tag);
 
     void resolveMethodInto(MethodInfo.Builder methodInfoBuilder, Context context, ForwardType forwardType,
                            Object eci, Object expression);

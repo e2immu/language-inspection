@@ -29,7 +29,7 @@ public interface Resolver {
     // add to the to-do list, but only for overrides
     void addRecordAccessor(MethodInfo accessor);
 
-    void addJavadoc(Info.Builder<?> infoBuilder, Context context, JavaDoc javaDoc);
+    void addJavadoc(Info info, Info.Builder<?> infoBuilder, Context context, JavaDoc javaDoc);
 
     Resolver newEmpty();
 

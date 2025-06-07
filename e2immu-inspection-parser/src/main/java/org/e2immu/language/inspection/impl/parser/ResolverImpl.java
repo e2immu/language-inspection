@@ -43,7 +43,7 @@ public class ResolverImpl implements Resolver {
                           Context context) {
     }
 
-    record JavaDocToDo(Info.Builder<?> infoBuilder, Context context, JavaDoc javaDoc) {
+    record JavaDocToDo(Info info, Info.Builder<?> infoBuilder, Context context, JavaDoc javaDoc) {
     }
 
     private final List<Todo> todos = new LinkedList<>();
@@ -65,8 +65,8 @@ public class ResolverImpl implements Resolver {
     }
 
     @Override
-    public void addJavadoc(Info.Builder<?> infoBuilder, Context context, JavaDoc javaDoc) {
-        javaDocs.add(new JavaDocToDo(infoBuilder, context, javaDoc));
+    public void addJavadoc(Info info, Info.Builder<?> infoBuilder, Context context, JavaDoc javaDoc) {
+        javaDocs.add(new JavaDocToDo(info, infoBuilder, context, javaDoc));
     }
 
     @Override
@@ -152,7 +152,14 @@ public class ResolverImpl implements Resolver {
     private JavaDoc resolveJavaDoc(JavaDocToDo javaDocToDo) {
         List<JavaDoc.Tag> newTags = javaDocToDo.javaDoc.tags().stream().map(tag -> {
             if (tag.identifier().isReference()) {
-                return parseHelper.parseJavaDocReferenceInTag(javaDocToDo.context, javaDocToDo.infoBuilder, tag);
+                return parseHelper.parseJavaDocReferenceInTag(javaDocToDo.context, javaDocToDo.info, tag);
+            }
+            if (tag.identifier() == JavaDoc.TagIdentifier.PARAM && javaDocToDo.info instanceof MethodInfo mi) {
+                String trimmedContent = tag.content();
+                ParameterInfo pi = mi.parameters().stream()
+                        .filter(p -> p.name().equals(trimmedContent))
+                        .findFirst().orElse(null);
+                return tag.withResolvedReference(pi);
             }
             return tag;
         }).toList();
