@@ -1,11 +1,11 @@
 package org.e2immu.language.inspection.integration.java.other;
 
 import org.e2immu.language.cst.api.element.Comment;
+import org.e2immu.language.cst.api.element.SingleLineComment;
 import org.e2immu.language.cst.api.info.MethodInfo;
 import org.e2immu.language.cst.api.info.TypeInfo;
 import org.e2immu.language.cst.api.statement.Statement;
 import org.e2immu.language.cst.api.statement.TryStatement;
-import org.e2immu.language.cst.impl.element.SingleLineComment;
 import org.e2immu.language.inspection.integration.java.CommonTest;
 import org.intellij.lang.annotations.Language;
 import org.junit.jupiter.api.Test;
