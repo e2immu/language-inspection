@@ -273,7 +273,7 @@ public class JavaInspectorImpl implements JavaInspector {
                     URL jarUrl = resources.findJarInClassPath(path);
                     if (jarUrl == null) {
                         String msgString = msg + " part '" + sourceSet.uri() + "': jar not found";
-                        LOGGER.warn(msg);
+                        LOGGER.warn(msgString);
                         initializationProblems.add(new InitializationProblem(msgString, null));
                     } else {
                         addJar(resources, path, jarUrl, sourceSet);
