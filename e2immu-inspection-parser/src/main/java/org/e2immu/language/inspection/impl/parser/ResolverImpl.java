@@ -150,7 +150,9 @@ public class ResolverImpl implements Resolver {
     }
 
     private JavaDoc resolveJavaDoc(JavaDocToDo javaDocToDo) {
-        List<JavaDoc.Tag> newTags = javaDocToDo.javaDoc.tags().stream().map(tag -> {
+        List<JavaDoc.Tag> newTags = javaDocToDo.javaDoc.tags().stream()
+                .filter(tag -> tag.identifier() != null)
+                .map(tag -> {
             if (tag.identifier().isReference()) {
                 return parseHelper.parseJavaDocReferenceInTag(javaDocToDo.context, javaDocToDo.info, tag);
             }
