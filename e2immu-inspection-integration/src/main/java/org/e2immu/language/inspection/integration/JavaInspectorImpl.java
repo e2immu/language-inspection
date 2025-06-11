@@ -225,7 +225,7 @@ public class JavaInspectorImpl implements JavaInspector {
             if (parts.length >= 1 && !list.isEmpty()) {
                 int n = parts.length - 1;
                 String name = parts[n];
-                if (name.endsWith(".java") && !"package-info.java".equals(name)) {
+                if (name.endsWith(".java")) {
                     String typeName = name.substring(0, name.length() - 5);
                     String packageName = Arrays.stream(parts).limit(n).collect(Collectors.joining("."));
                     SourceFile sourceFile = list.getFirst();
