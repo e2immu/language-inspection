@@ -1,5 +1,6 @@
 package org.e2immu.language.inspection.impl.parser;
 
+import org.e2immu.language.cst.api.info.FieldInfo;
 import org.e2immu.language.cst.api.info.Info;
 import org.e2immu.language.cst.api.info.MethodInfo;
 import org.e2immu.language.cst.api.info.TypeInfo;
@@ -233,5 +234,24 @@ public class ParseResultImpl implements ParseResult {
         List<TypeInfo> types = findMostLikelyType(prefix);
         return types.stream().flatMap(TypeInfo::methodStream)
                 .filter(mi -> mi.name().toLowerCase().equals(methodName)).toList();
+    }
+
+    @Override
+    public List<FieldInfo> findMostLikelyField(String name) {
+        int lastDot = Math.max(name.lastIndexOf('.'), name.lastIndexOf('#'));
+        if (lastDot == name.length() - 1) {
+            return findMostLikelyField(name.substring(0, name.length() - 1));
+        }
+        if (lastDot < 0) {
+            String nameLc = name.toLowerCase();
+            return types.stream().flatMap(TypeInfo::recursiveSubTypeStream).flatMap(ti -> ti.fields().stream())
+                    .filter(f -> nameLc.equals(f.name().toLowerCase()))
+                    .toList();
+        }
+        String fieldName = name.substring(lastDot + 1).toLowerCase();
+        String prefix = name.substring(0, lastDot);
+        List<TypeInfo> types = findMostLikelyType(prefix);
+        return types.stream().flatMap(ti -> ti.fields().stream())
+                .filter(field -> field.name().toLowerCase().equals(fieldName)).toList();
     }
 }

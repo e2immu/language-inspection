@@ -121,4 +121,25 @@ public class TestParseResult extends CommonTest2 {
         assertEquals(1, parseResult.findMostLikelyMethod("methodWithObject(Object)").size());
         assertEquals(1, parseResult.findMostLikelyMethod("methodWithObject(java.lang.Object)").size());
     }
+
+
+    @Language("java")
+    private static final String A_B_X_4 = """
+            package a.b;
+            abstract class X {
+                int i;
+                class Y {
+                    int i;
+                }
+            }
+            """;
+
+    @DisplayName("findMostLikelyField")
+    @Test
+    public void test4() throws IOException {
+        ParseResult parseResult = init(Map.of("a.b.X", A_B_X_4));
+        assertEquals(2, parseResult.findMostLikelyField("i").size());
+        assertEquals(1, parseResult.findMostLikelyField("x.i").size());
+        assertEquals(1, parseResult.findMostLikelyField("y.i").size());
+    }
 }
