@@ -221,6 +221,7 @@ public class JavaInspectorImpl implements JavaInspector {
     private List<SourceFile> computeSourceURIs(Resources sourcePath) {
         List<SourceFile> sourceFiles = new LinkedList<>();
         AtomicInteger ignored = new AtomicInteger();
+        Map<SourceSet, Integer> perSourceSet = new HashMap<>();
         sourcePath.visit(new String[0], (parts, list) -> {
             if (parts.length >= 1 && !list.isEmpty()) {
                 int n = parts.length - 1;
@@ -228,17 +229,20 @@ public class JavaInspectorImpl implements JavaInspector {
                 if (name.endsWith(".java")) {
                     String typeName = name.substring(0, name.length() - 5);
                     String packageName = Arrays.stream(parts).limit(n).collect(Collectors.joining("."));
-                    SourceFile sourceFile = list.getFirst();
-                    if (sourceFile.sourceSet().acceptSource(packageName, typeName)) {
-                        sourceFiles.add(sourceFile);
-                        parts[n] = typeName;
-                    } else {
-                        ignored.incrementAndGet();
+                    for (SourceFile sourceFile : list) {
+                        if (sourceFile.sourceSet().acceptSource(packageName, typeName)) {
+                            sourceFiles.add(sourceFile);
+                            parts[n] = typeName;
+                            perSourceSet.merge(sourceFile.sourceSet(), 1, Integer::sum);
+                        } else {
+                            ignored.incrementAndGet();
+                        }
                     }
                 }
             }
         });
-        LOGGER.info("Found {} .java files in {}, skipped {}", sourceFiles.size(), "source path", ignored);
+        LOGGER.info("Found {} .java files in source path, skipped {}; per source set: {}", sourceFiles.size(),
+                ignored, perSourceSet);
         return List.copyOf(sourceFiles);
     }
 
