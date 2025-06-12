@@ -6,10 +6,7 @@ import org.e2immu.language.cst.api.info.TypeInfo;
 import org.e2immu.language.cst.api.type.ParameterizedType;
 import org.e2immu.language.inspection.api.parser.ParseResult;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -20,6 +17,7 @@ public class ParseResultImpl implements ParseResult {
     private final Map<String, TypeInfo> typesByFQN;
     private final Map<String, Set<TypeInfo>> primaryTypesOfPackage;
     private final Map<TypeInfo, Set<TypeInfo>> children;
+    private final Map<String, List<TypeInfo>> typesBySimpleName;
 
     public ParseResultImpl(Set<TypeInfo> types) {
         this.types = types;
@@ -32,6 +30,7 @@ public class ParseResultImpl implements ParseResult {
         mutableTypesOfPackage.replaceAll((k, s) -> Set.copyOf(s));
         primaryTypesOfPackage = Map.copyOf(mutableTypesOfPackage);
         Map<TypeInfo, Set<TypeInfo>> children = new HashMap<>();
+        Map<String, List<TypeInfo>> typesBySimpleName = new HashMap<>();
         types.stream().flatMap(TypeInfo::recursiveSubTypeStream).forEach(t -> {
             if (t.parentClass() != null && !t.parentClass().typeInfo().isJavaLangObject()) {
                 children.computeIfAbsent(t.parentClass().typeInfo(), type -> new HashSet<>()).add(t);
@@ -39,7 +38,10 @@ public class ParseResultImpl implements ParseResult {
             for (ParameterizedType pt : t.interfacesImplemented()) {
                 children.computeIfAbsent(pt.typeInfo(), type -> new HashSet<>()).add(t);
             }
+            typesBySimpleName.computeIfAbsent(t.simpleName().toLowerCase(), ti -> new ArrayList<>()).add(t);
         });
+        typesBySimpleName.replaceAll((t, ts) -> List.copyOf(ts));
+        this.typesBySimpleName = Map.copyOf(typesBySimpleName);
         this.children = Map.copyOf(children);
     }
 
@@ -72,6 +74,36 @@ public class ParseResultImpl implements ParseResult {
     public TypeInfo firstType() {
         return types.stream().findFirst().orElseThrow();
     }
+
+    @Override
+    public List<TypeInfo> findMostLikelyType(String name) {
+        if (name == null || name.isBlank()) return List.of();
+        TypeInfo byFqn = typesByFQN.get(name);
+        if (byFqn != null) return List.of(byFqn);
+        List<TypeInfo> byName = typesBySimpleName.get(name.toLowerCase());
+        if (byName != null) {
+            return byName;
+        }
+        int dot = name.lastIndexOf('.');
+        if (dot == name.length() - 1) return findMostLikelyType(name.substring(0, name.length() - 1));
+        if (dot >= 0) {
+            String last = name.substring(dot + 1);
+            String prefix = name.substring(0, dot).toLowerCase();
+            List<TypeInfo> byLast = typesBySimpleName.get(last.toLowerCase());
+            if (byLast != null) {
+                return byLast.stream().filter(typeInfo -> {
+                    int dot2 = typeInfo.fullyQualifiedName().lastIndexOf('.');
+                    if (dot2 > 0) {
+                        String typeFqnMinusSimple = typeInfo.fullyQualifiedName().substring(0, dot2);
+                        return typeFqnMinusSimple.toLowerCase().endsWith(prefix);
+                    }
+                    return false;
+                }).toList();
+            }
+        }
+        return null;
+    }
+
 
     @Override
     public TypeInfo findType(String fqn) {
@@ -111,6 +143,41 @@ public class ParseResultImpl implements ParseResult {
             throw new RuntimeException("Cannot find method with fqn '" + methodFqn + "'");
         }
         return null;
+    }
+
+    @Override
+    public List<MethodInfo> findMostLikelyMethod(String name) {
+        if (name == null || name.isBlank()) return List.of();
+        MethodInfo exact = findMethod(name, false);
+        if (exact != null) return List.of(exact);
+        int open = name.indexOf('(');
+        if (open < 0) {
+            return noOpenBracket(name);
+        }
+        throw new UnsupportedOperationException();
+    }
+
+    private List<MethodInfo> noOpenBracket(String name) {
+        // we still may find a method; # is used in docstrings
+        int lastDot = Math.max(name.lastIndexOf('.'), name.lastIndexOf('#'));
+        if (lastDot == name.length() - 1) {
+            return findMostLikelyMethod(name.substring(0, name.length() - 1));
+        }
+        if (lastDot < 0) {
+            List<TypeInfo> typeInfos = findMostLikelyType(name);
+            if (typeInfos == null || typeInfos.isEmpty()) {
+                // we have a simple name... this may be expensive
+                return types.stream().flatMap(TypeInfo::recursiveSubTypeStream)
+                        .flatMap(TypeInfo::methodStream).filter(mi -> name.equals(mi.name())).toList();
+            }
+            // collect all constructors
+            return types.stream().flatMap(ti -> ti.constructors().stream()).toList();
+        }
+        String methodName = name.substring(lastDot + 1).toLowerCase();
+        String prefix = name.substring(0, lastDot);
+        List<TypeInfo> types = findMostLikelyType(prefix);
+        return types.stream().flatMap(TypeInfo::methodStream)
+                .filter(mi -> mi.name().toLowerCase().equals(methodName)).toList();
     }
 
     @Override

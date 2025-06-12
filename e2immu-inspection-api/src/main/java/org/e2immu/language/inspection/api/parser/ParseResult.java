@@ -1,8 +1,10 @@
 package org.e2immu.language.inspection.api.parser;
 
+import org.e2immu.language.cst.api.info.Info;
 import org.e2immu.language.cst.api.info.MethodInfo;
 import org.e2immu.language.cst.api.info.TypeInfo;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -20,11 +22,15 @@ public interface ParseResult {
 
     MethodInfo findMethod(String methodFqn, boolean complain);
 
+    List<TypeInfo> findMostLikelyType(String name);
+
     TypeInfo findType(String typeFqn);
 
     Set<TypeInfo> primaryTypes();
 
     TypeInfo firstType();
+
+    List<MethodInfo> findMostLikelyMethod(String name);
 
     Map<String, Set<TypeInfo>> primaryTypesPerPackage();
 
