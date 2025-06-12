@@ -120,6 +120,12 @@ public class ParseResultImpl implements ParseResult {
         return types.size();
     }
 
+
+    @Override
+    public Map<String, Set<TypeInfo>> primaryTypesPerPackage() {
+        return primaryTypesOfPackage;
+    }
+
     private static final Pattern METHOD = Pattern.compile("([^(]+)\\.[^(.]+\\(.+");
 
     @Override
@@ -154,7 +160,40 @@ public class ParseResultImpl implements ParseResult {
         if (open < 0) {
             return noOpenBracket(name);
         }
+        List<MethodInfo> candidates = noOpenBracket(name.substring(0, open));
+        int close = name.lastIndexOf(')');
+        String argsCsv = close < 0 ? name.substring(open + 1) : name.substring(open + 1, close);
+        List<String> args = splitByComma(argsCsv);
+        int nArgs = args.size();
+        List<MethodInfo> filtered = candidates.stream().filter(mi -> mi.parameters().size() == nArgs).toList();
+        if (filtered.size() < 2) return filtered;
+        // now we'll match argument types
         throw new UnsupportedOperationException();
+    }
+
+    private static List<String> splitByComma(String input) {
+        if (input.isBlank()) return List.of();
+        List<String> result = new ArrayList<>();
+        StringBuilder current = new StringBuilder();
+        int bracketDepth = 0;
+        for (char c : input.toCharArray()) {
+            if (c == '<') {
+                bracketDepth++;
+                current.append(c);
+            } else if (c == '>') {
+                bracketDepth--;
+                current.append(c);
+            } else if (c == ',' && bracketDepth == 0) {
+                result.add(current.toString().trim());
+                current.setLength(0);
+            } else {
+                current.append(c);
+            }
+        }
+        if (!current.isEmpty()) {
+            result.add(current.toString().trim());
+        }
+        return result;
     }
 
     private List<MethodInfo> noOpenBracket(String name) {
@@ -164,24 +203,19 @@ public class ParseResultImpl implements ParseResult {
             return findMostLikelyMethod(name.substring(0, name.length() - 1));
         }
         if (lastDot < 0) {
-            List<TypeInfo> typeInfos = findMostLikelyType(name);
-            if (typeInfos == null || typeInfos.isEmpty()) {
+            List<TypeInfo> matchingTypes = findMostLikelyType(name);
+            if (matchingTypes == null || matchingTypes.isEmpty()) {
                 // we have a simple name... this may be expensive
-                return types.stream().flatMap(TypeInfo::recursiveSubTypeStream)
+                return this.types.stream().flatMap(TypeInfo::recursiveSubTypeStream)
                         .flatMap(TypeInfo::methodStream).filter(mi -> name.equals(mi.name())).toList();
             }
             // collect all constructors
-            return types.stream().flatMap(ti -> ti.constructors().stream()).toList();
+            return matchingTypes.stream().flatMap(ti -> ti.constructors().stream()).toList();
         }
         String methodName = name.substring(lastDot + 1).toLowerCase();
         String prefix = name.substring(0, lastDot);
         List<TypeInfo> types = findMostLikelyType(prefix);
         return types.stream().flatMap(TypeInfo::methodStream)
                 .filter(mi -> mi.name().toLowerCase().equals(methodName)).toList();
-    }
-
-    @Override
-    public Map<String, Set<TypeInfo>> primaryTypesPerPackage() {
-        return primaryTypesOfPackage;
     }
 }

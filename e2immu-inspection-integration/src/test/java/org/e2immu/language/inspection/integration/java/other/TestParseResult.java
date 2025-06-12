@@ -88,4 +88,31 @@ public class TestParseResult extends CommonTest2 {
         assertEquals("a.b.X.Y.R.j()", parseResult.findMostLikelyMethod("y.r.J")
                 .stream().map(MethodInfo::fullyQualifiedName).sorted().collect(Collectors.joining(",")));
     }
+
+
+    @Language("java")
+    private static final String A_B_X_3 = """
+            package a.b;
+            class X {
+                void method(int i);
+                void method(float i);
+                interface Y {
+                    void method(int i);
+                    void method(int i, char c);
+                }
+            }
+            """;
+
+    @DisplayName("findMostLikelyMethod")
+    @Test
+    public void test3() throws IOException {
+        ParseResult parseResult = init(Map.of("a.b.X", A_B_X_3));
+        assertEquals(1, parseResult.findMostLikelyMethod("X").size());
+        assertEquals(0, parseResult.findMostLikelyMethod("Y").size());
+        assertEquals(4, parseResult.findMostLikelyMethod("method").size());
+        assertEquals(0, parseResult.findMostLikelyMethod("toString").size());
+        assertEquals(2, parseResult.findMostLikelyMethod("x.method").size());
+        assertEquals(2, parseResult.findMostLikelyMethod("y.Method").size());
+        assertEquals(1, parseResult.findMostLikelyMethod("y.method(int, char)").size());
+    }
 }
