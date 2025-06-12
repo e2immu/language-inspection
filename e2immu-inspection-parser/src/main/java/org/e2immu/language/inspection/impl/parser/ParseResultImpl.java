@@ -165,10 +165,26 @@ public class ParseResultImpl implements ParseResult {
         String argsCsv = close < 0 ? name.substring(open + 1) : name.substring(open + 1, close);
         List<String> args = splitByComma(argsCsv);
         int nArgs = args.size();
-        List<MethodInfo> filtered = candidates.stream().filter(mi -> mi.parameters().size() == nArgs).toList();
-        if (filtered.size() < 2) return filtered;
-        // now we'll match argument types
-        throw new UnsupportedOperationException();
+        return candidates.stream().filter(mi -> mi.parameters().size() == nArgs)
+                .filter(mi -> mi.parameters().stream()
+                        .allMatch(pi -> someAgreement(pi.parameterizedType(), args.get(pi.index()))))
+                .toList();
+    }
+
+    private static final Pattern SIMPLE = Pattern.compile(".+\\.([^<.]+)");
+
+    private static boolean someAgreement(ParameterizedType pt, String typeString) {
+        if (pt.typeInfo() == null) return typeString.equals(pt.typeParameter().simpleName());
+        String typeStringLc = typeString.toLowerCase();
+        String typeInfoSimpleName = pt.typeInfo().simpleName().toLowerCase();
+        if (typeInfoSimpleName.equals(typeStringLc)) return true;
+        Matcher m = SIMPLE.matcher(typeStringLc);
+        if (m.find()) {
+            String g1 = m.group(1);
+            return g1.equals(typeInfoSimpleName);
+        }
+        if (pt.typeInfo().isPrimitiveExcludingVoid()) return typeStringLc.startsWith(typeInfoSimpleName);
+        return false;
     }
 
     private static List<String> splitByComma(String input) {

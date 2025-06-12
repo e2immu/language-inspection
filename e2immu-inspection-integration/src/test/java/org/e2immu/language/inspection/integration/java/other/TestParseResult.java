@@ -93,13 +93,14 @@ public class TestParseResult extends CommonTest2 {
     @Language("java")
     private static final String A_B_X_3 = """
             package a.b;
-            class X {
+            abstract class X {
                 void method(int i);
                 void method(float i);
                 interface Y {
                     void method(int i);
                     void method(int i, char c);
                 }
+                void methodWithObject(Object o);
             }
             """;
 
@@ -114,5 +115,10 @@ public class TestParseResult extends CommonTest2 {
         assertEquals(2, parseResult.findMostLikelyMethod("x.method").size());
         assertEquals(2, parseResult.findMostLikelyMethod("y.Method").size());
         assertEquals(1, parseResult.findMostLikelyMethod("y.method(int, char)").size());
+        assertEquals(1, parseResult.findMostLikelyMethod("y.method(Integer, Character)").size());
+        assertEquals(0, parseResult.findMostLikelyMethod("y.method(float, Character)").size());
+        assertEquals(1, parseResult.findMostLikelyMethod("methodWithObject").size());
+        assertEquals(1, parseResult.findMostLikelyMethod("methodWithObject(Object)").size());
+        assertEquals(1, parseResult.findMostLikelyMethod("methodWithObject(java.lang.Object)").size());
     }
 }
