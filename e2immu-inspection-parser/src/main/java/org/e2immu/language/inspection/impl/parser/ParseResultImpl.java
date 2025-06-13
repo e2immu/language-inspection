@@ -102,7 +102,7 @@ public class ParseResultImpl implements ParseResult {
                 }).toList();
             }
         }
-        return null;
+        return List.of();
     }
 
 
