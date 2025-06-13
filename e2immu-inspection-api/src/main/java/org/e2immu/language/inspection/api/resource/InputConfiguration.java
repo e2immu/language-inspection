@@ -92,5 +92,6 @@ public interface InputConfiguration {
 
     InputConfiguration withDefaultModules();
     InputConfiguration withE2ImmuSupportFromClasspath();
+    List<SourceSet> findMostLikelySourceSet(String name);
 
 }

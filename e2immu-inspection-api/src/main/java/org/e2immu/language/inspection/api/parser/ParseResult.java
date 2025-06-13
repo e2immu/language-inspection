@@ -25,6 +25,8 @@ public interface ParseResult {
 
     List<FieldInfo> findMostLikelyField(String name);
 
+    List<String> findMostLikelyPackage(String name);
+
     List<TypeInfo> findMostLikelyType(String name);
 
     TypeInfo findType(String typeFqn);

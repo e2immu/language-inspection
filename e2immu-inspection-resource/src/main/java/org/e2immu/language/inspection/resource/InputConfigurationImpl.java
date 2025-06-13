@@ -62,6 +62,17 @@ public record InputConfigurationImpl(Path workingDirectory,
     }
 
     @Override
+    public List<SourceSet> findMostLikelySourceSet(String name) {
+        List<SourceSet> exact = Stream.concat(classPathParts.stream(), sourceSets.stream())
+                .filter(sourceSet -> sourceSet.name().equals(name))
+                .toList();
+        if (exact.size() == 1) return exact;
+        return Stream.concat(classPathParts.stream(), sourceSets.stream())
+                .filter(sourceSet -> sourceSet.name().contains(name))
+                .toList();
+    }
+
+    @Override
     public String toString() {
         return "InputConfiguration:" +
                NL_TAB + "sourcesSets=" + sourceSets +

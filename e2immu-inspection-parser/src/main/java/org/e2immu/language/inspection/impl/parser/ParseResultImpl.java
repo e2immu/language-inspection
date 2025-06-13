@@ -238,6 +238,7 @@ public class ParseResultImpl implements ParseResult {
 
     @Override
     public List<FieldInfo> findMostLikelyField(String name) {
+        if (name == null || name.isBlank()) return List.of();
         int lastDot = Math.max(name.lastIndexOf('.'), name.lastIndexOf('#'));
         if (lastDot == name.length() - 1) {
             return findMostLikelyField(name.substring(0, name.length() - 1));
@@ -253,5 +254,13 @@ public class ParseResultImpl implements ParseResult {
         List<TypeInfo> types = findMostLikelyType(prefix);
         return types.stream().flatMap(ti -> ti.fields().stream())
                 .filter(field -> field.name().toLowerCase().equals(fieldName)).toList();
+    }
+
+    @Override
+    public List<String> findMostLikelyPackage(String name) {
+        if (name == null || name.isBlank()) return List.of();
+        if (primaryTypesOfPackage.containsKey(name)) return List.of(name);
+        String nameLc = name.toLowerCase();
+        return primaryTypesOfPackage.keySet().stream().filter(pkg -> pkg.toLowerCase().contains(nameLc)).toList();
     }
 }

@@ -17,7 +17,7 @@ import java.util.LinkedList;
 import java.util.List;
 
 public class ResolverImpl implements Resolver {
-    private static final Logger LOGGER = LoggerFactory.getLogger(Resolver.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(ResolverImpl.class);
 
     private final ParseHelper parseHelper;
     private final ComputeMethodOverrides computeMethodOverrides;
@@ -95,7 +95,7 @@ public class ResolverImpl implements Resolver {
     }
 
     public void resolve() {
-        LOGGER.info("Start resolving {} annotations, {} type(s), {} field(s)/method(s)", annotationTodos.size(),
+        LOGGER.debug("Start resolving {} annotations, {} type(s), {} field(s)/method(s)", annotationTodos.size(),
                 types.size(), todos.size());
 
         for (AnnotationTodo annotationTodo : annotationTodos) {
