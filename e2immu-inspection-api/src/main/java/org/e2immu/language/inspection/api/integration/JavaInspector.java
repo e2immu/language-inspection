@@ -28,6 +28,8 @@ public interface JavaInspector {
     interface Invalidated extends Function<TypeInfo, InvalidationState> {
     }
 
+    Invalidated INVALIDATED_ALL = t -> InvalidationState.INVALID;
+
     record ParseOptions(boolean failFast, boolean detailedSources, boolean allowCreationOfStubTypes,
                         Invalidated invalidated) {
     }
