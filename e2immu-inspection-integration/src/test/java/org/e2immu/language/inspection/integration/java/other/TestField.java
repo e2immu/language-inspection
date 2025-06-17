@@ -2,13 +2,14 @@ package org.e2immu.language.inspection.integration.java.other;
 
 import org.e2immu.language.cst.api.element.DetailedSources;
 import org.e2immu.language.cst.api.expression.Assignment;
+import org.e2immu.language.cst.api.expression.BinaryOperator;
 import org.e2immu.language.cst.api.expression.VariableExpression;
 import org.e2immu.language.cst.api.info.FieldInfo;
 import org.e2immu.language.cst.api.info.MethodInfo;
 import org.e2immu.language.cst.api.info.TypeInfo;
 import org.e2immu.language.cst.api.statement.ExpressionAsStatement;
+import org.e2immu.language.cst.api.statement.Statement;
 import org.e2immu.language.cst.api.variable.FieldReference;
-import org.e2immu.language.cst.api.variable.This;
 import org.e2immu.language.inspection.integration.java.CommonTest;
 import org.intellij.lang.annotations.Language;
 import org.junit.jupiter.api.Test;
@@ -74,5 +75,32 @@ public class TestField extends CommonTest {
         assertEquals("Type int[]", iArray.type().toString());
         FieldInfo j = typeInfo.getFieldByName("j", true);
         assertEquals("Type int", j.type().toString());
+    }
+
+
+    @Language("java")
+    private static final String INPUT3 = """
+            package a.b;
+            class B {
+                final static int MAX = 3;
+                public boolean m(int j) {
+                  return B.MAX < j;
+                }
+            }
+            """;
+
+    @Test
+    public void test3() {
+        TypeInfo typeInfo = javaInspector.parse(INPUT3);
+        assertEquals("B", typeInfo.simpleName());
+        Statement s0 = typeInfo.findUniqueMethod("m", 1).methodBody().statements().getFirst();
+        if (s0.expression() instanceof BinaryOperator bo) {
+            assertEquals("B.MAX", bo.lhs().toString());
+            if (bo.lhs() instanceof VariableExpression ve && ve.variable() instanceof FieldReference fr) {
+                assertEquals("B", fr.scope().toString());
+                assertEquals("5-14:5-14", fr.scope().source().compact2());
+            } else fail();
+        } else fail("Have " + s0.expression());
+
     }
 }
