@@ -1,5 +1,7 @@
 package org.e2immu.language.inspection.integration.java.other;
 
+import org.e2immu.language.cst.api.element.DetailedSources;
+import org.e2immu.language.cst.api.element.Source;
 import org.e2immu.language.cst.api.expression.MethodCall;
 import org.e2immu.language.cst.api.expression.VariableExpression;
 import org.e2immu.language.cst.api.info.MethodInfo;
@@ -9,6 +11,7 @@ import org.e2immu.language.cst.api.type.ParameterizedType;
 import org.e2immu.language.cst.api.type.TypeParameter;
 import org.e2immu.language.cst.api.variable.This;
 import org.e2immu.language.cst.impl.output.QualificationImpl;
+import org.e2immu.language.inspection.integration.JavaInspectorImpl;
 import org.e2immu.language.inspection.integration.java.CommonTest;
 import org.intellij.lang.annotations.Language;
 import org.junit.jupiter.api.DisplayName;
@@ -16,7 +19,8 @@ import org.junit.jupiter.api.Test;
 
 import java.lang.invoke.TypeDescriptor;
 import java.util.Arrays;
-import java.util.HashSet;
+import java.util.List;
+import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -440,4 +444,45 @@ public class TestTypeParameter extends CommonTest {
             assertSame(tp0, tb0p0.typeParameter());
         }
     }
+
+
+    @Language("java")
+    public static final String INPUT9 = """
+            package a;
+            import java.util.List;
+            import java.util.Map;
+            
+            interface A extends Map<String,B>, List<B> {
+                class B {
+                }
+            }
+            """;
+
+    @Test
+    public void test9() {
+        TypeInfo A = javaInspector.parse(INPUT9, new JavaInspectorImpl.ParseOptionsBuilder().setDetailedSources(true).build());
+        DetailedSources ds = A.source().detailedSources();
+        assertEquals("5-13:5-19", ds.detail(DetailedSources.EXTENDS).compact2());
+        ParameterizedType map = A.interfacesImplemented().getFirst();
+        assertEquals("5-21:5-33", ds.detail(map).compact2());
+        ParameterizedType list = A.interfacesImplemented().get(1);
+        assertEquals("5-36:5-42", ds.detail(list).compact2());
+        ParameterizedType stringInMap = map.parameters().getFirst();
+        assertEquals("5-25:5-30", ds.detail(stringInMap).compact2());
+        ParameterizedType classBinMap = map.parameters().get(1);
+        assertEquals("5-32:5-32", ds.detail(classBinMap).compact2());
+        TypeInfo classBinMapTypeInfo = classBinMap.typeInfo();
+        ParameterizedType classBinList = list.parameters().getFirst();
+        assertEquals("5-41:5-41", ds.detail(classBinList).compact2());
+        List<Source> asList = ds.details(classBinList);
+        assertEquals(1, asList.size());
+        assertSame(asList.getFirst(), ds.detail(classBinList));
+        TypeInfo classBinListTypeInfo = list.parameters().getFirst().typeInfo();
+        assertSame(classBinListTypeInfo, classBinMapTypeInfo);
+        List<Source> detailsOfB = ds.details(classBinListTypeInfo);
+        assertEquals("5-32:5-32,5-41:5-41",
+                detailsOfB.stream().map(Source::compact2).collect(Collectors.joining(",")));
+        assertTrue(ds.details(A).isEmpty());
+    }
+
 }
