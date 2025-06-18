@@ -2,6 +2,7 @@ package org.e2immu.language.inspection.integration.java.other;
 
 import org.e2immu.language.cst.api.expression.*;
 import org.e2immu.language.cst.api.info.MethodInfo;
+import org.e2immu.language.cst.api.info.ParameterInfo;
 import org.e2immu.language.cst.api.info.TypeInfo;
 import org.e2immu.language.cst.api.statement.LocalVariableCreation;
 import org.e2immu.language.inspection.integration.java.CommonTest;
@@ -36,6 +37,11 @@ public class TestLambda extends CommonTest {
             && mc.parameterExpressions().getFirst() instanceof Lambda lambda) {
             MethodInfo mi = lambda.methodInfo();
             assertEquals("7-43:7-54", mi.methodBody().source().compact2());
+            assertTrue(mi.isSynthetic());
+            ParameterInfo s = mi.parameters().getFirst() ;
+            assertFalse(s.isSynthetic());
+            assertEquals("7-38:7-41", s.source().compact2());
+            assertEquals("s", s.name());
             TypeInfo ti = mi.typeInfo();
             assertEquals("C.$0", ti.fullyQualifiedName());
             assertEquals(1, ti.interfacesImplemented().size());
@@ -65,5 +71,32 @@ public class TestLambda extends CommonTest {
         TypeInfo typeInfo = javaInspector.parse(INPUT2);
         MethodInfo method1 = typeInfo.findUniqueMethod("method1", 1);
 
+    }
+
+
+    @Language("java")
+    private static final String INPUT3 = """
+            package a.b;
+            class C {
+                interface A { void accept(int a, int b) {} }
+                void method1() {
+                    m((s, t)->System.out.println(s + " = " + t));
+                }
+                void m(A a) {
+                    // do sth
+                }
+            }
+            """;
+
+    @Test
+    public void test3() {
+        TypeInfo typeInfo = javaInspector.parse(INPUT3);
+        MethodInfo method1 = typeInfo.findUniqueMethod("method1", 0);
+        MethodCall callM = (MethodCall) method1.methodBody().statements().getFirst().expression();
+        Lambda lambda = (Lambda) callM.parameterExpressions().getFirst();
+        MethodInfo lambdaMethod = lambda.methodInfo();
+        ParameterInfo s = lambda.parameters().getFirst();
+        assertEquals("s", s.name());
+        assertEquals("5-12:5-12", s.source().compact2());
     }
 }

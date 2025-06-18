@@ -1,8 +1,11 @@
 package org.e2immu.language.inspection.integration.java.method;
 
+import org.e2immu.language.cst.api.element.DetailedSources;
 import org.e2immu.language.cst.api.info.MethodInfo;
 import org.e2immu.language.cst.api.info.ParameterInfo;
 import org.e2immu.language.cst.api.info.TypeInfo;
+import org.e2immu.language.cst.api.type.ParameterizedType;
+import org.e2immu.language.inspection.integration.JavaInspectorImpl;
 import org.e2immu.language.inspection.integration.java.CommonTest;
 import org.intellij.lang.annotations.Language;
 import org.junit.jupiter.api.Test;
@@ -256,21 +259,35 @@ public class TestMethodCall6 extends CommonTest {
 
     @Test
     public void test9() {
-        TypeInfo typeInfo = javaInspector.parse(INPUT9);
+        TypeInfo typeInfo = javaInspector.parse(INPUT9,
+                new JavaInspectorImpl.ParseOptionsBuilder().setDetailedSources(true).build());
         MethodInfo addAll = typeInfo.findUniqueMethod("addAll", 2);
         assertEquals(2, addAll.parameters().size());
-        ParameterInfo p0 = addAll.parameters().get(0);
+        ParameterInfo p0 = addAll.parameters().getFirst();
         assertTrue(p0.isFinal());
         assertFalse(p0.isVarArgs());
         assertEquals("Type param T[]", p0.parameterizedType().toString());
+        DetailedSources detailedSourcesP0 = p0.source().detailedSources();
+        assertNotNull(detailedSourcesP0);
+        assertEquals("13-33:13-35", detailedSourcesP0.detail(p0.parameterizedType()).compact2());
+        ParameterizedType associated0 = (ParameterizedType) detailedSourcesP0.associatedObject(p0.parameterizedType());
+        assertEquals("Type param T", associated0.toString());
+        assertEquals("13-33:13-33", detailedSourcesP0.detail(associated0).compact2());
+
         ParameterInfo p1 = addAll.parameters().get(1);
         assertTrue(p1.isFinal());
         assertTrue(p1.isVarArgs());
         assertEquals("Type param T[]", p1.parameterizedType().toString());
+        DetailedSources detailedSourcesP1 = p1.source().detailedSources();
+        assertNotNull(detailedSourcesP1);
+        assertEquals("13-51:13-54", detailedSourcesP1.detail(p1.parameterizedType()).compact2());
+        ParameterizedType associated1 = (ParameterizedType) detailedSourcesP1.associatedObject(p1.parameterizedType());
+        assertEquals("Type param T", associated1.toString());
+        assertEquals("13-51:13-51", detailedSourcesP1.detail(associated1).compact2());
 
         MethodInfo method = typeInfo.findUniqueMethod("method", 2);
         assertEquals(2, method.parameters().size());
-        ParameterInfo p0m = method.parameters().get(0);
+        ParameterInfo p0m = method.parameters().getFirst();
         assertFalse(p0m.isFinal());
         assertFalse(p0m.isVarArgs());
 
