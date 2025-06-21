@@ -1,8 +1,9 @@
 package org.e2immu.language.inspection.api.parser;
 
+import org.e2immu.language.cst.api.element.CompilationUnit;
 import org.e2immu.language.cst.api.info.TypeInfo;
 
-import java.util.Collection;
+import java.net.URI;
 import java.util.List;
 import java.util.Set;
 
@@ -15,11 +16,41 @@ public interface Summary {
     boolean haveErrors();
 
     class ParseException extends RuntimeException {
+        private final URI uri;
+        private final Throwable throwable;
         private final Object where;
 
-        public ParseException(Object where, String msg) {
-            super(msg + " in " + where);
+
+        public ParseException(URI uri, Object where, String msg, Throwable throwable) {
+            super(makeMessage(uri, where, msg, throwable), throwable);
+            this.uri = uri;
             this.where = where;
+            this.throwable = throwable;
+        }
+
+        private static String makeMessage(URI uri, Object where, String msg, Throwable throwable) {
+            return (throwable == null ? "" : "Exception: " + throwable.getClass().getCanonicalName() + "\n")
+                   + "In: " + uri + (uri == where || where == null ? "" : "\nIn: " + where) + "\nMessage: " + msg;
+        }
+
+        public ParseException(Context context, Object where, String msg, Throwable throwable) {
+            this(context.enclosingType().compilationUnit().uri(), where, msg, throwable);
+        }
+
+        public ParseException(Context context, String msg) {
+            this(context.enclosingType().compilationUnit().uri(), context.info(), msg, null);
+        }
+
+        public ParseException(CompilationUnit compilationUnit, Object where, String msg, Throwable throwable) {
+            this(compilationUnit.uri(), where, msg, throwable);
+        }
+
+        public URI uri() {
+            return uri;
+        }
+
+        public Throwable throwable() {
+            return throwable;
         }
 
         public Object where() {
@@ -28,26 +59,16 @@ public interface Summary {
     }
 
     class FailFastException extends RuntimeException {
-        public FailFastException(String msg) {
-            super(msg);
+        public FailFastException(ParseException parseException) {
+            super(parseException);
         }
     }
 
-    void addMethod(boolean success);
+    void addType(TypeInfo typeInfo);
 
-    void addType(TypeInfo typeInfo, boolean success);
+    void addParseException(ParseException parseException);
 
-    void addParserError(Throwable parserError);
-
-    int methodsSuccess();
-
-    int methodsWithErrors();
-
-    int typesSuccess();
-
-    int typesWithErrors();
-
-    List<Throwable> parserErrors();
+    List<ParseException> parseExceptions();
 
     Set<TypeInfo> types();
 

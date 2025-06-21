@@ -250,15 +250,15 @@ public class MethodResolutionImpl implements MethodResolution {
         Map<MethodTypeParameterMap, Integer> methodCandidates = initialMethodCandidates(list, scope, numArguments,
                 methodName);
         if (methodCandidates.isEmpty()) {
-            throw new Summary.ParseException(context.info(), "No method candidates for " + methodName
-                                                             + ", " + numArguments + " arg(s)");
+            throw new Summary.ParseException(context,
+                    "No method candidates for " + methodName + ", " + numArguments + " arg(s)");
         }
         TypeParameterMap extra = forwardType.extra().merge(scope.typeParameterMap());
         Candidate candidate = chooseCandidateAndEvaluateCall(context, index, methodName, methodCandidates,
                 unparsedArguments, forwardType.type(), extra, true);
 
         if (candidate == null) {
-            throw new Summary.ParseException(context.info(), "Failed to find a unique method candidate");
+            throw new Summary.ParseException(context, "Failed to find a unique method candidate");
         }
         MethodInfo resolvedMethod = candidate.method.methodInfo();
         //LOGGER.info("Resulting method is {}, type params {}", resolvedMethod, resolvedMethod.typeParameters()
@@ -1234,7 +1234,7 @@ public class MethodResolutionImpl implements MethodResolution {
         Map<MethodTypeParameterMap, Integer> methodCandidates = methodCandidatesForMethodReference(context, methodName,
                 scopeType, isConstructor, numParametersInForwardSam, scopeIsAType);
         if (methodCandidates.isEmpty()) {
-            throw new Summary.ParseException(context.info(), "Cannot find a candidate for " + methodName);
+            throw new Summary.ParseException(context, "Cannot find a candidate for " + methodName);
         }
         List<MethodTypeParameterMap> sorted;
         if (methodCandidates.size() > 1) {
@@ -1243,7 +1243,7 @@ public class MethodResolutionImpl implements MethodResolution {
             sorted = List.copyOf(methodCandidates.keySet());
         }
         if (sorted.isEmpty()) {
-            throw new Summary.ParseException(context.info(), "I've killed all the candidates myself??");
+            throw new Summary.ParseException(context, "I've killed all the candidates myself??");
         }
         return sorted.getFirst();
     }

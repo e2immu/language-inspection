@@ -6,10 +6,7 @@ import org.e2immu.language.cst.api.expression.AnnotationExpression;
 import org.e2immu.language.cst.api.expression.Expression;
 import org.e2immu.language.cst.api.info.*;
 import org.e2immu.language.cst.api.type.TypeParameter;
-import org.e2immu.language.inspection.api.parser.Context;
-import org.e2immu.language.inspection.api.parser.ForwardType;
-import org.e2immu.language.inspection.api.parser.ParseHelper;
-import org.e2immu.language.inspection.api.parser.Resolver;
+import org.e2immu.language.inspection.api.parser.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -111,25 +108,23 @@ public class ResolverImpl implements Resolver {
         try {
             for (Todo todo : todos) {
                 if (todo.infoBuilder instanceof FieldInfo.Builder builder) {
-                    boolean success = true;
                     try {
                         resolveField(todo, builder);
                     } catch (RuntimeException re) {
-                        success = false;
-                        todo.context.summary().addParserError(re);
+                        LOGGER.error("Caught exception resolving field {}", todo.info);
+                        Summary.ParseException pe = new Summary.ParseException(todo.context, todo.info, re.getMessage(), re);
+                        todo.context.summary().addParseException(pe);
                     }
-                    todo.context.summary().addType(todo.context.enclosingType().primaryType(), success);
+                    todo.context.summary().addType(todo.context.enclosingType().primaryType());
                 } else if (todo.infoBuilder instanceof MethodInfo.Builder builder) {
-                    boolean success = true;
                     try {
                         resolveMethod(todo, builder);
                     } catch (RuntimeException re) {
-                        LOGGER.error("Caught exception resolving {}", todo.info);
-                        success = false;
-                        todo.context.summary().addParserError(re);
+                        LOGGER.error("Caught exception resolving method {}", todo.info);
+                        Summary.ParseException pe = new Summary.ParseException(todo.context, todo.info, re.getMessage(), re);
+                        todo.context.summary().addParseException(pe);
                     }
-                    todo.context.summary().addType(todo.context.enclosingType().primaryType(), success);
-                    todo.context.summary().addMethod(success);
+                    todo.context.summary().addType(todo.context.enclosingType().primaryType());
                 } else throw new UnsupportedOperationException("In java, we cannot have expressions in other places");
                 ++cnt;
             }
@@ -153,32 +148,32 @@ public class ResolverImpl implements Resolver {
         List<JavaDoc.Tag> newTags = javaDocToDo.javaDoc.tags().stream()
                 .filter(tag -> tag.identifier() != null)
                 .map(tag -> {
-            if (tag.identifier().isReference()) {
-                return parseHelper.parseJavaDocReferenceInTag(javaDocToDo.context, javaDocToDo.info, tag);
-            }
-            if (tag.identifier() == JavaDoc.TagIdentifier.PARAM) {
-                String trimmedContent = tag.content();
-                if (trimmedContent.startsWith("<") && trimmedContent.endsWith(">")) {
-                    String typeParameterName = trimmedContent.substring(1, trimmedContent.length() - 1);
-                    List<TypeParameter> typeParameters;
-                    if (javaDocToDo.info instanceof TypeInfo ti) typeParameters = ti.typeParameters();
-                    else if (javaDocToDo.info instanceof MethodInfo mi) typeParameters = mi.typeParameters();
-                    else typeParameters = null;
-                    if (typeParameters != null) {
-                        TypeParameter typeParameter = typeParameters.stream()
-                                .filter(tp -> typeParameterName.equals(tp.simpleName()))
-                                .findFirst().orElse(null);
-                        return tag.withResolvedReference(typeParameter);
+                    if (tag.identifier().isReference()) {
+                        return parseHelper.parseJavaDocReferenceInTag(javaDocToDo.context, javaDocToDo.info, tag);
                     }
-                } else if (javaDocToDo.info instanceof MethodInfo mi) {
-                    ParameterInfo pi = mi.parameters().stream()
-                            .filter(p -> p.name().equals(trimmedContent))
-                            .findFirst().orElse(null);
-                    return tag.withResolvedReference(pi);
-                }
-            }
-            return tag;
-        }).toList();
+                    if (tag.identifier() == JavaDoc.TagIdentifier.PARAM) {
+                        String trimmedContent = tag.content();
+                        if (trimmedContent.startsWith("<") && trimmedContent.endsWith(">")) {
+                            String typeParameterName = trimmedContent.substring(1, trimmedContent.length() - 1);
+                            List<TypeParameter> typeParameters;
+                            if (javaDocToDo.info instanceof TypeInfo ti) typeParameters = ti.typeParameters();
+                            else if (javaDocToDo.info instanceof MethodInfo mi) typeParameters = mi.typeParameters();
+                            else typeParameters = null;
+                            if (typeParameters != null) {
+                                TypeParameter typeParameter = typeParameters.stream()
+                                        .filter(tp -> typeParameterName.equals(tp.simpleName()))
+                                        .findFirst().orElse(null);
+                                return tag.withResolvedReference(typeParameter);
+                            }
+                        } else if (javaDocToDo.info instanceof MethodInfo mi) {
+                            ParameterInfo pi = mi.parameters().stream()
+                                    .filter(p -> p.name().equals(trimmedContent))
+                                    .findFirst().orElse(null);
+                            return tag.withResolvedReference(pi);
+                        }
+                    }
+                    return tag;
+                }).toList();
         return javaDocToDo.javaDoc.withTags(newTags);
     }
 

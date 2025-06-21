@@ -4,7 +4,6 @@ import org.e2immu.language.cst.api.info.ParameterInfo;
 import org.e2immu.language.cst.api.variable.FieldReference;
 import org.e2immu.language.cst.api.variable.LocalVariable;
 import org.e2immu.language.cst.api.variable.Variable;
-import org.e2immu.language.inspection.api.parser.Summary;
 import org.e2immu.language.inspection.api.parser.VariableContext;
 
 import java.util.HashMap;
@@ -43,7 +42,7 @@ public class VariableContextImpl implements VariableContext {
             variable = parentContext.get(name, false);
         }
         if (variable == null && complain) {
-            throw new Summary.ParseException(this, "Unknown variable in context: '" + name + "'");
+            throw new RuntimeException("Unknown variable in context: '" + name + "'");
         }
         return variable;
     }

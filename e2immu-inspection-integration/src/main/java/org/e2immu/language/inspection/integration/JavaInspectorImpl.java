@@ -27,6 +27,7 @@ import org.e2immu.parser.java.ParseCompilationUnit;
 import org.e2immu.parser.java.ParseHelperImpl;
 import org.e2immu.parser.java.ScanCompilationUnit;
 import org.parsers.java.JavaParser;
+import org.parsers.java.ParseException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -427,7 +428,7 @@ public class JavaInspectorImpl implements JavaInspector {
         } catch (IOException io) {
             LOGGER.error("Caught IO exception", io);
 
-            summary.addParserError(io);
+            summary.addParseException(new Summary.ParseException(uri, uri, io.getMessage(), io));
         }
         return summary;
     }
@@ -448,7 +449,7 @@ public class JavaInspectorImpl implements JavaInspector {
 
     @Override
     public Summary parse(Map<String, String> sourcesByTestProtocolURIString, ParseOptions parseOptions) {
-        Summary summary = new SummaryImpl(true); // once stable, change to false
+        Summary summary = new SummaryImpl(parseOptions.failFast()); // once stable, change to false
         Resolver resolver = new ResolverImpl(runtime.computeMethodOverrides(), new ParseHelperImpl(runtime));
 
         TypeContextImpl typeContext = new TypeContextImpl(runtime, compiledTypesManager, sourceTypeMap,
@@ -469,7 +470,7 @@ public class JavaInspectorImpl implements JavaInspector {
                 typeInfos.forEach(ti -> sourceTypeMap.invalidate(ti.fullyQualifiedName()));
                 String sourceCode = loadSource(sf, sourcesByTestProtocolURIString,
                         sf.sourceSet().sourceEncoding(),
-                        summary::addParserError);
+                        ioe -> new Summary.ParseException(sf.uri(), sf.uri(), ioe.getMessage(), ioe));
                 if (sourceCode != null) {
                     FingerPrint fingerPrint = MD5FingerPrint.compute(sourceCode);
                     sourceFilesToParse.put(sf.withFingerprint(fingerPrint), sourceCode);
@@ -478,7 +479,7 @@ public class JavaInspectorImpl implements JavaInspector {
                 for (TypeInfo ti : typeInfos) {
                     InvalidationState state = invalidated.apply(ti);
                     if (state == UNCHANGED) {
-                        summary.addType(ti, true);
+                        summary.addType(ti);
                     } else if (state == REWIRE) {
                         typesToRewire.add(ti);
                     }
@@ -487,12 +488,17 @@ public class JavaInspectorImpl implements JavaInspector {
         });
         List<SourceFileCompilationUnit> list = new ArrayList<>(sourceFilesToParse.size());
 
-        sourceFilesToParse.forEach((sourceFile, sourceCode) -> {
-            SourceFileCompilationUnit sfCu = parseSourceString(sourceFile, sourceFile.sourceSet(), sourceCode, summary,
-                    parseOptions.detailedSources());
-            list.add(sfCu);
-        });
-
+        for (Map.Entry<SourceFile, String> entry : sourceFilesToParse.entrySet()) {
+            SourceFile sourceFile = entry.getKey();
+            try {
+                SourceFileCompilationUnit sfCu = parseSourceString(sourceFile, sourceFile.sourceSet(), entry.getValue(), summary,
+                        parseOptions.detailedSources());
+                list.add(sfCu);
+            } catch (ParseException parseException) {
+                summary.addParseException(new Summary.ParseException(sourceFile.uri(), sourceFile.uri(), parseException.getMessage(),
+                        parseException));
+            }
+        }
         // PHASE 2: actual parsing of types, methods, fields
 
         InfoMap infoMap = new InfoMapImpl(typesToRewire);
@@ -501,7 +507,7 @@ public class JavaInspectorImpl implements JavaInspector {
             LOGGER.debug("Parsing {}", sfCu.sourceFile().uri());
             List<TypeInfo> types = parseCompilationUnit.parse(sfCu.parsedCu, sfCu.cu);
             types.forEach(ti -> {
-                summary.addType(ti, true);
+                summary.addType(ti);
                 infoMap.put(ti);
             });
             sourceFiles.put(sfCu.sourceFile, List.copyOf(types));
@@ -510,7 +516,7 @@ public class JavaInspectorImpl implements JavaInspector {
         for (TypeInfo typeInfo : typesToRewire) {
             TypeInfo rewired = infoMap.typeInfoRecurseAllPhases(typeInfo);
             sourceTypeMap.put(rewired);
-            summary.addType(rewired, true);
+            summary.addType(rewired);
         }
 
         // PHASE 3: resolving: content of methods, field initializers
