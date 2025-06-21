@@ -1,6 +1,5 @@
 package org.e2immu.language.inspection.integration.java.type;
 
-import org.e2immu.language.cst.api.element.Source;
 import org.e2immu.language.cst.api.expression.ConstructorCall;
 import org.e2immu.language.cst.api.expression.MethodCall;
 import org.e2immu.language.cst.api.expression.TypeExpression;
@@ -14,6 +13,8 @@ import org.e2immu.language.inspection.integration.java.CommonTest;
 import org.intellij.lang.annotations.Language;
 import org.junit.jupiter.api.Test;
 
+import static org.e2immu.language.cst.api.info.TypeInfo.QualificationState.*;
+import static org.e2immu.language.cst.api.info.TypeInfo.qualifyingTypeSimpleName;
 import static org.junit.jupiter.api.Assertions.*;
 
 public class TestFullyQualified extends CommonTest {
@@ -55,35 +56,43 @@ public class TestFullyQualified extends CommonTest {
             ParameterizedType pt = typeExpression.parameterizedType();
             assertEquals("System", pt.detailedString());
             assertEquals("4-8:4-23", typeExpression.source().detailedSources().detail(pt).compact2());
-            assertSame(QualificationState.FULLY_QUALIFIED, qualifyingTypeSimpleName(typeExpression.source(), pt).qs);
+            assertSame(FULLY_QUALIFIED, qualifyingTypeSimpleName(typeExpression.source(), pt).state());
         } else fail();
         {
             MethodInfo make1 = typeInfo.findUniqueMethod("make1", 0);
             ConstructorCall cc = (ConstructorCall) make1.methodBody().statements().getFirst().expression();
             ParameterizedType pt = cc.parameterizedType();
             assertEquals("a.b.X.Y.Z", pt.detailedString());
-            QualificationData qd1 = qualifyingTypeSimpleName(cc.source(), cc.parameterizedType());
-            assertSame(QualificationState.QUALIFIED, qd1.qs);
-            assertSame(typeInfo, qd1.qualifier);
+            TypeInfo.QualificationData qd1 = qualifyingTypeSimpleName(cc.source(), cc.parameterizedType());
+            assertSame(QUALIFIED, qd1.state());
+            assertSame(typeInfo, qd1.qualifier());
         }
         {
-            MethodInfo make1 = typeInfo.findUniqueMethod("make3", 0);
-            ConstructorCall cc = (ConstructorCall) make1.methodBody().statements().getFirst().expression();
+            MethodInfo make2 = typeInfo.findUniqueMethod("make2", 0);
+            ConstructorCall cc = (ConstructorCall) make2.methodBody().statements().getFirst().expression();
             ParameterizedType pt = cc.parameterizedType();
             assertEquals("a.b.X.Y.Z", pt.detailedString());
-            QualificationData qd1 = qualifyingTypeSimpleName(cc.source(), cc.parameterizedType());
-            assertSame(QualificationState.SIMPLE, qd1.qs);
+            TypeInfo.QualificationData qd2 = qualifyingTypeSimpleName(cc.source(), cc.parameterizedType());
+            assertSame(QUALIFIED, qd2.state());
+            assertSame(typeInfo.findSubType("Y"), qd2.qualifier());
+        }
+        {
+            MethodInfo make3 = typeInfo.findUniqueMethod("make3", 0);
+            ConstructorCall cc = (ConstructorCall) make3.methodBody().statements().getFirst().expression();
+            ParameterizedType pt = cc.parameterizedType();
+            assertEquals("a.b.X.Y.Z", pt.detailedString());
+            TypeInfo.QualificationData qd3 = qualifyingTypeSimpleName(cc.source(), cc.parameterizedType());
+            assertSame(SIMPLE, qd3.state());
         }
         {
             MethodInfo make1 = typeInfo.findUniqueMethod("make4", 0);
             ConstructorCall cc = (ConstructorCall) make1.methodBody().statements().getFirst().expression();
             ParameterizedType pt = cc.parameterizedType();
             assertEquals("a.b.X.Y.Z", pt.detailedString());
-            QualificationData qd1 = qualifyingTypeSimpleName(cc.source(), cc.parameterizedType());
-            assertSame(QualificationState.FULLY_QUALIFIED, qd1.qs);
+            TypeInfo.QualificationData qd1 = qualifyingTypeSimpleName(cc.source(), cc.parameterizedType());
+            assertSame(FULLY_QUALIFIED, qd1.state());
         }
     }
-
 
 
     @Language("java")
@@ -117,55 +126,35 @@ public class TestFullyQualified extends CommonTest {
             ConstructorCall cc = (ConstructorCall) make1.methodBody().statements().getFirst().expression();
             ParameterizedType pt = cc.parameterizedType();
             assertEquals("a.b.X.Y.Z<String>", pt.detailedString());
-            QualificationData qd1 = qualifyingTypeSimpleName(cc.source(), cc.parameterizedType());
-            assertSame(QualificationState.QUALIFIED, qd1.qs);
-            assertSame(typeInfo, qd1.qualifier);
+            TypeInfo.QualificationData qd1 = qualifyingTypeSimpleName(cc.source(), cc.parameterizedType());
+            assertSame(QUALIFIED, qd1.state());
+            assertSame(typeInfo, qd1.qualifier());
         }
         {
-            MethodInfo make1 = typeInfo.findUniqueMethod("make3", 0);
-            ConstructorCall cc = (ConstructorCall) make1.methodBody().statements().getFirst().expression();
+            MethodInfo make2 = typeInfo.findUniqueMethod("make2", 0);
+            ConstructorCall cc = (ConstructorCall) make2.methodBody().statements().getFirst().expression();
             ParameterizedType pt = cc.parameterizedType();
-            assertEquals("a.b.X.Y.Z<X>", pt.detailedString());
-            QualificationData qd1 = qualifyingTypeSimpleName(cc.source(), cc.parameterizedType());
-            assertSame(QualificationState.SIMPLE, qd1.qs);
+            assertEquals("a.b.X.Y.Z<a.b.X>", pt.detailedString());
+            TypeInfo.QualificationData qd2 = qualifyingTypeSimpleName(cc.source(), cc.parameterizedType());
+            assertSame(QUALIFIED, qd2.state());
+            assertSame(typeInfo.findSubType("Y"), qd2.qualifier());
+        }
+        {
+            MethodInfo make3 = typeInfo.findUniqueMethod("make3", 0);
+            ConstructorCall cc = (ConstructorCall) make3.methodBody().statements().getFirst().expression();
+            ParameterizedType pt = cc.parameterizedType();
+            assertEquals("a.b.X.Y.Z", pt.detailedString());
+            TypeInfo.QualificationData qd3 = qualifyingTypeSimpleName(cc.source(), cc.parameterizedType());
+            assertSame(SIMPLE, qd3.state());
         }
         {
             MethodInfo make1 = typeInfo.findUniqueMethod("make4", 0);
             ConstructorCall cc = (ConstructorCall) make1.methodBody().statements().getFirst().expression();
             ParameterizedType pt = cc.parameterizedType();
             assertEquals("a.b.X.Y.Z", pt.detailedString());
-            QualificationData qd1 = qualifyingTypeSimpleName(cc.source(), cc.parameterizedType());
-            assertSame(QualificationState.FULLY_QUALIFIED, qd1.qs);
+            TypeInfo.QualificationData qd1 = qualifyingTypeSimpleName(cc.source(), cc.parameterizedType());
+            assertSame(FULLY_QUALIFIED, qd1.state());
         }
     }
 
-
-    enum QualificationState {
-        SIMPLE, QUALIFIED, FULLY_QUALIFIED;
-    }
-
-    record QualificationData(QualificationState qs, TypeInfo qualifier) {
-    }
-
-    static QualificationData qualifyingTypeSimpleName(Source source, ParameterizedType pt) {
-        Source s = source.detailedSources().detail(pt);
-        int len = s.endPos() - s.beginPos() + 1;
-        int diff = len - pt.typeInfo().simpleName().length();
-        if (diff == 0) return new QualificationData(QualificationState.SIMPLE, null);
-        return remainderQualification(diff - 1, pt.typeInfo()); // -1 to remove the dot
-    }
-
-    private static QualificationData remainderQualification(int diff, TypeInfo typeInfo) {
-        assert diff > 0;
-        if (typeInfo.compilationUnitOrEnclosingType().isLeft()) {
-            // the rest must be package
-            return new QualificationData(QualificationState.FULLY_QUALIFIED, null);
-        }
-        TypeInfo enclosing = typeInfo.compilationUnitOrEnclosingType().getRight();
-        int diff2 = diff - enclosing.simpleName().length();
-        if (diff2 == 0) {
-            return new QualificationData(QualificationState.QUALIFIED, enclosing);
-        }
-        return remainderQualification(diff2 - 1, enclosing);
-    }
 }
