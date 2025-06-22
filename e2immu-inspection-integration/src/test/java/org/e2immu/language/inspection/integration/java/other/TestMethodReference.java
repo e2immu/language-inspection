@@ -2,6 +2,7 @@ package org.e2immu.language.inspection.integration.java.other;
 
 import org.e2immu.language.cst.api.expression.MethodCall;
 import org.e2immu.language.cst.api.expression.MethodReference;
+import org.e2immu.language.cst.api.expression.TypeExpression;
 import org.e2immu.language.cst.api.expression.VariableExpression;
 import org.e2immu.language.cst.api.info.MethodInfo;
 import org.e2immu.language.cst.api.info.TypeInfo;
@@ -44,13 +45,16 @@ public class TestMethodReference extends CommonTest {
     @DisplayName("concrete type of MR from forward; constructor")
     @Test
     public void test1() {
-        TypeInfo typeInfo = javaInspector.parse(INPUT1);
+        TypeInfo typeInfo = javaInspector.parse(INPUT1, new JavaInspectorImpl.ParseOptionsBuilder().setDetailedSources(true).build());
         MethodInfo methodInfo = typeInfo.findUniqueMethod("method", 0);
         LocalVariableCreation lvc0 = (LocalVariableCreation) methodInfo.methodBody().statements().getFirst();
         MethodCall mc = (MethodCall) lvc0.localVariable().assignmentExpression();
         MethodReference mr = (MethodReference) mc.parameterExpressions().getFirst();
         assertEquals("Type java.util.function.Supplier<java.util.HashMap<String,Integer>>",
                 mr.parameterizedType().toString());
+        if (mr.scope() instanceof TypeExpression te) {
+            assertEquals("14-41:14-47", te.source().compact2());
+        } else fail();
     }
 
     @Language("java")
