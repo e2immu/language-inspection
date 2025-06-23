@@ -1,9 +1,6 @@
 package org.e2immu.language.inspection.integration.java.type;
 
-import org.e2immu.language.cst.api.expression.ConstructorCall;
-import org.e2immu.language.cst.api.expression.MethodCall;
-import org.e2immu.language.cst.api.expression.TypeExpression;
-import org.e2immu.language.cst.api.expression.VariableExpression;
+import org.e2immu.language.cst.api.expression.*;
 import org.e2immu.language.cst.api.info.MethodInfo;
 import org.e2immu.language.cst.api.info.TypeInfo;
 import org.e2immu.language.cst.api.type.ParameterizedType;
@@ -14,7 +11,6 @@ import org.intellij.lang.annotations.Language;
 import org.junit.jupiter.api.Test;
 
 import static org.e2immu.language.cst.api.info.TypeInfo.QualificationState.*;
-import static org.e2immu.language.cst.api.info.TypeInfo.qualifyingTypeSimpleName;
 import static org.junit.jupiter.api.Assertions.*;
 
 public class TestFullyQualified extends CommonTest {
@@ -56,41 +52,48 @@ public class TestFullyQualified extends CommonTest {
             ParameterizedType pt = typeExpression.parameterizedType();
             assertEquals("System", pt.detailedString());
             assertEquals("4-8:4-23", typeExpression.source().detailedSources().detail(pt).compact2());
-            assertSame(FULLY_QUALIFIED, qualifyingTypeSimpleName(typeExpression.source(), pt).state());
+            TypeInfo.QualificationData qd = pt.qualificationData(typeExpression.source());
+            assertSame(FULLY_QUALIFIED, qd.state());
+            assertEquals("java.lang.System", qd.qualifiedName());
         } else fail();
         {
             MethodInfo make1 = typeInfo.findUniqueMethod("make1", 0);
             ConstructorCall cc = (ConstructorCall) make1.methodBody().statements().getFirst().expression();
             ParameterizedType pt = cc.parameterizedType();
             assertEquals("a.b.X.Y.Z", pt.detailedString());
-            TypeInfo.QualificationData qd1 = qualifyingTypeSimpleName(cc.source(), cc.parameterizedType());
+            TypeInfo.QualificationData qd1 = cc.parameterizedType().qualificationData(cc.source());
             assertSame(QUALIFIED, qd1.state());
             assertSame(typeInfo, qd1.qualifier());
+            assertEquals("X.Y.Z", qd1.qualifiedName());
         }
         {
             MethodInfo make2 = typeInfo.findUniqueMethod("make2", 0);
             ConstructorCall cc = (ConstructorCall) make2.methodBody().statements().getFirst().expression();
             ParameterizedType pt = cc.parameterizedType();
             assertEquals("a.b.X.Y.Z", pt.detailedString());
-            TypeInfo.QualificationData qd2 = qualifyingTypeSimpleName(cc.source(), cc.parameterizedType());
+            TypeInfo.QualificationData qd2 = cc.parameterizedType().qualificationData(cc.source());
             assertSame(QUALIFIED, qd2.state());
             assertSame(typeInfo.findSubType("Y"), qd2.qualifier());
+            assertEquals("Y.Z", qd2.qualifiedName());
         }
         {
             MethodInfo make3 = typeInfo.findUniqueMethod("make3", 0);
             ConstructorCall cc = (ConstructorCall) make3.methodBody().statements().getFirst().expression();
             ParameterizedType pt = cc.parameterizedType();
             assertEquals("a.b.X.Y.Z", pt.detailedString());
-            TypeInfo.QualificationData qd3 = qualifyingTypeSimpleName(cc.source(), cc.parameterizedType());
+            TypeInfo.QualificationData qd3 = cc.parameterizedType().qualificationData(cc.source());
             assertSame(SIMPLE, qd3.state());
+            assertEquals("Z", qd3.qualifiedName());
         }
         {
             MethodInfo make1 = typeInfo.findUniqueMethod("make4", 0);
             ConstructorCall cc = (ConstructorCall) make1.methodBody().statements().getFirst().expression();
             ParameterizedType pt = cc.parameterizedType();
             assertEquals("a.b.X.Y.Z", pt.detailedString());
-            TypeInfo.QualificationData qd1 = qualifyingTypeSimpleName(cc.source(), cc.parameterizedType());
+            TypeInfo.QualificationData qd1 = cc.parameterizedType().qualificationData(cc.source());
+            assertNull(qd1.qualifier());
             assertSame(FULLY_QUALIFIED, qd1.state());
+            assertEquals("a.b.X.Y.Z", qd1.qualifiedName());
         }
     }
 
@@ -126,7 +129,7 @@ public class TestFullyQualified extends CommonTest {
             ConstructorCall cc = (ConstructorCall) make1.methodBody().statements().getFirst().expression();
             ParameterizedType pt = cc.parameterizedType();
             assertEquals("a.b.X.Y.Z<String>", pt.detailedString());
-            TypeInfo.QualificationData qd1 = qualifyingTypeSimpleName(cc.source(), cc.parameterizedType());
+            TypeInfo.QualificationData qd1 = cc.parameterizedType().qualificationData(cc.source());
             assertSame(QUALIFIED, qd1.state());
             assertSame(typeInfo, qd1.qualifier());
         }
@@ -135,7 +138,7 @@ public class TestFullyQualified extends CommonTest {
             ConstructorCall cc = (ConstructorCall) make2.methodBody().statements().getFirst().expression();
             ParameterizedType pt = cc.parameterizedType();
             assertEquals("a.b.X.Y.Z<a.b.X>", pt.detailedString());
-            TypeInfo.QualificationData qd2 = qualifyingTypeSimpleName(cc.source(), cc.parameterizedType());
+            TypeInfo.QualificationData qd2 = cc.parameterizedType().qualificationData(cc.source());
             assertSame(QUALIFIED, qd2.state());
             assertSame(typeInfo.findSubType("Y"), qd2.qualifier());
         }
@@ -144,7 +147,7 @@ public class TestFullyQualified extends CommonTest {
             ConstructorCall cc = (ConstructorCall) make3.methodBody().statements().getFirst().expression();
             ParameterizedType pt = cc.parameterizedType();
             assertEquals("a.b.X.Y.Z", pt.detailedString());
-            TypeInfo.QualificationData qd3 = qualifyingTypeSimpleName(cc.source(), cc.parameterizedType());
+            TypeInfo.QualificationData qd3 = cc.parameterizedType().qualificationData(cc.source());
             assertSame(SIMPLE, qd3.state());
         }
         {
@@ -152,8 +155,113 @@ public class TestFullyQualified extends CommonTest {
             ConstructorCall cc = (ConstructorCall) make1.methodBody().statements().getFirst().expression();
             ParameterizedType pt = cc.parameterizedType();
             assertEquals("a.b.X.Y.Z", pt.detailedString());
-            TypeInfo.QualificationData qd1 = qualifyingTypeSimpleName(cc.source(), cc.parameterizedType());
+            TypeInfo.QualificationData qd1 = cc.parameterizedType().qualificationData(cc.source());
             assertSame(FULLY_QUALIFIED, qd1.state());
+        }
+    }
+
+
+    @Language("java")
+    public static final String INPUT3 = """
+            package a.b;
+            class X {
+                @Docstring(embedding = "1, 2, 3")
+                void method() {
+                   java.lang.System.out.println("?");
+                }
+                @X.Docstring(embedding = "1, 2, 3")
+                void method2() {
+                   java.lang.System.out.println("?");
+                }
+                @a.b.X.Docstring(embedding = "1, 2, 3")
+                void method3() {
+                   java.lang.System.out.println("?");
+                }
+                public @interface Docstring {
+                    String embedding();
+                }
+            }
+            """;
+
+    @Test
+    public void test3() {
+        TypeInfo typeInfo = javaInspector.parse(INPUT3, new JavaInspectorImpl.ParseOptionsBuilder()
+                .setDetailedSources(true).build());
+        {
+            MethodInfo methodInfo = typeInfo.findUniqueMethod("method", 0);
+            AnnotationExpression sw = methodInfo.annotations().getFirst();
+            TypeInfo.QualificationData qd = sw.qualificationData();
+            assertSame(SIMPLE, qd.state());
+            assertEquals("Docstring", qd.qualifiedName());
+            assertNull(qd.qualifier());
+        }
+        {
+            MethodInfo methodInfo = typeInfo.findUniqueMethod("method2", 0);
+            AnnotationExpression sw = methodInfo.annotations().getFirst();
+            TypeInfo.QualificationData qd = sw.qualificationData();
+            assertSame(QUALIFIED, qd.state());
+            assertEquals("X.Docstring", qd.qualifiedName());
+            assertEquals(typeInfo, qd.qualifier());
+        }
+        {
+            MethodInfo methodInfo = typeInfo.findUniqueMethod("method3", 0);
+            AnnotationExpression sw = methodInfo.annotations().getFirst();
+            TypeInfo.QualificationData qd = sw.qualificationData();
+            assertSame(FULLY_QUALIFIED, qd.state());
+            assertEquals("a.b.X.Docstring", qd.qualifiedName());
+            assertNull(qd.qualifier());
+        }
+    }
+
+
+    @Language("java")
+    public static final String INPUT3b = """
+            package a.b;
+            class X {
+                @Docstring
+                void method() {
+                   java.lang.System.out.println("?");
+                }
+                @X.Docstring
+                void method2() {
+                   java.lang.System.out.println("?");
+                }
+                @a.b.X.Docstring
+                void method3() {
+                   java.lang.System.out.println("?");
+                }
+                public @interface Docstring {
+                }
+            }
+            """;
+
+    @Test
+    public void test3b() {
+        TypeInfo typeInfo = javaInspector.parse(INPUT3b, new JavaInspectorImpl.ParseOptionsBuilder()
+                .setDetailedSources(true).build());
+        {
+            MethodInfo methodInfo = typeInfo.findUniqueMethod("method", 0);
+            AnnotationExpression sw = methodInfo.annotations().getFirst();
+            TypeInfo.QualificationData qd = sw.qualificationData();
+            assertSame(SIMPLE, qd.state());
+            assertEquals("Docstring", qd.qualifiedName());
+            assertNull(qd.qualifier());
+        }
+        {
+            MethodInfo methodInfo = typeInfo.findUniqueMethod("method2", 0);
+            AnnotationExpression sw = methodInfo.annotations().getFirst();
+            TypeInfo.QualificationData qd = sw.qualificationData();
+            assertSame(QUALIFIED, qd.state());
+            assertEquals("X.Docstring", qd.qualifiedName());
+            assertEquals(typeInfo, qd.qualifier());
+        }
+        {
+            MethodInfo methodInfo = typeInfo.findUniqueMethod("method3", 0);
+            AnnotationExpression sw = methodInfo.annotations().getFirst();
+            TypeInfo.QualificationData qd = sw.qualificationData();
+            assertSame(FULLY_QUALIFIED, qd.state());
+            assertEquals("a.b.X.Docstring", qd.qualifiedName());
+            assertNull(qd.qualifier());
         }
     }
 
