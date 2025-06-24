@@ -1,5 +1,6 @@
 package org.e2immu.language.inspection.integration.java.method;
 
+import org.e2immu.language.cst.api.expression.Lambda;
 import org.e2immu.language.cst.api.expression.MethodCall;
 import org.e2immu.language.cst.api.expression.MethodReference;
 import org.e2immu.language.cst.api.info.MethodInfo;
@@ -414,4 +415,38 @@ public class TestMethodCall8 extends CommonTest {
 
         assertEquals("Type java.util.stream.Stream<String>", flatMap.concreteReturnType().toString());
     }
+
+
+    @Language("java")
+    private static final String INPUT8 = """
+            package a.b;
+            import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+            class X {
+                interface I {
+
+                }
+                I generate(int i) {
+                    return new I() {};
+                }
+                interface Y {
+                    I generate(I i);
+                }
+                void test(I ii, Y y) {
+                    I i = assertDoesNotThrow(() -> y.generate(ii));
+
+                }
+            }
+            """;
+
+    @DisplayName("assertDoesNotThrow")
+    @Test
+    public void test8() {
+        TypeInfo X = javaInspector.parse(INPUT8);
+        MethodInfo test = X.findUniqueMethod("test", 2);
+        LocalVariableCreation lvc = (LocalVariableCreation) test.methodBody().statements().getFirst();
+        MethodCall mc = (MethodCall) lvc.localVariable().assignmentExpression();
+        Lambda lambda = (Lambda) mc.parameterExpressions().getFirst();
+        // NOT: Executable. We must choose ThrowingSupplier over Executable, because Executable does not return a value
+        assertEquals("Type org.junit.jupiter.api.function.ThrowingSupplier", lambda.concreteFunctionalType().toString());
+     }
 }
