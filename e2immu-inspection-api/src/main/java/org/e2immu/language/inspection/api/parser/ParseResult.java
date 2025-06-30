@@ -1,5 +1,6 @@
 package org.e2immu.language.inspection.api.parser;
 
+import org.e2immu.language.cst.api.element.SourceSet;
 import org.e2immu.language.cst.api.info.FieldInfo;
 import org.e2immu.language.cst.api.info.Info;
 import org.e2immu.language.cst.api.info.MethodInfo;
@@ -16,6 +17,8 @@ computed from a Summary object
 
  */
 public interface ParseResult {
+
+    Map<String, SourceSet> sourceSetsByName();
 
     default MethodInfo findMethod(String methodFqn) {
         return findMethod(methodFqn, true);

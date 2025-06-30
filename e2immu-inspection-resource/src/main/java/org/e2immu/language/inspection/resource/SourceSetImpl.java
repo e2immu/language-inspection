@@ -1,6 +1,7 @@
 package org.e2immu.language.inspection.resource;
 
 import org.e2immu.language.cst.api.element.FingerPrint;
+import org.e2immu.language.cst.api.element.ModuleInfo;
 import org.e2immu.language.cst.api.element.SourceSet;
 import org.e2immu.support.SetOnce;
 
@@ -25,6 +26,7 @@ public class SourceSetImpl implements SourceSet {
     private final Set<SourceSet> dependencies;
     private final SetOnce<FingerPrint> fingerPrint = new SetOnce<>();
     private final SetOnce<FingerPrint> analysisFingerPrint = new SetOnce<>();
+    private final SetOnce<ModuleInfo> moduleInfo = new SetOnce<>();
 
     public SourceSetImpl(String name,
                          List<Path> sourceDirectories, URI uri,
@@ -181,5 +183,15 @@ public class SourceSetImpl implements SourceSet {
     public SourceSet withDependencies(Set<SourceSet> dependencies) {
         return new SourceSetImpl(name, sourceDirectories, uri, sourceEncoding, test, library,
                 externalLibrary, partOfJdk, runtimeOnly, restrictToPackages, dependencies);
+    }
+
+    @Override
+    public void setModuleInfo(ModuleInfo moduleInfo) {
+        this.moduleInfo.set(moduleInfo);
+    }
+
+    @Override
+    public ModuleInfo moduleInfo() {
+        return moduleInfo.getOrDefaultNull();
     }
 }

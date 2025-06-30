@@ -10,6 +10,7 @@ import org.e2immu.language.inspection.integration.java.CommonTest;
 import org.intellij.lang.annotations.Language;
 import org.junit.jupiter.api.Test;
 
+import java.util.Map;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -104,7 +105,7 @@ public class TestExplicitConstructorInvocation extends CommonTest {
             assertSame(C2Constructor1, eci.methodInfo());
         }
 
-        ParseResult parseResult = new ParseResultImpl(Set.of(typeInfo));
+        ParseResult parseResult = new ParseResultImpl(Set.of(typeInfo), Map.of());
         assertEquals("[org.e2immu.analyser.resolver.testexample.ExplicitConstructorInvocation_2.C2]",
                 parseResult.descendants(C1, false).toString());
         Set<TypeInfo> descendants = parseResult.descendants(C1, true);

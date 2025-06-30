@@ -3,6 +3,7 @@ package org.e2immu.language.inspection.integration;
 import org.e2immu.bytecode.java.asm.ByteCodeInspectorImpl;
 import org.e2immu.language.cst.api.element.CompilationUnit;
 import org.e2immu.language.cst.api.element.FingerPrint;
+import org.e2immu.language.cst.api.element.ModuleInfo;
 import org.e2immu.language.cst.api.element.SourceSet;
 import org.e2immu.language.cst.api.info.ImportComputer;
 import org.e2immu.language.cst.api.info.InfoMap;
@@ -25,9 +26,12 @@ import org.e2immu.language.inspection.resource.ResourcesImpl;
 import org.e2immu.language.inspection.resource.SourceSetImpl;
 import org.e2immu.parser.java.ParseCompilationUnit;
 import org.e2immu.parser.java.ParseHelperImpl;
+import org.e2immu.parser.java.ParseModuleInfo;
 import org.e2immu.parser.java.ScanCompilationUnit;
 import org.parsers.java.JavaParser;
+import org.parsers.java.Node;
 import org.parsers.java.ParseException;
+import org.parsers.java.ast.ModularCompilationUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -464,6 +468,7 @@ public class JavaInspectorImpl implements JavaInspector {
         Map<SourceFile, String> sourceFilesToParse = new HashMap<>();
         Set<TypeInfo> typesToRewire = new HashSet<>();
         this.sourceFiles.forEach((sf, typeInfos) -> {
+            summary.ensureSourceSet(sf.sourceSet());
             // TODO if there are multiple primary types here, and only one is invalid, we must make sure that
             //   all the descendants of the other must be rewired. This is an edge case.
             if (typeInfos.isEmpty() || typeInfos.stream().anyMatch(ti -> invalidated.apply(ti) == INVALID)) {
@@ -491,9 +496,24 @@ public class JavaInspectorImpl implements JavaInspector {
         for (Map.Entry<SourceFile, String> entry : sourceFilesToParse.entrySet()) {
             SourceFile sourceFile = entry.getKey();
             try {
-                SourceFileCompilationUnit sfCu = parseSourceString(sourceFile, sourceFile.sourceSet(), entry.getValue(), summary,
-                        parseOptions.detailedSources());
-                list.add(sfCu);
+                if (sourceFile.uri().toString().endsWith("module-info.java")) {
+                    JavaParser parser = new JavaParser(entry.getValue());
+                    parser.setParserTolerant(false);
+                    parser.ModularCompilationUnit();
+                    Node root = parser.rootNode();
+                    if (root instanceof ModularCompilationUnit mcu) {
+                        ModuleInfo moduleInfo = new ParseModuleInfo(runtime, null).parse(mcu, rootContext);
+                        sourceFile.sourceSet().setModuleInfo(moduleInfo);
+
+                    } else {
+                        summary.addParseException(new Summary.ParseException(sourceFile.uri(), sourceFile.uri(),
+                                "Expect ModularCompilationUnit", null));
+                    }
+                } else {
+                    SourceFileCompilationUnit sfCu = parseSourceString(sourceFile, sourceFile.sourceSet(),
+                            entry.getValue(), summary, parseOptions.detailedSources());
+                    list.add(sfCu);
+                }
             } catch (ParseException parseException) {
                 summary.addParseException(new Summary.ParseException(sourceFile.uri(), sourceFile.uri(), parseException.getMessage(),
                         parseException));

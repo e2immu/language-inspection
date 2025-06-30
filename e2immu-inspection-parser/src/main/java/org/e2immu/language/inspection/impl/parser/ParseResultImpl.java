@@ -1,5 +1,6 @@
 package org.e2immu.language.inspection.impl.parser;
 
+import org.e2immu.language.cst.api.element.SourceSet;
 import org.e2immu.language.cst.api.info.FieldInfo;
 import org.e2immu.language.cst.api.info.Info;
 import org.e2immu.language.cst.api.info.MethodInfo;
@@ -19,8 +20,10 @@ public class ParseResultImpl implements ParseResult {
     private final Map<String, Set<TypeInfo>> primaryTypesOfPackage;
     private final Map<TypeInfo, Set<TypeInfo>> children;
     private final Map<String, List<TypeInfo>> typesBySimpleName;
+    private final Map<String, SourceSet> sourceSetsByName;
 
-    public ParseResultImpl(Set<TypeInfo> types) {
+    public ParseResultImpl(Set<TypeInfo> types, Map<String, SourceSet> sourceSetsByName) {
+        this.sourceSetsByName = sourceSetsByName;
         this.types = types;
         typesByFQN = types.stream()
                 .flatMap(TypeInfo::recursiveSubTypeStream)
@@ -44,6 +47,11 @@ public class ParseResultImpl implements ParseResult {
         typesBySimpleName.replaceAll((t, ts) -> List.copyOf(ts));
         this.typesBySimpleName = Map.copyOf(typesBySimpleName);
         this.children = Map.copyOf(children);
+    }
+
+    @Override
+    public Map<String, SourceSet> sourceSetsByName() {
+        return sourceSetsByName;
     }
 
     @Override

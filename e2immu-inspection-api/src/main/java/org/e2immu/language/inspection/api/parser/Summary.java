@@ -1,6 +1,7 @@
 package org.e2immu.language.inspection.api.parser;
 
 import org.e2immu.language.cst.api.element.CompilationUnit;
+import org.e2immu.language.cst.api.element.SourceSet;
 import org.e2immu.language.cst.api.info.TypeInfo;
 
 import java.net.URI;
@@ -12,6 +13,8 @@ When parsing is successful, switch to ParseResult.
 
  */
 public interface Summary {
+
+    void ensureSourceSet(SourceSet sourceSet);
 
     boolean haveErrors();
 

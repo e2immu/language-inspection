@@ -10,6 +10,7 @@ import org.intellij.lang.annotations.Language;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import java.util.Map;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -64,7 +65,7 @@ public class TestRecord extends CommonTest {
         // also, verify the override
         assertTrue(RIset.overrides().contains(Rset));
 
-        ParseResult parseResult = new ParseResultImpl(Set.of(X));
+        ParseResult parseResult = new ParseResultImpl(Set.of(X), Map.of());
         assertEquals("[a.b.X.RI]", parseResult.descendants(R, false).toString());
     }
 }
