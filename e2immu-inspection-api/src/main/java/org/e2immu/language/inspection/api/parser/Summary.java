@@ -73,6 +73,8 @@ public interface Summary {
 
     List<ParseException> parseExceptions();
 
+    Iterable<SourceSet> sourceSets();
+
     Set<TypeInfo> types();
 
     ParseResult parseResult();

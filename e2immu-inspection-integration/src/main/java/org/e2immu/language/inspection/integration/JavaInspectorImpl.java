@@ -528,6 +528,8 @@ public class JavaInspectorImpl implements JavaInspector {
             sourceFiles.put(sfCu.sourceFile, List.copyOf(types));
         }
 
+        resolveModuleInfo(summary);
+
         for (TypeInfo typeInfo : typesToRewire) {
             TypeInfo rewired = infoMap.typeInfoRecurseAllPhases(typeInfo);
             sourceTypeMap.put(rewired);
@@ -538,6 +540,23 @@ public class JavaInspectorImpl implements JavaInspector {
 
         rootContext.resolver().resolve();
         return summary;
+    }
+
+    private void resolveModuleInfo(Summary summary) {
+        for (SourceSet sourceSet : summary.sourceSets()) {
+            if (sourceSet.moduleInfo() != null) {
+                for (ModuleInfo.Uses uses : sourceSet.moduleInfo().uses()) {
+                    TypeInfo resolved = sourceTypeMap.get(uses.api());
+                    if (resolved != null) uses.setApiResolved(resolved);
+                }
+                for (ModuleInfo.Provides provides : sourceSet.moduleInfo().provides()) {
+                    TypeInfo r0 = sourceTypeMap.get(provides.api());
+                    if (r0 != null) provides.setApiResolved(r0);
+                    TypeInfo r1 = sourceTypeMap.get(provides.implementation());
+                    if (r1 != null) provides.setImplementationResolved(r1);
+                }
+            }
+        }
     }
 
     // public for testing, not in API

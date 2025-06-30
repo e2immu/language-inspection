@@ -27,6 +27,11 @@ public class SummaryImpl implements Summary {
     }
 
     @Override
+    public Iterable<SourceSet> sourceSets() {
+        return sourceSetsByName.values();
+    }
+
+    @Override
     public Set<TypeInfo> types() {
         return types;
     }
