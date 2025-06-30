@@ -497,17 +497,12 @@ public class JavaInspectorImpl implements JavaInspector {
             SourceFile sourceFile = entry.getKey();
             try {
                 if (sourceFile.uri().toString().endsWith("module-info.java")) {
-                    JavaParser parser = new JavaParser(entry.getValue());
-                    parser.setParserTolerant(false);
-                    parser.ModularCompilationUnit();
-                    Node root = parser.rootNode();
-                    if (root instanceof ModularCompilationUnit mcu) {
-                        ModuleInfo moduleInfo = new ParseModuleInfo(runtime, null).parse(mcu, rootContext);
-                        sourceFile.sourceSet().setModuleInfo(moduleInfo);
-
-                    } else {
+                    ModuleInfo moduleInfo = parseModuleInfo(entry.getValue(), rootContext);
+                    if (moduleInfo == null) {
                         summary.addParseException(new Summary.ParseException(sourceFile.uri(), sourceFile.uri(),
                                 "Expect ModularCompilationUnit", null));
+                    } else {
+                        sourceFile.sourceSet().setModuleInfo(moduleInfo);
                     }
                 } else {
                     SourceFileCompilationUnit sfCu = parseSourceString(sourceFile, sourceFile.sourceSet(),
@@ -543,6 +538,19 @@ public class JavaInspectorImpl implements JavaInspector {
 
         rootContext.resolver().resolve();
         return summary;
+    }
+
+    // public for testing, not in API
+    public ModuleInfo parseModuleInfo(String javaSource, Context rootContext) {
+
+        JavaParser parser = new JavaParser(javaSource);
+        parser.setParserTolerant(false);
+        parser.ModularCompilationUnit();
+        Node root = parser.rootNode();
+        if (root instanceof ModularCompilationUnit mcu) {
+            return new ParseModuleInfo(runtime, null).parse(mcu, rootContext);
+        }
+        return null;
     }
 
     private String loadSource(SourceFile sourceFile,
