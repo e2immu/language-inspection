@@ -32,13 +32,22 @@ public class TestModuleInfo {
                 .build();
         JavaInspector javaInspector = new JavaInspectorImpl();
         javaInspector.initialize(inputConfiguration);
-        ParseResult parseResult = javaInspector.parse(JavaInspectorImpl.FAIL_FAST).parseResult();
+        JavaInspector.ParseOptions options = new JavaInspectorImpl.ParseOptionsBuilder().setDetailedSources(true).build();
+        ParseResult parseResult = javaInspector.parse(options).parseResult();
         assertEquals(1, parseResult.sourceSetsByName().size());
         SourceSet set = parseResult.sourceSetsByName().values().stream().findFirst().orElseThrow();
         ModuleInfo moduleInfo = set.moduleInfo();
+        assertEquals("[multiLineComment@1-1:3-3]", moduleInfo.comments().toString());
         assertEquals("org.e2immu.language.inspection.integration", moduleInfo.name());
-        assertEquals("RequiresImpl[name=org.e2immu.util.external.support, isStatic=false, isTransitive=false]",
-                moduleInfo.requires().getFirst().toString());
+        ModuleInfo.Requires req0 = moduleInfo.requires().getFirst();
+        assertEquals("5-14:5-45", req0.source().detailedSources().detail(req0.name()).compact2());
+        assertEquals("""
+                        RequiresImpl[source=@5:5-5:46, comments=[], name=org.e2immu.util.external.support, \
+                        isStatic=false, isTransitive=false]\
+                        """,
+                req0.toString());
         assertEquals(14, moduleInfo.requires().size());
+        ModuleInfo.Requires lastReq = moduleInfo.requires().getLast();
+        assertEquals(" used by DetectJREs, for MacOS", lastReq.comments().getFirst().comment());
     }
 }

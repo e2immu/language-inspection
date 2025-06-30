@@ -1,3 +1,6 @@
+/*
+Integrates all CST definition, parsing, and inspection modules.
+ */
 module org.e2immu.language.inspection.integration {
     requires org.e2immu.util.external.support;
     requires org.e2immu.util.internal.util;
@@ -13,6 +16,7 @@ module org.e2immu.language.inspection.integration {
     requires org.e2immu.language.java.parser;
 
     requires org.slf4j;
+    // used by DetectJREs, for MacOS
     requires java.xml;
 
     exports org.e2immu.language.inspection.integration;
