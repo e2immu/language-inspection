@@ -31,7 +31,7 @@ public interface JavaInspector {
     Invalidated INVALIDATED_ALL = t -> InvalidationState.INVALID;
 
     record ParseOptions(boolean failFast, boolean detailedSources, boolean allowCreationOfStubTypes,
-                        Invalidated invalidated) {
+                        Invalidated invalidated, boolean parallel) {
     }
 
     /*
@@ -45,8 +45,9 @@ public interface JavaInspector {
     }
 
     interface ParseOptionsBuilder {
-
         ParseOptionsBuilder setFailFast(boolean failFast);
+
+        ParseOptionsBuilder setParallel(boolean parallel);
 
         ParseOptionsBuilder setDetailedSources(boolean detailedSources);
 

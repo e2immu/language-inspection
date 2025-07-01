@@ -28,6 +28,7 @@ import org.e2immu.parser.java.ParseCompilationUnit;
 import org.e2immu.parser.java.ParseHelperImpl;
 import org.e2immu.parser.java.ParseModuleInfo;
 import org.e2immu.parser.java.ScanCompilationUnit;
+import org.e2immu.util.internal.graph.util.TimedLogger;
 import org.parsers.java.JavaParser;
 import org.parsers.java.Node;
 import org.parsers.java.ParseException;
@@ -53,6 +54,7 @@ import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static org.e2immu.language.inspection.api.integration.JavaInspector.InvalidationState.*;
 
@@ -66,6 +68,7 @@ finally, do the actual parsing for all primary types
  */
 public class JavaInspectorImpl implements JavaInspector {
     private static final Logger LOGGER = LoggerFactory.getLogger(JavaInspectorImpl.class);
+    private static final TimedLogger TIMED_LOGGER = new TimedLogger(LOGGER, 1000L);
 
     private Runtime runtime;
     private Map<SourceFile, List<TypeInfo>> sourceFiles;
@@ -97,12 +100,13 @@ public class JavaInspectorImpl implements JavaInspector {
 
     public static final String TEST_PROTOCOL_PREFIX = TEST_PROTOCOL + ":";
     public static final ParseOptions FAIL_FAST = new ParseOptions(true, false,
-            false, typeInfo -> UNCHANGED);
+            false, typeInfo -> UNCHANGED, false);
 
     public static class ParseOptionsBuilder implements JavaInspector.ParseOptionsBuilder {
         private boolean failFast;
         private boolean detailedSources;
         private boolean allowCreationOfStubTypes;
+        private boolean parallel;
         private Invalidated invalidated;
 
         @Override
@@ -112,26 +116,32 @@ public class JavaInspectorImpl implements JavaInspector {
         }
 
         @Override
-        public JavaInspector.ParseOptionsBuilder setFailFast(boolean failFast) {
+        public ParseOptionsBuilder setFailFast(boolean failFast) {
             this.failFast = failFast;
             return this;
         }
 
         @Override
-        public JavaInspector.ParseOptionsBuilder setDetailedSources(boolean detailedSources) {
+        public ParseOptionsBuilder setDetailedSources(boolean detailedSources) {
             this.detailedSources = detailedSources;
             return this;
         }
 
         @Override
-        public JavaInspector.ParseOptionsBuilder setAllowCreationOfStubTypes(boolean allowCreationOfStubTypes) {
+        public ParseOptionsBuilder setAllowCreationOfStubTypes(boolean allowCreationOfStubTypes) {
             this.allowCreationOfStubTypes = allowCreationOfStubTypes;
             return this;
         }
 
         @Override
+        public ParseOptionsBuilder setParallel(boolean parallel) {
+            this.parallel = parallel;
+            return this;
+        }
+
+        @Override
         public ParseOptions build() {
-            return new ParseOptions(failFast, detailedSources, allowCreationOfStubTypes, invalidated);
+            return new ParseOptions(failFast, detailedSources, allowCreationOfStubTypes, invalidated, parallel);
         }
     }
 
@@ -467,7 +477,14 @@ public class JavaInspectorImpl implements JavaInspector {
 
         Map<SourceFile, String> sourceFilesToParse = new HashMap<>();
         Set<TypeInfo> typesToRewire = new HashSet<>();
-        this.sourceFiles.forEach((sf, typeInfos) -> {
+        AtomicInteger count = new AtomicInteger();
+        Stream<Map.Entry<SourceFile, List<TypeInfo>>> stream1 = this.sourceFiles.entrySet().stream();
+        Stream<Map.Entry<SourceFile, List<TypeInfo>>> parallelStream1 = parseOptions.parallel()
+                ? stream1.parallel()
+                : stream1.sorted(Comparator.comparing(e -> e.getKey().uri()));
+        parallelStream1.forEach(e -> {
+            SourceFile sf = e.getKey();
+            List<TypeInfo> typeInfos = e.getValue();
             summary.ensureSourceSet(sf.sourceSet());
             // TODO if there are multiple primary types here, and only one is invalid, we must make sure that
             //   all the descendants of the other must be rewired. This is an edge case.
@@ -490,11 +507,19 @@ public class JavaInspectorImpl implements JavaInspector {
                     }
                 }
             }
+            count.incrementAndGet();
+            TIMED_LOGGER.info("Parsing phase 1, done {}", count);
         });
-        List<SourceFileCompilationUnit> list = new ArrayList<>(sourceFilesToParse.size());
 
-        for (Map.Entry<SourceFile, String> entry : sourceFilesToParse.entrySet()) {
+        count.set(0);
+        Stream<Map.Entry<SourceFile, String>> stream2 = sourceFilesToParse.entrySet().stream();
+        Stream<Map.Entry<SourceFile, String>> parallelStream2 = parseOptions.parallel()
+                ? stream2.parallel()
+                : stream2.sorted(Comparator.comparing(e -> e.getKey().uri()));
+        List<SourceFileCompilationUnit> list = parallelStream2.map(entry -> {
             SourceFile sourceFile = entry.getKey();
+            count.incrementAndGet();
+            TIMED_LOGGER.info("Parsing phase 2, done {}", count);
             try {
                 if (sourceFile.uri().toString().endsWith("module-info.java")) {
                     ModuleInfo moduleInfo = parseModuleInfo(entry.getValue(), rootContext);
@@ -504,20 +529,28 @@ public class JavaInspectorImpl implements JavaInspector {
                     } else {
                         sourceFile.sourceSet().setModuleInfo(moduleInfo);
                     }
+                    return null;
                 } else {
-                    SourceFileCompilationUnit sfCu = parseSourceString(sourceFile, sourceFile.sourceSet(),
+                    return parseSourceString(sourceFile, sourceFile.sourceSet(),
                             entry.getValue(), summary, parseOptions.detailedSources());
-                    list.add(sfCu);
                 }
             } catch (ParseException parseException) {
                 summary.addParseException(new Summary.ParseException(sourceFile.uri(), sourceFile.uri(), parseException.getMessage(),
                         parseException));
+                return null;
             }
-        }
-        // PHASE 2: actual parsing of types, methods, fields
+        }).filter(Objects::nonNull).toList();
 
+        // PHASE 3: actual parsing of types, methods, fields
+        count.set(0);
         InfoMap infoMap = new InfoMapImpl(typesToRewire);
-        for (SourceFileCompilationUnit sfCu : list) {
+        Stream<SourceFileCompilationUnit> stream3;
+        if (parseOptions.parallel()) {
+            stream3 = list.parallelStream();
+        } else {
+            stream3 = list.stream(); // already sorted earlier
+        }
+        stream3.forEach(sfCu -> {
             ParseCompilationUnit parseCompilationUnit = new ParseCompilationUnit(rootContext);
             LOGGER.debug("Parsing {}", sfCu.sourceFile().uri());
             List<TypeInfo> types = parseCompilationUnit.parse(sfCu.parsedCu, sfCu.cu);
@@ -526,7 +559,9 @@ public class JavaInspectorImpl implements JavaInspector {
                 infoMap.put(ti);
             });
             sourceFiles.put(sfCu.sourceFile, List.copyOf(types));
-        }
+            count.incrementAndGet();
+            TIMED_LOGGER.info("Parsing phase 3, done {}", count);
+        });
 
         resolveModuleInfo(summary);
 

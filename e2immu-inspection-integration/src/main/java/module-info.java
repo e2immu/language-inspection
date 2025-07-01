@@ -18,6 +18,7 @@ module org.e2immu.language.inspection.integration {
     requires org.slf4j;
     // used by DetectJREs, for MacOS
     requires java.xml;
+    requires org.e2immu.util.internal.graph;
 
     exports org.e2immu.language.inspection.integration;
 }
