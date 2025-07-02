@@ -482,8 +482,8 @@ public class TestImport extends CommonTest {
             import java.io.DataOutputStream;
             import java.io.IOException;
             import java.security.*; // unused, j.s.c.Certificate has priority over j.s.Certificate!!!
-            import java.security.cert.Certificate;;
-            import java.security.cert.CertificateEncodingException;;;
+            import java.security.cert.Certificate;
+            import java.security.cert.CertificateEncodingException;
 
             public class X {
 

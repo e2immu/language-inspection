@@ -586,16 +586,22 @@ public class JavaInspectorImpl implements JavaInspector {
             List<DelayedCU> newDelayed = new LinkedList<>();
             for (DelayedCU delayedCU : delayed) {
                 DelayedCU newDelayedCU = null;
+                List<TypeInfo> successful = new ArrayList<>();
                 for (ParseTypeDeclaration.DelayedParsingInformation d : delayedCU.delayed) {
                     Either<TypeInfo, ParseTypeDeclaration.DelayedParsingInformation> again = parseCompilationUnit.parseDelayedType(d);
                     if (again.isRight()) {
                         if (newDelayedCU == null) newDelayedCU = new DelayedCU(delayedCU.sfCu, new ArrayList<>());
                         newDelayedCU.delayed.add(again.getRight());
+                    } else {
+                        TypeInfo ti = again.getLeft();
+                        summary.addType(ti);
+                        infoMap.put(ti);
+                        successful.add(ti);
                     }
                     TIMED_LOGGER.info("Parsing phase 3b, done {}, {} newDelayed", count, newDelayed.size());
                 }
                 if (newDelayedCU == null) {
-                    sourceFiles.put(delayedCU.sfCu.sourceFile, delayedCU.stream().map(Either::getLeft).toList());
+                    sourceFiles.put(delayedCU.sfCu.sourceFile, List.copyOf(successful));
                 } else {
                     newDelayed.add(newDelayedCU);
                 }
