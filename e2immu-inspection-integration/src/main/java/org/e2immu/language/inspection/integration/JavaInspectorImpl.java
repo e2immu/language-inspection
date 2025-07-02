@@ -24,10 +24,8 @@ import org.e2immu.language.inspection.impl.parser.*;
 import org.e2immu.language.inspection.resource.CompiledTypesManagerImpl;
 import org.e2immu.language.inspection.resource.ResourcesImpl;
 import org.e2immu.language.inspection.resource.SourceSetImpl;
-import org.e2immu.parser.java.ParseCompilationUnit;
-import org.e2immu.parser.java.ParseHelperImpl;
-import org.e2immu.parser.java.ParseModuleInfo;
-import org.e2immu.parser.java.ScanCompilationUnit;
+import org.e2immu.parser.java.*;
+import org.e2immu.support.Either;
 import org.e2immu.util.internal.graph.util.TimedLogger;
 import org.parsers.java.JavaParser;
 import org.parsers.java.Node;
@@ -421,9 +419,10 @@ public class JavaInspectorImpl implements JavaInspector {
         CompilationUnit cu = sr.compilationUnit();
 
         ParseCompilationUnit parseCompilationUnit = new ParseCompilationUnit(rootContext);
-        List<TypeInfo> types = parseCompilationUnit.parse(cu, parser.get().CompilationUnit());
+        List<Either<TypeInfo, ParseTypeDeclaration.DelayedParsingInformation>> types
+                = parseCompilationUnit.parse(cu, parser.get().CompilationUnit());
         rootContext.resolver().resolve();
-        return types;
+        return types.stream().map(Either::getLeft).toList();
     }
 
     @Override
@@ -550,15 +549,27 @@ public class JavaInspectorImpl implements JavaInspector {
         } else {
             stream3 = list.stream(); // already sorted earlier
         }
+        List<DelayedCU> delayed = new LinkedList<>();
+
         stream3.forEach(sfCu -> {
             ParseCompilationUnit parseCompilationUnit = new ParseCompilationUnit(rootContext);
             LOGGER.debug("Parsing {}", sfCu.sourceFile().uri());
-            List<TypeInfo> types = parseCompilationUnit.parse(sfCu.parsedCu, sfCu.cu);
-            types.forEach(ti -> {
-                summary.addType(ti);
-                infoMap.put(ti);
-            });
-            sourceFiles.put(sfCu.sourceFile, List.copyOf(types));
+            List<Either<TypeInfo, ParseTypeDeclaration.DelayedParsingInformation>> types
+                    = parseCompilationUnit.parse(sfCu.parsedCu, sfCu.cu);
+            DelayedCU delayedCU = null;
+            for (Either<TypeInfo, ParseTypeDeclaration.DelayedParsingInformation> either : types) {
+                if (either.isLeft()) {
+                    TypeInfo ti = either.getLeft();
+                    summary.addType(ti);
+                    infoMap.put(ti);
+                } else {
+                    if (delayedCU == null) delayedCU = new DelayedCU(sfCu, new LinkedList<>());
+                    delayedCU.delayed.add(either.getRight());
+                }
+            }
+            if (delayedCU == null) {
+                sourceFiles.put(sfCu.sourceFile, types.stream().map(Either::getLeft).toList());
+            }
             count.incrementAndGet();
             TIMED_LOGGER.info("Parsing phase 3, done {}", count);
         });
@@ -575,6 +586,10 @@ public class JavaInspectorImpl implements JavaInspector {
 
         rootContext.resolver().resolve();
         return summary;
+    }
+
+    private record DelayedCU(SourceFileCompilationUnit sfCu,
+                             List<ParseTypeDeclaration.DelayedParsingInformation> delayed) {
     }
 
     private void resolveModuleInfo(Summary summary) {

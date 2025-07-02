@@ -8,7 +8,6 @@ import org.e2immu.language.cst.api.info.TypeInfo;
 import org.e2immu.language.cst.api.runtime.Runtime;
 import org.e2immu.language.cst.api.type.NamedType;
 import org.e2immu.language.cst.api.type.ParameterizedType;
-import org.e2immu.language.cst.api.variable.FieldReference;
 import org.e2immu.language.cst.api.variable.Variable;
 import org.e2immu.language.inspection.api.parser.SourceTypeMap;
 import org.e2immu.language.inspection.api.parser.StaticImportMap;
@@ -19,9 +18,7 @@ import org.e2immu.language.inspection.api.resource.SourceFile;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Stream;
 
 public class TypeContextImpl implements TypeContext {
@@ -371,7 +368,7 @@ public class TypeContextImpl implements TypeContext {
 
     @Override
     public TypeContext newAnonymousClassBody(TypeInfo baseType) {
-        addSubTypesOfHierarchy(baseType);
+        addSubTypesOfHierarchyReturnAllDefined(baseType);
         return new TypeContextImpl(this, data);
     }
 
@@ -381,11 +378,33 @@ public class TypeContextImpl implements TypeContext {
     }
 
     @Override
-    public void addSubTypesOfHierarchy(TypeInfo typeInfo) {
+    public boolean addSubTypesOfHierarchyReturnAllDefined(TypeInfo typeInfo) {
         CompilationUnit cu = typeInfo.compilationUnit();
-        Stream.concat(Stream.of(typeInfo), typeInfo.superTypesExcludingJavaLangObject().stream())
+        Set<TypeInfo> superTypes = new HashSet<>();
+        boolean allDefined = recursivelyComputeSuperTypesExcludingJLO(typeInfo, superTypes);
+        if (!allDefined) return false;
+        Stream.concat(Stream.of(typeInfo), superTypes.stream())
                 .forEach(superType -> superType.subTypes()
                         .stream().filter(st -> st.compilationUnit() == cu || !typeInfo.access().isPrivate())
                         .forEach(this::addToContext));
+        return true;
+    }
+
+    private boolean recursivelyComputeSuperTypesExcludingJLO(TypeInfo type, Set<TypeInfo> superTypes) {
+        ParameterizedType parentPt = type.parentClass();
+        if (parentPt == null) {
+            return false;
+        }
+        TypeInfo parent = parentPt.typeInfo();
+        if (!parent.isJavaLangObject() && superTypes.add(parent)) {
+            recursivelyComputeSuperTypesExcludingJLO(parent, superTypes);
+        }
+        for (ParameterizedType interfaceImplemented : type.interfacesImplemented()) {
+            TypeInfo i = interfaceImplemented.typeInfo();
+            if (superTypes.add(i)) {
+                recursivelyComputeSuperTypesExcludingJLO(i, superTypes);
+            }
+        }
+        return true;
     }
 }

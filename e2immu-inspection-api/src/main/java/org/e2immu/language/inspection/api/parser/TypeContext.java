@@ -4,19 +4,19 @@ import org.e2immu.annotation.NotNull;
 import org.e2immu.language.cst.api.element.CompilationUnit;
 import org.e2immu.language.cst.api.element.ImportStatement;
 import org.e2immu.language.cst.api.info.TypeInfo;
-import org.e2immu.language.cst.api.runtime.Runtime;
 import org.e2immu.language.cst.api.type.NamedType;
-import org.e2immu.language.cst.api.variable.FieldReference;
 import org.e2immu.language.cst.api.variable.Variable;
 
 import java.util.List;
-import java.util.Map;
 
 /*
 NOT to be used by byte code inspection: exclusive to parser system!
  */
 public interface TypeContext {
-    void addSubTypesOfHierarchy(TypeInfo typeInfo);
+    /*
+    return true when all types in the hierarchy have been resolved
+     */
+    boolean addSubTypesOfHierarchyReturnAllDefined(TypeInfo typeInfo);
 
     void addToStaticImportMap(ImportStatement importStatement);
 
