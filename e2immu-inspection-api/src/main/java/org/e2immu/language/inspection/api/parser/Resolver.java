@@ -33,7 +33,7 @@ public interface Resolver {
 
     Resolver newEmpty();
 
-    void resolve();
+    void resolve(boolean primary);
 
     ParseHelper parseHelper();
 }

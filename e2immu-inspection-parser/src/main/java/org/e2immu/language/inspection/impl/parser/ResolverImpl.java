@@ -7,6 +7,7 @@ import org.e2immu.language.cst.api.expression.Expression;
 import org.e2immu.language.cst.api.info.*;
 import org.e2immu.language.cst.api.type.TypeParameter;
 import org.e2immu.language.inspection.api.parser.*;
+import org.e2immu.util.internal.graph.util.TimedLogger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -15,7 +16,7 @@ import java.util.List;
 
 public class ResolverImpl implements Resolver {
     private static final Logger LOGGER = LoggerFactory.getLogger(ResolverImpl.class);
-
+    private static final TimedLogger TIMED_LOGGER = new TimedLogger(LOGGER, 1000L);
     private final ParseHelper parseHelper;
     private final ComputeMethodOverrides computeMethodOverrides;
 
@@ -91,9 +92,11 @@ public class ResolverImpl implements Resolver {
         types.add(typeInfoBuilder);
     }
 
-    public void resolve() {
-        LOGGER.debug("Start resolving {} annotations, {} type(s), {} field(s)/method(s)", annotationTodos.size(),
-                types.size(), todos.size());
+    public void resolve(boolean primary) {
+        if (primary) {
+            LOGGER.info("Start resolving {} annotations, {} type(s), {} field(s)/method(s)", annotationTodos.size(),
+                    types.size(), todos.size());
+        }
 
         for (AnnotationTodo annotationTodo : annotationTodos) {
             AnnotationExpression ae = parseAnnotationExpression(annotationTodo);
@@ -133,6 +136,7 @@ public class ResolverImpl implements Resolver {
                     todo.context.summary().addType(todo.context.enclosingType().primaryType());
                 } else throw new UnsupportedOperationException("In java, we cannot have expressions in other places");
                 ++cnt;
+                TIMED_LOGGER.info("Resolved {} of {} info objects", cnt, todos.size());
             }
         } catch (RuntimeException re) {
             LOGGER.error("Failed after resolving {} of {} fields/methods", cnt, todos.size());

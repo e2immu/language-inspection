@@ -38,6 +38,7 @@ dependencies {
     api("org.e2immu:e2immu-inspection-api:$version")
     api("org.e2immu:e2immu-external-support:$version")
     implementation("org.e2immu:e2immu-internal-util:$version")
+    implementation("org.e2immu:e2immu-internal-graph:$version")
     implementation("org.slf4j:slf4j-api:$slf4jVersion")
 
     testImplementation("org.junit.jupiter:junit-jupiter-api:$jupiterApiVersion")

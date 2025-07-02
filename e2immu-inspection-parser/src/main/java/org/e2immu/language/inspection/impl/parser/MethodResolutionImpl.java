@@ -1384,6 +1384,9 @@ public class MethodResolutionImpl implements MethodResolution {
         if (param == -1) {
             return methodInfo.typeInfo().asParameterizedType();
         }
+        if(param >= methodInfo.parameters().size()) {
+            return methodInfo.parameters().getLast().parameterizedType();
+        }
         return methodInfo.parameters().get(param).parameterizedType();
     }
 

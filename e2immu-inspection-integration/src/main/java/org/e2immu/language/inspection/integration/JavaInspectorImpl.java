@@ -421,7 +421,7 @@ public class JavaInspectorImpl implements JavaInspector {
         ParseCompilationUnit parseCompilationUnit = new ParseCompilationUnit(rootContext);
         List<Either<TypeInfo, ParseTypeDeclaration.DelayedParsingInformation>> types
                 = parseCompilationUnit.parse(cu, parser.get().CompilationUnit());
-        rootContext.resolver().resolve();
+        rootContext.resolver().resolve(true);
         return types.stream().map(Either::getLeft).toList();
     }
 
@@ -586,6 +586,7 @@ public class JavaInspectorImpl implements JavaInspector {
             count.set(0);
             List<DelayedCU> newDelayed = new LinkedList<>();
             for (DelayedCU delayedCU : delayed) {
+                TIMED_LOGGER.info("Parsing phase 3b, done {}, {} newDelayed", count, newDelayed.size());
                 DelayedCU newDelayedCU = null;
                 List<TypeInfo> successful = new ArrayList<>();
                 for (ParseTypeDeclaration.DelayedParsingInformation d : delayedCU.delayed) {
@@ -599,7 +600,6 @@ public class JavaInspectorImpl implements JavaInspector {
                         infoMap.put(ti);
                         successful.add(ti);
                     }
-                    TIMED_LOGGER.info("Parsing phase 3b, done {}, {} newDelayed", count, newDelayed.size());
                 }
                 if (newDelayedCU == null) {
                     sourceFiles.put(delayedCU.sfCu.sourceFile, List.copyOf(successful));
@@ -624,7 +624,7 @@ public class JavaInspectorImpl implements JavaInspector {
 
         // PHASE 3: resolving: content of methods, field initializers
 
-        rootContext.resolver().resolve();
+        rootContext.resolver().resolve(true);
         return summary;
     }
 
