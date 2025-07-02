@@ -489,6 +489,7 @@ public class JavaInspectorImpl implements JavaInspector {
             //   all the descendants of the other must be rewired. This is an edge case.
             if (typeInfos.isEmpty() || typeInfos.stream().anyMatch(ti -> invalidated.apply(ti) == INVALID)) {
                 typeInfos.forEach(ti -> sourceTypeMap.invalidate(ti.fullyQualifiedName()));
+                //noinspection ALL
                 String sourceCode = loadSource(sf, sourcesByTestProtocolURIString,
                         sf.sourceSet().sourceEncoding(),
                         ioe -> new Summary.ParseException(sf.uri(), sf.uri(), ioe.getMessage(), ioe));
@@ -550,29 +551,60 @@ public class JavaInspectorImpl implements JavaInspector {
             stream3 = list.stream(); // already sorted earlier
         }
         List<DelayedCU> delayed = new LinkedList<>();
-
+        ParseCompilationUnit parseCompilationUnit = new ParseCompilationUnit(rootContext);
         stream3.forEach(sfCu -> {
-            ParseCompilationUnit parseCompilationUnit = new ParseCompilationUnit(rootContext);
-            LOGGER.debug("Parsing {}", sfCu.sourceFile().uri());
-            List<Either<TypeInfo, ParseTypeDeclaration.DelayedParsingInformation>> types
-                    = parseCompilationUnit.parse(sfCu.parsedCu, sfCu.cu);
-            DelayedCU delayedCU = null;
-            for (Either<TypeInfo, ParseTypeDeclaration.DelayedParsingInformation> either : types) {
-                if (either.isLeft()) {
-                    TypeInfo ti = either.getLeft();
-                    summary.addType(ti);
-                    infoMap.put(ti);
+            try {
+                LOGGER.debug("Parsing {}", sfCu.sourceFile().uri());
+                List<Either<TypeInfo, ParseTypeDeclaration.DelayedParsingInformation>> types
+                        = parseCompilationUnit.parse(sfCu.parsedCu, sfCu.cu);
+                DelayedCU delayedCU = null;
+                for (Either<TypeInfo, ParseTypeDeclaration.DelayedParsingInformation> either : types) {
+                    if (either.isLeft()) {
+                        TypeInfo ti = either.getLeft();
+                        summary.addType(ti);
+                        infoMap.put(ti);
+                    } else {
+                        if (delayedCU == null) delayedCU = new DelayedCU(sfCu, new LinkedList<>());
+                        delayedCU.delayed.add(either.getRight());
+                    }
+                }
+                if (delayedCU == null) {
+                    sourceFiles.put(sfCu.sourceFile, types.stream().map(Either::getLeft).toList());
                 } else {
-                    if (delayedCU == null) delayedCU = new DelayedCU(sfCu, new LinkedList<>());
-                    delayedCU.delayed.add(either.getRight());
+                    delayed.add(delayedCU);
+                }
+                count.incrementAndGet();
+                TIMED_LOGGER.info("Parsing phase 3, done {}, {} delayed", count, delayed.size());
+            } catch (ParseException parseException) {
+                summary.addParseException(new Summary.ParseException(sfCu.sourceFile.uri(), sfCu.sourceFile.uri(),
+                        parseException.getMessage(),
+                        parseException));
+            }
+        });
+
+        while (true) {
+            List<DelayedCU> newDelayed = new LinkedList<>();
+            for (DelayedCU delayedCU : delayed) {
+                DelayedCU newDelayedCU = null;
+                for (ParseTypeDeclaration.DelayedParsingInformation d : delayedCU.delayed) {
+                    Either<TypeInfo, ParseTypeDeclaration.DelayedParsingInformation> again = parseCompilationUnit.parseDelayedType(d);
+                    if (again.isRight()) {
+                        if (newDelayedCU == null) newDelayedCU = new DelayedCU(delayedCU.sfCu, new ArrayList<>());
+                        newDelayedCU.delayed.add(again.getRight());
+                    }
+                    TIMED_LOGGER.info("Parsing phase 3b, done {}, {} newDelayed", count, newDelayed.size());
+                }
+                if (newDelayedCU == null) {
+                    sourceFiles.put(delayedCU.sfCu.sourceFile, delayedCU.stream().map(Either::getLeft).toList());
+                } else {
+                    newDelayed.add(newDelayedCU);
                 }
             }
-            if (delayedCU == null) {
-                sourceFiles.put(sfCu.sourceFile, types.stream().map(Either::getLeft).toList());
-            }
-            count.incrementAndGet();
-            TIMED_LOGGER.info("Parsing phase 3, done {}", count);
-        });
+            if (newDelayed.isEmpty()) break;
+            delayed.clear();
+            delayed.addAll(newDelayed);
+            LOGGER.info("Iterating again, delayed {}", delayed.size());
+        }
 
         resolveModuleInfo(summary);
 
