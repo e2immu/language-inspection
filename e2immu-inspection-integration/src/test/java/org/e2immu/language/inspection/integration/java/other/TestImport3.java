@@ -1,5 +1,6 @@
 package org.e2immu.language.inspection.integration.java.other;
 
+import org.e2immu.language.cst.api.info.FieldInfo;
 import org.e2immu.language.cst.api.info.TypeInfo;
 import org.e2immu.language.inspection.api.parser.ParseResult;
 import org.e2immu.language.inspection.integration.java.CommonTest2;
@@ -9,8 +10,10 @@ import org.junit.jupiter.api.Test;
 import java.io.IOException;
 import java.util.Map;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
-public class TestImport2 extends CommonTest2 {
+
+public class TestImport3 extends CommonTest2 {
 
 
     @Language("java")
@@ -24,32 +27,23 @@ public class TestImport2 extends CommonTest2 {
             """;
 
     @Language("java")
-    String CHILD = """
+    String SIBLING = """
             package a.b;
-            public class Child extends Parent {
-                protected void gc(SubInterface si) {
-                }
-            }
-            """;
-
-    @Language("java")
-    String GRANDCHILD = """
-            package c.b;
-            import a.b.Child;
-            public class GrandChild extends Child {
-                @Override
-                protected void gc(SubInterface si) {
-                    si.method();
+            public class Sibling {
+                static class Child extends Parent {
+                    SubInterface si;
                 }
             }
             """;
 
     @Test
     public void testImport() throws IOException {
-        Map<String, String> sourcesByFqn = Map.of("a.b.Parent", PARENT, "a.b.Child", CHILD,
-                "c.b.GrandChild", GRANDCHILD);
-        ParseResult pr1 = init(sourcesByFqn);
-        TypeInfo gc = pr1.findType("c.b.GrandChild");
+        Map<String, String> sourcesByFqn = Map.of("a.b.Parent", PARENT, "a.b.Sibling", SIBLING);
+        ParseResult pr = init(sourcesByFqn);
+        TypeInfo sibling = pr.findType("a.b.Sibling");
+        TypeInfo child = sibling.findSubType("Child");
+        FieldInfo si = child.getFieldByName("si", true);
+        assertEquals("Type a.b.Parent.SubInterface", si.type().toString());
     }
 
 }

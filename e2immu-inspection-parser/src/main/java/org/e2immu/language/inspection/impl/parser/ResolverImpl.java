@@ -100,8 +100,14 @@ public class ResolverImpl implements Resolver {
             annotationTodo.infoBuilder.setAnnotationExpression(annotationTodo.indexInAnnotationList, ae);
         }
         for (JavaDocToDo javaDocToDo : javaDocs) {
-            JavaDoc resolved = resolveJavaDoc(javaDocToDo);
-            javaDocToDo.infoBuilder.setJavaDoc(resolved);
+            try {
+                JavaDoc resolved = resolveJavaDoc(javaDocToDo);
+                javaDocToDo.infoBuilder.setJavaDoc(resolved);
+            } catch (RuntimeException re) {
+                LOGGER.error("Caught exception resolving javaDoc {}", javaDocToDo.info);
+                Summary.ParseException pe = new Summary.ParseException(javaDocToDo.context, javaDocToDo.info, re.getMessage(), re);
+                javaDocToDo.context.summary().addParseException(pe);
+            }
         }
 
         int cnt = 0;

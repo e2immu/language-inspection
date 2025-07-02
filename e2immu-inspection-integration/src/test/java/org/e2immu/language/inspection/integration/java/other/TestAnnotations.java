@@ -307,7 +307,8 @@ public class TestAnnotations extends CommonTest {
             @Target({TYPE, FIELD, METHOD})
             @Retention(RUNTIME)
             public @interface Resource {
-
+                int value();
+                public char character();
             }
             """;
 

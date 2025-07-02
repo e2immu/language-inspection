@@ -583,6 +583,7 @@ public class JavaInspectorImpl implements JavaInspector {
         });
 
         while (true) {
+            count.set(0);
             List<DelayedCU> newDelayed = new LinkedList<>();
             for (DelayedCU delayedCU : delayed) {
                 DelayedCU newDelayedCU = null;
@@ -605,6 +606,7 @@ public class JavaInspectorImpl implements JavaInspector {
                 } else {
                     newDelayed.add(newDelayedCU);
                 }
+                count.incrementAndGet();
             }
             if (newDelayed.isEmpty()) break;
             delayed.clear();

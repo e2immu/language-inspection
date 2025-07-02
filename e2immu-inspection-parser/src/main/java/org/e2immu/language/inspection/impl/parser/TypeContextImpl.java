@@ -374,18 +374,19 @@ public class TypeContextImpl implements TypeContext {
 
     @Override
     public List<TypeInfo> typesInSamePackage(String packageName) {
-        return data.sourceTypeMap().primaryTypesInPackage(packageName);
+        List<TypeInfo> list1 = data.sourceTypeMap().primaryTypesInPackage(packageName);
+        Collection<TypeInfo> list2 = data.compiledTypesManager.primaryTypesInPackage(packageName);
+        return Stream.concat(list1.stream(), list2.stream()).toList();
     }
 
     @Override
     public boolean addSubTypesOfHierarchyReturnAllDefined(TypeInfo typeInfo) {
-        CompilationUnit cu = typeInfo.compilationUnit();
         Set<TypeInfo> superTypes = new HashSet<>();
         boolean allDefined = recursivelyComputeSuperTypesExcludingJLO(typeInfo, superTypes);
         if (!allDefined) return false;
         Stream.concat(Stream.of(typeInfo), superTypes.stream())
                 .forEach(superType -> superType.subTypes()
-                        .stream().filter(st -> st.compilationUnit() == cu || !typeInfo.access().isPrivate())
+                        // not checking accessibility here
                         .forEach(this::addToContext));
         return true;
     }
