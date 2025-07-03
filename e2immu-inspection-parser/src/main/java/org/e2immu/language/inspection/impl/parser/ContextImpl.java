@@ -9,7 +9,6 @@ import org.e2immu.language.cst.api.info.TypeInfo;
 import org.e2immu.language.cst.api.runtime.Runtime;
 import org.e2immu.language.cst.api.type.NamedType;
 import org.e2immu.language.cst.api.type.ParameterizedType;
-
 import org.e2immu.language.inspection.api.parser.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -202,6 +201,12 @@ public class ContextImpl implements Context {
         TypeContext newTypeContext = typeContext.newTypeContext();
         return new ContextImpl(data, enclosingType, enclosingMethod, enclosingField, resolver, newTypeContext,
                 variableContext, anonymousTypeCounters, typeOfEnclosingSwitchExpression, detailedSources);
+    }
+
+    @Override
+    public Context withEnclosingMethod(MethodInfo methodInfo) {
+        return new ContextImpl(data, enclosingType, methodInfo, enclosingField, resolver, typeContext, variableContext,
+                anonymousTypeCounters, typeOfEnclosingSwitchExpression, detailedSources);
     }
 
     @Override

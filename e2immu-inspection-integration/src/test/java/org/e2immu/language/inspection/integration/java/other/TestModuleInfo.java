@@ -132,8 +132,8 @@ public class TestModuleInfo {
                         isStatic=false, isTransitive=false]\
                         """,
                 req0.toString());
-        assertEquals(14, moduleInfo.requires().size());
-        ModuleInfo.Requires lastReq = moduleInfo.requires().getLast();
+        assertEquals(15, moduleInfo.requires().size());
+        ModuleInfo.Requires lastReq = moduleInfo.requires().get(13);
         assertEquals(" used by DetectJREs, for MacOS", lastReq.comments().getFirst().comment());
     }
 }

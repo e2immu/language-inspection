@@ -68,4 +68,6 @@ public interface Context {
     GenericsHelper genericsHelper();
 
     DetailedSources.Builder newDetailedSourcesBuilder();
+
+    Context withEnclosingMethod(MethodInfo methodInfo);
 }
