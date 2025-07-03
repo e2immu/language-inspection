@@ -11,26 +11,26 @@ import java.util.TreeMap;
 public class SourceTypeMapImpl implements SourceTypeMap {
     private final TreeMap<String, TypeInfo> map = new TreeMap<>();
 
-    public void put(TypeInfo rewired) {
+    public synchronized void put(TypeInfo rewired) {
         map.put(rewired.fullyQualifiedName(), rewired);
     }
 
-    public void putAll(Map<String, TypeInfo> map) {
+    public synchronized void putAll(Map<String, TypeInfo> map) {
         this.map.putAll(map);
     }
 
     @Override
-    public void invalidate(String fullyQualifiedName) {
+    public synchronized void invalidate(String fullyQualifiedName) {
         map.remove(fullyQualifiedName);
     }
 
     @Override
-    public TypeInfo get(String fullyQualifiedName) {
+    public synchronized TypeInfo get(String fullyQualifiedName) {
         return map.get(fullyQualifiedName);
     }
 
     @Override
-    public List<TypeInfo> primaryTypesInPackage(String packageName) {
+    public synchronized List<TypeInfo> primaryTypesInPackage(String packageName) {
         List<TypeInfo> result = new LinkedList<>();
         Map.Entry<String, TypeInfo> lower = map.ceilingEntry(packageName);
         while (lower != null && lower.getKey().startsWith(packageName)) {

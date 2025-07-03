@@ -22,7 +22,7 @@ public class SummaryImpl implements Summary {
     }
 
     @Override
-    public void ensureSourceSet(SourceSet sourceSet) {
+    public synchronized void ensureSourceSet(SourceSet sourceSet) {
         sourceSetsByName.putIfAbsent(sourceSet.name(), sourceSet);
     }
 
@@ -45,7 +45,7 @@ public class SummaryImpl implements Summary {
     }
 
     @Override
-    public void addType(TypeInfo typeInfo) {
+    public synchronized void addType(TypeInfo typeInfo) {
         types.add(typeInfo);
     }
 
