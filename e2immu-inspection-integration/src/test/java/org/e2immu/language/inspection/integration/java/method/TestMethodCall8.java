@@ -447,7 +447,8 @@ public class TestMethodCall8 extends CommonTest {
         MethodCall mc = (MethodCall) lvc.localVariable().assignmentExpression();
         Lambda lambda = (Lambda) mc.parameterExpressions().getFirst();
         // NOT: Executable. We must choose ThrowingSupplier over Executable, because Executable does not return a value
-        assertEquals("Type org.junit.jupiter.api.function.ThrowingSupplier", lambda.concreteFunctionalType().toString());
+        assertEquals("Type org.junit.jupiter.api.function.ThrowingSupplier<a.b.X.I>",
+                lambda.concreteFunctionalType().toString());
      }
 
 

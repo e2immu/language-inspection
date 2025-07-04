@@ -390,9 +390,13 @@ public class MethodResolutionImpl implements MethodResolution {
 
         if (methodCandidates.size() > 1) {
             trimMethodsWithBestScore(methodCandidates, filterResult.compatibilityScore);
-            if (methodCandidates.size() > 1) {
-                trimVarargsVsMethodsWithFewerParameters(methodCandidates);
-            }
+        }
+        if (methodCandidates.size() > 1) {
+            trimMethodsByReevaluatingErasedParameterExpressions(context, index, filterResult.evaluatedExpressions,
+                    unparsedArguments, methodCandidates, returnType, extra);
+        }
+        if (methodCandidates.size() > 1) {
+            trimVarargsVsMethodsWithFewerParameters(methodCandidates);
         }
         List<MethodTypeParameterMap> sorted = sortRemainingCandidatesByShallowPublic(methodCandidates);
         if (sorted.size() > 1) {
@@ -405,6 +409,62 @@ public class MethodResolutionImpl implements MethodResolution {
                 returnType, extra, methodName, filterResult.evaluatedExpressions, method);
         Map<NamedType, ParameterizedType> mapExpansion = computeMapExpansion(method, newParameterExpressions, returnType);
         return new Candidate(newParameterExpressions, mapExpansion, method);
+    }
+
+    private void trimMethodsByReevaluatingErasedParameterExpressions(Context context,
+                                                                     String index,
+                                                                     Map<Integer, Expression> evaluatedExpressions,
+                                                                     List<Object> unparsedArguments,
+                                                                     Map<MethodTypeParameterMap, Integer> methodCandidates,
+                                                                     ParameterizedType outsideContext,
+                                                                     TypeParameterMap extra) {
+        List<Integer> erased = new ArrayList<>(unparsedArguments.size());
+        for (Map.Entry<Integer, Expression> entry : evaluatedExpressions.entrySet()) {
+            if (entry.getValue() instanceof ErasedExpression) {
+                erased.add(entry.getKey());
+            }
+        }
+        if (erased.isEmpty()) return; // there are no erased expressions to re-evaluate
+        Map<MethodTypeParameterMap, Integer> scores = new HashMap<>();
+        int bestScore = 0;
+        for (MethodTypeParameterMap method : methodCandidates.keySet()) {
+            int score = computeScoreForReevaluationOfErasedParameterExpressions(context, index, unparsedArguments,
+                    evaluatedExpressions, method, erased, outsideContext, extra);
+            scores.put(method, score);
+            if (score > bestScore) bestScore = score;
+        }
+        LOGGER.debug("Best score is {}", bestScore);
+        if (bestScore > 0) {
+            int finalBestScore = bestScore;
+            scores.forEach((method, score) -> {
+                if (score < finalBestScore) methodCandidates.remove(method);
+            });
+            LOGGER.debug("Remaining: {}", methodCandidates.size());
+        }
+    }
+
+    // this is pretty expensive code, but is should be rarely used. See TestMethodCall8,assertDoesNotThrow
+    private int computeScoreForReevaluationOfErasedParameterExpressions(Context context,
+                                                                        String index,
+                                                                        List<Object> unparsedArguments,
+                                                                        Map<Integer, Expression> evaluatedExpressions,
+                                                                        MethodTypeParameterMap method,
+                                                                        List<Integer> erased,
+                                                                        ParameterizedType outsideContext,
+                                                                        TypeParameterMap extra) {
+        int score = 0;
+        TypeParameterMap cumulative = extra;
+        for (int i : erased) {
+            LOGGER.debug("Reevaluating erased expression for score computation, {}, pos {}", method.methodInfo(), i);
+            Expression evEx = evaluatedExpressions.get(i);
+            ReEval reEval = reevaluateParameterExpression(context, index, unparsedArguments, outsideContext,
+                    method.methodInfo().name(), evEx, method, i, cumulative, method.methodInfo().parameters());
+            cumulative = reEval.typeParameterMap;
+
+            ParameterInfo parameterInfo = method.methodInfo().parameters().get(i);
+            score += compatibleParameter(reEval.evaluated, parameterInfo.parameterizedType());
+        }
+        return score;
     }
 
     private void multipleCandidatesError(String methodName,
@@ -529,40 +589,60 @@ public class MethodResolutionImpl implements MethodResolution {
 
         for (int i : positionsToDo) {
             Expression e = evaluatedExpressions.get(i);
-            assert e != null;
-
-            LOGGER.debug("Reevaluating erased expression on {}, pos {}", methodName, i);
-            ForwardType newForward = determineForwardReturnTypeInfo(method, i, outsideContext, cumulative);
-
-            Expression reParsed = context.resolver().parseHelper().parseExpression(context, index, newForward,
-                    expressions.get(i));
-            if (containsErasedExpressions(reParsed)) {
-                throw new UnsupportedOperationException("Argument at position " + i + " contains erased expressions");
-            }
-            newParameterExpressions[i] = reParsed;
-
-            ParameterInfo pi = parameters.get(Math.min(i, parameters.size() - 1));
-            try {
-                if (pi.parameterizedType().hasTypeParameters()) {
-                    Map<NamedType, ParameterizedType> learned = genericsHelper.translateMap(pi.parameterizedType(),
-                            reParsed.parameterizedType(), true);
-                    if (!learned.isEmpty()) {
-                        cumulative = cumulative.merge(new TypeParameterMap(learned));
-                    }
-
-                    // try to reconcile the type parameters with the ones in reParsed, see Lambda_16
-                    Map<NamedType, ParameterizedType> forward = pi.parameterizedType().initialTypeParameterMap();
-                    if (!forward.isEmpty()) {
-                        cumulative = cumulative.merge(new TypeParameterMap(forward));
-                    }
-                }
-            } catch (RuntimeException re) {
-                LOGGER.error("Caught exception re-evaluating erased expression, pi = {}, type {}", pi, pi.parameterizedType());
-                LOGGER.error("reParsed = {}, type {}", reParsed, reParsed.parameterizedType());
-                throw re;
-            }
+            ReEval reEval = reevaluateParameterExpression(context, index, expressions, outsideContext, methodName,
+                    e, method, i, cumulative, parameters);
+            cumulative = reEval.typeParameterMap;
+            newParameterExpressions[i] = reEval.evaluated;
         }
         return Arrays.stream(newParameterExpressions).toList();
+    }
+
+    private record ReEval(TypeParameterMap typeParameterMap, Expression evaluated) {
+    }
+
+    private ReEval reevaluateParameterExpression(Context context,
+                                                 String index,
+                                                 List<Object> expressions,
+                                                 ParameterizedType outsideContext,
+                                                 String methodName,
+                                                 Expression e,
+                                                 MethodTypeParameterMap method,
+                                                 int paramIndex,
+                                                 TypeParameterMap cumulativeIn,
+                                                 List<ParameterInfo> parameters) {
+        assert e != null;
+
+        LOGGER.debug("Reevaluating erased expression on {}, pos {}", methodName, paramIndex);
+        TypeParameterMap cumulative = cumulativeIn;
+        ForwardType newForward = determineForwardReturnTypeInfo(method, paramIndex, outsideContext, cumulative);
+
+        Expression reParsed = context.resolver().parseHelper().parseExpression(context, index, newForward,
+                expressions.get(paramIndex));
+        if (containsErasedExpressions(reParsed)) {
+            throw new UnsupportedOperationException("Argument at position " + paramIndex + " contains erased expressions");
+        }
+
+        ParameterInfo pi = parameters.get(Math.min(paramIndex, parameters.size() - 1));
+        try {
+            if (pi.parameterizedType().hasTypeParameters()) {
+                Map<NamedType, ParameterizedType> learned = genericsHelper.translateMap(pi.parameterizedType(),
+                        reParsed.parameterizedType(), true);
+                if (!learned.isEmpty()) {
+                    cumulative = cumulative.merge(new TypeParameterMap(learned));
+                }
+
+                // try to reconcile the type parameters with the ones in reParsed, see Lambda_16
+                Map<NamedType, ParameterizedType> forward = pi.parameterizedType().initialTypeParameterMap();
+                if (!forward.isEmpty()) {
+                    cumulative = cumulative.merge(new TypeParameterMap(forward));
+                }
+            }
+        } catch (RuntimeException re) {
+            LOGGER.error("Caught exception re-evaluating erased expression, pi = {}, type {}", pi, pi.parameterizedType());
+            LOGGER.error("reParsed = {}, type {}", reParsed, reParsed.parameterizedType());
+            throw re;
+        }
+        return new ReEval(cumulative, reParsed);
     }
 
     private Expression reEvaluateErasedScope(Context context, String index, Expression expressionWithErasedType,
@@ -1384,7 +1464,7 @@ public class MethodResolutionImpl implements MethodResolution {
         if (param == -1) {
             return methodInfo.typeInfo().asParameterizedType();
         }
-        if(param >= methodInfo.parameters().size()) {
+        if (param >= methodInfo.parameters().size()) {
             return methodInfo.parameters().getLast().parameterizedType();
         }
         return methodInfo.parameters().get(param).parameterizedType();
