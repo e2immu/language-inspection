@@ -8,6 +8,7 @@ import org.e2immu.language.cst.api.info.TypeInfo;
 import org.e2immu.language.cst.api.statement.LocalVariableCreation;
 import org.e2immu.language.cst.api.statement.ReturnStatement;
 import org.e2immu.language.cst.api.statement.Statement;
+import org.e2immu.language.cst.api.type.ParameterizedType;
 import org.e2immu.language.inspection.integration.java.CommonTest;
 import org.intellij.lang.annotations.Language;
 import org.junit.jupiter.api.DisplayName;
@@ -544,5 +545,35 @@ public class TestMethodCall8 extends CommonTest {
     @Test
     public void test9d() {
         javaInspector.parse(INPUT9d);
+    }
+
+
+    @Language("java")
+    private static final String INPUT9e = """
+            package a.b;
+            import java.util.Arrays;
+            import java.util.Comparator;
+            class X {
+                record Line(String startDate, String endDate, double value) {}
+                public void sort(Line[] lines) {
+                   Comparator.comparing((Line line) -> line.endDate);
+                }
+            }
+            """;
+
+    @DisplayName("concrete return type of Comparator.comparing")
+    @Test
+    public void test9e() {
+        TypeInfo typeInfo = javaInspector.parse(INPUT9e);
+        MethodInfo sort = typeInfo.findUniqueMethod("sort", 1);
+        MethodCall methodCall = (MethodCall) sort.methodBody().statements().getFirst().expression();
+        if (methodCall.parameterExpressions().getFirst() instanceof Lambda lambda) {
+            assertEquals("Type java.util.function.Function<a.b.X.Line,String>",
+                    lambda.concreteFunctionalType().toString());
+            assertEquals("Type String", lambda.methodInfo().returnType().toString());
+            //assertEquals("Type a.b.X.$0", lambda.parameterizedType().toString());
+        }
+        ParameterizedType pt = methodCall.parameterizedType();
+        assertEquals("Type java.util.Comparator<a.b.X.Line>", pt.toString());
     }
 }

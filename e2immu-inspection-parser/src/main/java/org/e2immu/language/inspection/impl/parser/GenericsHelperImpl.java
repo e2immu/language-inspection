@@ -171,6 +171,10 @@ public record GenericsHelperImpl(Runtime runtime) implements GenericsHelper {
     Tests: TestMethodCall1,4: does not need recursion protection
            TestMethodCall7,7: does not need recursion protection, but needs OR instead of AND in visited.add() checks.
            TestMethodCall7,8: needs recursion protection.
+           TestMethodCall8,9:
+    for example:
+    formalType = Function<? super T, ? extends U extends Comparable<? super U>>
+    concreteType = a.b.X.$2 (actually, a lambda Line->String)
      */
     private Map<NamedType, ParameterizedType> translationMapForFunctionalInterfaces(ParameterizedType formalType,
                                                                                     ParameterizedType concreteType,
@@ -196,6 +200,11 @@ public record GenericsHelperImpl(Runtime runtime) implements GenericsHelper {
             if (visited.add(abstractTypeParameter) || visited.add(concreteTypeParameter)) {
                 res.putAll(translateMap(abstractTypeParameter, concreteTypeParameter, concreteTypeIsAssignableToThis,
                         infiniteLoopProtection + 1, visited));
+            }
+            // the following code is used by TestMethodCall8,9
+            ParameterizedType formalMapped = methodTypeParameterMap.getConcreteTypeOfParameter(runtime, i);
+            if (formalMapped.isTypeParameter()) {
+                res.put(formalMapped.typeParameter(), concreteTypeParameter);
             }
         }
         // and now the return type
