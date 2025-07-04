@@ -13,14 +13,6 @@ import java.util.List;
  */
 public interface CompiledTypesManager {
 
-    default TypeInfo addToTrie(TypeInfo typeInfo) {
-        return typeInfo;
-    }
-
-    default ByteCodeInspector byteCodeInspector() {
-        throw new UnsupportedOperationException();
-    }
-
     default Resources classPath() {
         throw new UnsupportedOperationException();
     }
@@ -60,10 +52,6 @@ public interface CompiledTypesManager {
     }
 
     default Collection<TypeInfo> primaryTypesInPackage(String packageName) { throw new UnsupportedOperationException(); }
-
-    default void setLazyInspection(TypeInfo typeInfo) {
-        // do nothing
-    }
 
     default boolean acceptFQN(String fqn) {
         return !fqn.startsWith("jdk.internal.");

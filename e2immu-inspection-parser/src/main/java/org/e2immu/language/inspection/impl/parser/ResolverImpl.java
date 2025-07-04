@@ -106,19 +106,25 @@ public class ResolverImpl implements Resolver {
 
     public void resolve(boolean primary) {
         if (primary) {
-            LOGGER.info("Start resolving {} annotations, {} type(s), {} field(s)/method(s)", annotationTodos.size(),
+            LOGGER.info("Phase 4: Start resolving {} annotations, {} type(s), {} field(s)/method(s)", annotationTodos.size(),
                     types.size(), todos.size());
         }
 
         for (AnnotationTodo annotationTodo : annotationTodos) {
-            AnnotationExpression ae = parseAnnotationExpression(annotationTodo);
-            annotationTodo.infoBuilder.setAnnotationExpression(annotationTodo.indexInAnnotationList, ae);
+            try {
+                AnnotationExpression ae = parseAnnotationExpression(annotationTodo);
+                annotationTodo.infoBuilder.setAnnotationExpression(annotationTodo.indexInAnnotationList, ae);
+            } catch (RuntimeException | AssertionError re) {
+                LOGGER.error("Caught exception resolving annotation {}", annotationTodo);
+                Summary.ParseException pe = new Summary.ParseException(annotationTodo.context, annotationTodo.infoBuilder, re.getMessage(), re);
+                annotationTodo.context.summary().addParseException(pe);
+            }
         }
         for (JavaDocToDo javaDocToDo : javaDocs) {
             try {
                 JavaDoc resolved = resolveJavaDoc(javaDocToDo);
                 javaDocToDo.infoBuilder.setJavaDoc(resolved);
-            } catch (RuntimeException re) {
+            } catch (RuntimeException | AssertionError re) {
                 LOGGER.error("Caught exception resolving javaDoc {}", javaDocToDo.info);
                 Summary.ParseException pe = new Summary.ParseException(javaDocToDo.context, javaDocToDo.info, re.getMessage(), re);
                 javaDocToDo.context.summary().addParseException(pe);
@@ -131,7 +137,7 @@ public class ResolverImpl implements Resolver {
                 if (todo.infoBuilder instanceof FieldInfo.Builder builder) {
                     try {
                         resolveField(todo, builder);
-                    } catch (RuntimeException re) {
+                    } catch (RuntimeException | AssertionError re) {
                         LOGGER.error("Caught exception resolving field {}", todo.info);
                         Summary.ParseException pe = new Summary.ParseException(todo.context, todo.info, re.getMessage(), re);
                         todo.context.summary().addParseException(pe);
@@ -140,7 +146,7 @@ public class ResolverImpl implements Resolver {
                 } else if (todo.infoBuilder instanceof MethodInfo.Builder builder) {
                     try {
                         resolveMethod(todo, builder);
-                    } catch (RuntimeException re) {
+                    } catch (RuntimeException | AssertionError re) {
                         LOGGER.error("Caught exception resolving method {}", todo.info);
                         Summary.ParseException pe = new Summary.ParseException(todo.context, todo.info, re.getMessage(), re);
                         todo.context.summary().addParseException(pe);
@@ -148,9 +154,9 @@ public class ResolverImpl implements Resolver {
                     todo.context.summary().addType(todo.context.enclosingType().primaryType());
                 } else throw new UnsupportedOperationException("In java, we cannot have expressions in other places");
                 ++cnt;
-                TIMED_LOGGER.info("Resolved {} of {} info objects", cnt, todos.size());
+                TIMED_LOGGER.info("Phase 4: parsing bodies {} of {} methods/field initializers", cnt, todos.size());
             }
-        } catch (RuntimeException re) {
+        } catch (RuntimeException | AssertionError re) {
             LOGGER.error("Failed after resolving {} of {} fields/methods", cnt, todos.size());
             throw re;
         }

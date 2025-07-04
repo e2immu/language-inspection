@@ -28,11 +28,6 @@ public class CompiledTypesManagerImpl implements CompiledTypesManager {
     }
 
     @Override
-    public ByteCodeInspector byteCodeInspector() {
-        return byteCodeInspector.get();
-    }
-
-    @Override
     public Resources classPath() {
         return classPath;
     }
@@ -76,7 +71,9 @@ public class CompiledTypesManagerImpl implements CompiledTypesManager {
         }
         SourceFile path = fqnToPath(fullyQualifiedName, ".class");
         if (path == null) return null;
-        return byteCodeInspector.get().load(path);
+        synchronized (byteCodeInspector) {
+            return byteCodeInspector.get().load(path);
+        }
     }
 
     @Override
@@ -84,26 +81,22 @@ public class CompiledTypesManagerImpl implements CompiledTypesManager {
         if (!typeInfo.hasBeenInspected()) {
             SourceFile sourceFile = fqnToPath(typeInfo.fullyQualifiedName(), ".class");
             if (sourceFile == null) throw new UnsupportedOperationException("Cannot find .class file for " + typeInfo);
-            byteCodeInspector.get().load(typeInfo);
+            synchronized (byteCodeInspector) {
+                byteCodeInspector.get().load(typeInfo);
+            }
         }
     }
 
     @Override
     public TypeInfo load(SourceFile path) {
         // only to be used when the type does not yet exist!
-        return byteCodeInspector.get().load(path);
+        synchronized (byteCodeInspector) {
+            return byteCodeInspector.get().load(path);
+        }
     }
 
     public void setByteCodeInspector(ByteCodeInspector byteCodeInspector) {
         this.byteCodeInspector.set(byteCodeInspector);
-    }
-
-    @Override
-    public void setLazyInspection(TypeInfo typeInfo) {
-        if (!typeInfo.haveOnDemandInspection()) {
-            typeInfo.setOnDemandInspection(ti -> byteCodeInspector.get()
-                    .load(fqnToPath(typeInfo.fullyQualifiedName(), ".class")));
-        }
     }
 
     @Override
@@ -125,7 +118,9 @@ public class CompiledTypesManagerImpl implements CompiledTypesManager {
                 if (typeInfo == null) {
                     SourceFile path = fqnToPath(fqn, ".class");
                     if (path != null) {
-                        byteCodeInspector.get().load(path);
+                        synchronized (byteCodeInspector) {
+                            byteCodeInspector.get().load(path);
+                        }
                         inspected.incrementAndGet();
                     }
                 }

@@ -504,7 +504,7 @@ public class JavaInspectorImpl implements JavaInspector {
                 }
             }
             count.incrementAndGet();
-            TIMED_LOGGER.info("Parsing phase 1, done {}", count);
+            TIMED_LOGGER.info("Phase 1: Loading sources/rewiring types, done {}", count);
         });
 
         count.set(0);
@@ -515,7 +515,7 @@ public class JavaInspectorImpl implements JavaInspector {
         List<SourceFileCompilationUnit> list = parallelStream2.map(entry -> {
             SourceFile sourceFile = entry.getKey();
             count.incrementAndGet();
-            TIMED_LOGGER.info("Parsing phase 2, done {}", count);
+            TIMED_LOGGER.info("Phase 2: Scanning compilation units, done {}", count);
             try {
                 if (sourceFile.uri().toString().endsWith("module-info.java")) {
                     ModuleInfo moduleInfo = parseModuleInfo(entry.getValue(), rootContext);
@@ -564,7 +564,7 @@ public class JavaInspectorImpl implements JavaInspector {
                     }
                 }
                 count.incrementAndGet();
-                TIMED_LOGGER.info("Parsing phase 3, done {}", count);
+                TIMED_LOGGER.info("Phase 3: parsing type/method/field declarations, done {}", count);
                 if (delayedCU == null) {
                     sourceFilesPut(sfCu.sourceFile, types.stream().map(Either::getLeft).toList());
                     return null;
@@ -578,11 +578,14 @@ public class JavaInspectorImpl implements JavaInspector {
             }
         }).filter(Objects::nonNull).toList();
 
+        AtomicInteger iteration = new AtomicInteger();
         while (true) {
             count.set(0);
-            List<DelayedCU> newDelayed = new LinkedList<>();
-            for (DelayedCU delayedCU : delayed) {
-                TIMED_LOGGER.info("Parsing phase 3b, done {}, {} newDelayed", count, newDelayed.size());
+            iteration.incrementAndGet();
+            Stream<DelayedCU> stream = parseOptions.parallel() ? delayed.parallelStream() : delayed.stream();
+            int todo = delayed.size();
+            List<DelayedCU> newDelayed = stream.map(delayedCU -> {
+                TIMED_LOGGER.info("Phase 3b, iteration {}: parsing delayed declarations, done {} of {}", iteration, count, todo);
                 DelayedCU newDelayedCU = null;
                 List<TypeInfo> successful = new ArrayList<>();
                 for (ParseTypeDeclaration.DelayedParsingInformation d : delayedCU.delayed) {
@@ -597,16 +600,16 @@ public class JavaInspectorImpl implements JavaInspector {
                         successful.add(ti);
                     }
                 }
+                count.incrementAndGet();
                 if (newDelayedCU == null) {
                     sourceFilesPut(delayedCU.sfCu.sourceFile, List.copyOf(successful));
+                    return null;
                 } else {
-                    newDelayed.add(newDelayedCU);
+                    return newDelayedCU;
                 }
-                count.incrementAndGet();
-            }
+            }).filter(Objects::nonNull).toList();
             if (newDelayed.isEmpty()) break;
             delayed = newDelayed;
-            LOGGER.info("Iterating again, delayed {}", delayed.size());
         }
 
         resolveModuleInfo(summary);
