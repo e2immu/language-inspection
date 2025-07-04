@@ -146,18 +146,19 @@ public class MethodResolutionImpl implements MethodResolution {
             return null;
         }
 
-        ParameterizedType finalParameterizedType;
-        if (expectedConcreteType == null) {
+        ParameterizedType finalParameterizedType1;
+        if (formalType.hasTypeParameters()) {
             // there's only one method left, so we can derive the parameterized type from the parameters
             Set<ParameterizedType> typeParametersResolved = new HashSet<>(formalType.parameters());
-            finalParameterizedType = tryToResolveTypeParameters(formalType, candidate.method(),
-                    typeParametersResolved, candidate.newParameterExpressions(), useObjectForUndefinedTypeParameters);
-            if (finalParameterizedType == null) {
-                return null;
-            }
+            finalParameterizedType1 = tryToResolveTypeParameters(formalType, candidate.method(),
+                    typeParametersResolved, candidate.newParameterExpressions(), useObjectForUndefinedTypeParameters,
+                    typeMap);
         } else {
-            finalParameterizedType = expectedConcreteType;
+            finalParameterizedType1 = expectedConcreteType;
         }
+        ParameterizedType finalParameterizedType = Objects.requireNonNullElseGet(finalParameterizedType1,
+                () -> expectedConcreteType == null ? formalType.withParameters(List.of()) : expectedConcreteType);
+
         // IMPORTANT: every newly created object is different from each other, UNLESS we're a record, then
         // we can check the constructors... See EqualityMode
         return runtime.newConstructorCallBuilder()
@@ -175,7 +176,8 @@ public class MethodResolutionImpl implements MethodResolution {
                                                          MethodTypeParameterMap method,
                                                          Set<ParameterizedType> typeParametersResolved,
                                                          List<Expression> newParameterExpressions,
-                                                         boolean useObjectForUnresolvedTypeParameters) {
+                                                         boolean useObjectForUnresolvedTypeParameters,
+                                                         Map<NamedType, ParameterizedType> expectedTypeMap) {
         int i = 0;
         Map<NamedType, ParameterizedType> map = new HashMap<>();
         for (Expression parameterExpression : newParameterExpressions) {
@@ -191,13 +193,17 @@ public class MethodResolutionImpl implements MethodResolution {
                 return runtime.newParameterizedType(formalType.typeInfo(), concreteParameters);
             }
         }
-        if (useObjectForUnresolvedTypeParameters) {
+        if (useObjectForUnresolvedTypeParameters && !typeParametersResolved.isEmpty() && !expectedTypeMap.isEmpty()) {
             List<ParameterizedType> concreteParameters = formalType.parameters().stream()
-                    .map(pt -> runtime.objectParameterizedType()).toList();
+                    .map(pt -> {
+                        if (pt.typeParameter() != null)
+                            return expectedTypeMap.getOrDefault(pt.typeParameter(), runtime.objectParameterizedType());
+                        return runtime.objectParameterizedType();
+                    }).toList();
             // FIXME this does not do the correct recursions; we should translate "unknown" to "Object"
             return runtime.newParameterizedType(formalType.typeInfo(), concreteParameters);
         }
-        return null;
+        return null; // solved later
     }
 
 // concreteType Collection<X>, formalType Collection<E>, with E being the parameter in HashSet<E> which implements Collection<E>

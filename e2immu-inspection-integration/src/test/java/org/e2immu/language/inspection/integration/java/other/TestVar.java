@@ -136,7 +136,7 @@ public class TestVar extends CommonTest {
         MethodInfo methodInfo = typeInfo.findUniqueMethod("method", 1);
         LocalVariableCreation lvc = (LocalVariableCreation) methodInfo.methodBody().statements().getFirst();
         assertFalse(lvc.localVariable().assignmentExpression() instanceof ErasedExpression);
-        assertEquals("Type java.util.ArrayList<Object>", lvc.localVariable().parameterizedType().toString());
+        assertEquals("Type java.util.ArrayList", lvc.localVariable().parameterizedType().toString());
     }
 
 }
