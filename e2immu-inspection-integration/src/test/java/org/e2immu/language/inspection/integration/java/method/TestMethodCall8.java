@@ -47,7 +47,6 @@ public class TestMethodCall8 extends CommonTest {
                             .csrf(AbstractHttpConfigurer::disable);
                 }
             }
-            }
             """;
 
     @Test
@@ -423,7 +422,7 @@ public class TestMethodCall8 extends CommonTest {
             import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
             class X {
                 interface I {
-
+            
                 }
                 I generate(int i) {
                     return new I() {};
@@ -433,7 +432,7 @@ public class TestMethodCall8 extends CommonTest {
                 }
                 void test(I ii, Y y) {
                     I i = assertDoesNotThrow(() -> y.generate(ii));
-
+            
                 }
             }
             """;
@@ -449,7 +448,7 @@ public class TestMethodCall8 extends CommonTest {
         // NOT: Executable. We must choose ThrowingSupplier over Executable, because Executable does not return a value
         assertEquals("Type org.junit.jupiter.api.function.ThrowingSupplier<a.b.X.I>",
                 lambda.concreteFunctionalType().toString());
-     }
+    }
 
 
     @Language("java")
@@ -471,10 +470,79 @@ public class TestMethodCall8 extends CommonTest {
             }
             """;
 
-    @DisplayName("comparing")
+    @DisplayName("comparing() followed by 3x thenComparing()")
     @Test
     public void test9() {
-        TypeInfo X = javaInspector.parse(INPUT9);
+        javaInspector.parse(INPUT9);
+    }
 
+    @Language("java")
+    private static final String INPUT9b = """
+            package a.b;
+            import java.util.Arrays;
+            import java.util.Comparator;
+            import java.util.Map;
+            class X {
+                Map<Long, Integer> map;
+                record Line(String startDate, String endDate, long id, double value) {}
+                public void sort(Line[] lines) {
+                    Arrays.sort(lines, Comparator
+            	    .comparing((Line line) -> line.endDate)
+            	    .thenComparing(line -> map.getOrDefault(line.id, 10))
+            	    .thenComparing(line -> line.value, Comparator.reverseOrder()));
+                }
+            }
+            """;
+
+    @DisplayName("comparing() followed by 2x thenComparing()")
+    @Test
+    public void test9b() {
+        javaInspector.parse(INPUT9b);
+    }
+
+    @Language("java")
+    private static final String INPUT9c = """
+            package a.b;
+            import java.util.Arrays;
+            import java.util.Comparator;
+            import java.util.Map;
+            class X {
+                Map<Long, Integer> map;
+                record Line(String startDate, String endDate, long id, double value) {}
+                public void sort(Line[] lines) {
+                    Arrays.sort(lines, Comparator
+            	    .comparing((Line line) -> line.endDate)
+            	    .thenComparing(line -> line.value, Comparator.reverseOrder()));
+                }
+            }
+            """;
+
+    @DisplayName("comparing() followed by thenComparing()")
+    @Test
+    public void test9c() {
+        javaInspector.parse(INPUT9c);
+    }
+
+
+    @Language("java")
+    private static final String INPUT9d = """
+            package a.b;
+            import java.util.Arrays;
+            import java.util.Comparator;
+            class X {
+                record Line(String startDate, String endDate, double value) {}
+                public void sort(Line[] lines) {
+                   Comparator<Line> c = Comparator
+            	    .comparing((Line line) -> line.endDate)
+            	    .thenComparing(line -> line.startDate)
+            	    .thenComparing(line -> line.value);
+                }
+            }
+            """;
+
+    @DisplayName("comparing() followed by 2x thenComparing(), less context")
+    @Test
+    public void test9d() {
+        javaInspector.parse(INPUT9d);
     }
 }
