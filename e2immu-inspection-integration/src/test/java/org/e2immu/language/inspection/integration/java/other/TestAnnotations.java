@@ -57,18 +57,48 @@ public class TestAnnotations extends CommonTest {
     public void test2() {
         TypeInfo t = javaInspector.parse(INPUT2);
         assertEquals(1, t.annotations().size());
-        AnnotationExpression ae = t.annotations().get(0);
+        AnnotationExpression ae = t.annotations().getFirst();
         assertEquals("org.e2immu.language.inspection.integration.java.importhelper.a.Resources",
                 ae.typeInfo().fullyQualifiedName());
         assertEquals(1, ae.keyValuePairs().size());
-        AnnotationExpression.KV kv0 = ae.keyValuePairs().get(0);
+        AnnotationExpression.KV kv0 = ae.keyValuePairs().getFirst();
         assertEquals("value", kv0.key());
         assertTrue(kv0.keyIsDefault());
         Expression e = kv0.value();
         if (e instanceof ArrayInitializer ai) {
-            if (ai.expressions().get(0) instanceof AnnotationExpression ae1) {
+            if (ai.expressions().getFirst() instanceof AnnotationExpression ae1) {
                 assertEquals(3, ae1.keyValuePairs().size());
             } else fail();
+        } else fail();
+    }
+
+
+    @Language("java")
+    private static final String INPUT2b = """
+            package org.e2immu.analyser.resolver.testexample;
+            
+            import org.e2immu.language.inspection.integration.java.importhelper.a.Resources;
+            
+            @Resources({ })
+            public class Annotations_1 {
+                static final String XX = "xx";
+            }
+            """;
+
+    @Test
+    public void test2b() {
+        TypeInfo t = javaInspector.parse(INPUT2b);
+        assertEquals(1, t.annotations().size());
+        AnnotationExpression ae = t.annotations().getFirst();
+        assertEquals("org.e2immu.language.inspection.integration.java.importhelper.a.Resources",
+                ae.typeInfo().fullyQualifiedName());
+        assertEquals(1, ae.keyValuePairs().size());
+        AnnotationExpression.KV kv0 = ae.keyValuePairs().getFirst();
+        assertEquals("value", kv0.key());
+        assertTrue(kv0.keyIsDefault());
+        Expression e = kv0.value();
+        if (e instanceof ArrayInitializer ai) {
+            assertTrue(ai.expressions().isEmpty());
         } else fail();
     }
 
@@ -193,12 +223,12 @@ public class TestAnnotations extends CommonTest {
     public void test7() {
         TypeInfo X = javaInspector.parse(INPUT7);
         MethodInfo u = X.findUniqueMethod("u", 2);
-        Statement ifElse = u.methodBody().statements().get(0).block().statements().get(5);
-        Statement s = ifElse.block().statements().get(0);
+        Statement ifElse = u.methodBody().statements().getFirst().block().statements().get(5);
+        Statement s = ifElse.block().statements().getFirst();
         assertEquals(1, s.annotations().size());
-        AnnotationExpression ae = s.annotations().get(0);
+        AnnotationExpression ae = s.annotations().getFirst();
         assertEquals(SuppressWarnings.class.getCanonicalName(), ae.typeInfo().fullyQualifiedName());
-        AnnotationExpression.KV kv = ae.keyValuePairs().get(0);
+        AnnotationExpression.KV kv = ae.keyValuePairs().getFirst();
         assertEquals("value", kv.key());
         assertEquals("unchecked", ((StringConstant) kv.value()).constant());
     }
@@ -231,7 +261,7 @@ public class TestAnnotations extends CommonTest {
         TypeInfo ti = javaInspector.parse(INPUT8);
         MethodInfo mi = ti.findUniqueMethod("getAnalysisDataDir", 1);
         TryStatement ts = (TryStatement) mi.methodBody().statements().get(1);
-        TryStatement.CatchClause cc = ts.catchClauses().get(0);
+        TryStatement.CatchClause cc = ts.catchClauses().getFirst();
         assertEquals(1, cc.annotations().size());
     }
 
