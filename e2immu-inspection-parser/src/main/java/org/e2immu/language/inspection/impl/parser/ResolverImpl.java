@@ -60,12 +60,16 @@ public class ResolverImpl implements Resolver {
     @Override
     public void add(Info info, Info.Builder<?> infoBuilder, ForwardType forwardType, Object eci, Object expression,
                     Context context) {
-        todos.add(new Todo(info, infoBuilder, forwardType, eci, expression, context));
+        synchronized (todos) {
+            todos.add(new Todo(info, infoBuilder, forwardType, eci, expression, context));
+        }
     }
 
     @Override
     public void addJavadoc(Info info, Info.Builder<?> infoBuilder, Context context, JavaDoc javaDoc) {
-        javaDocs.add(new JavaDocToDo(info, infoBuilder, context, javaDoc));
+        synchronized (javaDocs) {
+            javaDocs.add(new JavaDocToDo(info, infoBuilder, context, javaDoc));
+        }
     }
 
     @Override
@@ -74,22 +78,30 @@ public class ResolverImpl implements Resolver {
                                   AnnotationExpression.Builder ab,
                                   int indexInAnnotationList,
                                   Object annotation, Context context) {
-        annotationTodos.add(new AnnotationTodo(infoBuilder, annotationType, ab, indexInAnnotationList, annotation, context));
+        synchronized (annotationTodos) {
+            annotationTodos.add(new AnnotationTodo(infoBuilder, annotationType, ab, indexInAnnotationList, annotation, context));
+        }
     }
 
     @Override
     public void addRecordAccessor(MethodInfo accessor) {
-        recordAccessors.add(accessor);
+        synchronized (recordAccessors) {
+            recordAccessors.add(accessor);
+        }
     }
 
     @Override
     public void addRecordField(FieldInfo recordField) {
-        recordFields.add(recordField);
+        synchronized (recordFields) {
+            recordFields.add(recordField);
+        }
     }
 
     @Override
     public void add(TypeInfo.Builder typeInfoBuilder) {
-        types.add(typeInfoBuilder);
+        synchronized (types) {
+            types.add(typeInfoBuilder);
+        }
     }
 
     public void resolve(boolean primary) {

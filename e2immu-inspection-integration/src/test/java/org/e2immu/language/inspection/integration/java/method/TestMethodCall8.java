@@ -449,4 +449,31 @@ public class TestMethodCall8 extends CommonTest {
         // NOT: Executable. We must choose ThrowingSupplier over Executable, because Executable does not return a value
         assertEquals("Type org.junit.jupiter.api.function.ThrowingSupplier", lambda.concreteFunctionalType().toString());
      }
+
+
+    @Language("java")
+    private static final String INPUT9 = """
+            package a.b;
+            import java.util.Arrays;
+            import java.util.Comparator;
+            import java.util.Map;
+            class X {
+                Map<Long, Integer> map;
+                record Line(String startDate, String endDate, long id, double value) {}
+                public void sort(Line[] lines) {
+                    Arrays.sort(lines, Comparator
+            	    .comparing((Line line) -> line.endDate)
+            	    .thenComparing(line -> line.startDate)
+            	    .thenComparing(line -> map.getOrDefault(line.id, 10))
+            	    .thenComparing(line -> line.value, Comparator.reverseOrder()));
+                }
+            }
+            """;
+
+    @DisplayName("comparing")
+    @Test
+    public void test9() {
+        TypeInfo X = javaInspector.parse(INPUT9);
+
+    }
 }

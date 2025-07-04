@@ -7,6 +7,7 @@ import org.e2immu.language.cst.api.info.TypeInfo;
 import org.e2immu.language.cst.api.statement.LocalVariableCreation;
 import org.e2immu.language.inspection.integration.java.CommonTest;
 import org.intellij.lang.annotations.Language;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -68,9 +69,31 @@ public class TestLambda extends CommonTest {
 
     @Test
     public void test2() {
-        TypeInfo typeInfo = javaInspector.parse(INPUT2);
-        MethodInfo method1 = typeInfo.findUniqueMethod("method1", 1);
+        javaInspector.parse(INPUT2);
+    }
 
+    @Language("java")
+    private static final String INPUT2b = """
+            import java.util.List;
+            import java.util.Set;
+            import java.util.stream.Stream;
+            class C {
+                void method1(List<String> list) {
+                    list.stream().findFirst().ifPresent(s -> {
+                        int length = s.length();
+                        if(length > 10) {
+                            String msg = "too long! "+length;
+                            throw new RuntimeException(msg);
+                        }
+                    });
+                }
+            }
+            """;
+
+    @DisplayName("ParseLambdaExpression.recursiveComputeIsVoid")
+    @Test
+    public void test2b() {
+        javaInspector.parse(INPUT2b);
     }
 
 
@@ -98,5 +121,24 @@ public class TestLambda extends CommonTest {
         ParameterInfo s = lambda.parameters().getFirst();
         assertEquals("s", s.name());
         assertEquals("5-12:5-12", s.source().compact2());
+    }
+
+
+    @Language("java")
+    private static final String INPUT4 = """
+            package a.b;
+            class C {
+                interface A { String accept(int a, int b) {} }
+                A a = (a, b) -> {
+                  System.out.println(a + " = " + b);
+                  return a + " = " + b;
+                };
+            }
+            """;
+
+    @Test
+    public void test4() {
+        TypeInfo typeInfo = javaInspector.parse(INPUT4);
+
     }
 }

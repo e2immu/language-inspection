@@ -46,6 +46,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
@@ -269,11 +270,6 @@ public class JavaInspectorImpl implements JavaInspector {
         compiledTypesManager.preload(thePackage);
     }
 
-    @Override
-    public void loadByteCodeQueue() {
-        compiledTypesManager.loadByteCodeQueue();
-    }
-
     private Resources assemblePath(Path workingDirectory,
                                    List<SourceSet> sourceSets,
                                    Path alternativeJREDirectory,
@@ -474,8 +470,8 @@ public class JavaInspectorImpl implements JavaInspector {
 
         Invalidated invalidated = parseOptions.invalidated();
 
-        Map<SourceFile, String> sourceFilesToParse = new HashMap<>();
-        Set<TypeInfo> typesToRewire = new HashSet<>();
+        Map<SourceFile, String> sourceFilesToParse = new ConcurrentHashMap<>();
+        Map<TypeInfo, Integer> typesToRewire = new ConcurrentHashMap<>();
         AtomicInteger count = new AtomicInteger();
         Stream<Map.Entry<SourceFile, List<TypeInfo>>> stream1 = this.sourceFiles.entrySet().stream();
         Stream<Map.Entry<SourceFile, List<TypeInfo>>> parallelStream1 = parseOptions.parallel()
@@ -503,7 +499,7 @@ public class JavaInspectorImpl implements JavaInspector {
                     if (state == UNCHANGED) {
                         summary.addType(ti);
                     } else if (state == REWIRE) {
-                        typesToRewire.add(ti);
+                        typesToRewire.merge(ti, 1, Integer::sum);
                     }
                 }
             }
@@ -543,16 +539,15 @@ public class JavaInspectorImpl implements JavaInspector {
 
         // PHASE 3: actual parsing of types, methods, fields
         count.set(0);
-        InfoMap infoMap = new InfoMapImpl(typesToRewire);
+        InfoMap infoMap = new InfoMapImpl(typesToRewire.keySet());
         Stream<SourceFileCompilationUnit> stream3;
         if (parseOptions.parallel()) {
             stream3 = list.parallelStream();
         } else {
             stream3 = list.stream(); // already sorted earlier
         }
-        List<DelayedCU> delayed = new LinkedList<>();
         ParseCompilationUnit parseCompilationUnit = new ParseCompilationUnit(rootContext);
-        stream3.forEach(sfCu -> {
+        List<DelayedCU> delayed = stream3.map(sfCu -> {
             try {
                 LOGGER.debug("Parsing {}", sfCu.sourceFile().uri());
                 List<Either<TypeInfo, ParseTypeDeclaration.DelayedParsingInformation>> types
@@ -568,19 +563,20 @@ public class JavaInspectorImpl implements JavaInspector {
                         delayedCU.delayed.add(either.getRight());
                     }
                 }
-                if (delayedCU == null) {
-                    sourceFiles.put(sfCu.sourceFile, types.stream().map(Either::getLeft).toList());
-                } else {
-                    delayed.add(delayedCU);
-                }
                 count.incrementAndGet();
-                TIMED_LOGGER.info("Parsing phase 3, done {}, {} delayed", count, delayed.size());
+                TIMED_LOGGER.info("Parsing phase 3, done {}", count);
+                if (delayedCU == null) {
+                    sourceFilesPut(sfCu.sourceFile, types.stream().map(Either::getLeft).toList());
+                    return null;
+                }
+                return delayedCU;
             } catch (ParseException parseException) {
                 summary.addParseException(new Summary.ParseException(sfCu.sourceFile.uri(), sfCu.sourceFile.uri(),
                         parseException.getMessage(),
                         parseException));
+                return null;
             }
-        });
+        }).filter(Objects::nonNull).toList();
 
         while (true) {
             count.set(0);
@@ -602,21 +598,20 @@ public class JavaInspectorImpl implements JavaInspector {
                     }
                 }
                 if (newDelayedCU == null) {
-                    sourceFiles.put(delayedCU.sfCu.sourceFile, List.copyOf(successful));
+                    sourceFilesPut(delayedCU.sfCu.sourceFile, List.copyOf(successful));
                 } else {
                     newDelayed.add(newDelayedCU);
                 }
                 count.incrementAndGet();
             }
             if (newDelayed.isEmpty()) break;
-            delayed.clear();
-            delayed.addAll(newDelayed);
+            delayed = newDelayed;
             LOGGER.info("Iterating again, delayed {}", delayed.size());
         }
 
         resolveModuleInfo(summary);
 
-        for (TypeInfo typeInfo : typesToRewire) {
+        for (TypeInfo typeInfo : typesToRewire.keySet()) {
             TypeInfo rewired = infoMap.typeInfoRecurseAllPhases(typeInfo);
             sourceTypeMap.put(rewired);
             summary.addType(rewired);
@@ -626,6 +621,14 @@ public class JavaInspectorImpl implements JavaInspector {
 
         rootContext.resolver().resolve(true);
         return summary;
+    }
+
+    private final Object sourceFilesLock = new Object();
+
+    private void sourceFilesPut(SourceFile sourceFile, List<TypeInfo> list) {
+        synchronized (sourceFilesLock) {
+            sourceFiles.put(sourceFile, list);
+        }
     }
 
     private record DelayedCU(SourceFileCompilationUnit sfCu,

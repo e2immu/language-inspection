@@ -65,8 +65,6 @@ public interface JavaInspector {
 
     List<InitializationProblem> initialize(InputConfiguration inputConfiguration) throws IOException;
 
-    void loadByteCodeQueue();
-
     void preload(String thePackage);
 
     // main parse method, from sources specified in InputConfiguration

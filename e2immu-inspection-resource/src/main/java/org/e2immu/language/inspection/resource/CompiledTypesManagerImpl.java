@@ -20,24 +20,11 @@ public class CompiledTypesManagerImpl implements CompiledTypesManager {
     private final Resources classPath;
     private final SetOnce<ByteCodeInspector> byteCodeInspector = new SetOnce<>();
     private final Map<String, TypeInfo> typeMap = new HashMap<>();
-    //private final ReentrantReadWriteLock typeMapLock = new ReentrantReadWriteLock(); TODO add locking
+    private final ReentrantReadWriteLock typeMapLock = new ReentrantReadWriteLock();
     private final Trie<TypeInfo> typeTrie = new Trie<>();
-    private final Set<TypeInfo> inspectionQueue = new HashSet<>();
 
     public CompiledTypesManagerImpl(Resources classPath) {
         this.classPath = classPath;
-    }
-
-    @Override
-    public void loadByteCodeQueue() {
-        LOGGER.debug("Have queue of size {}", inspectionQueue.size());
-    }
-
-    @Override
-    public void addToQueue(TypeInfo typeInfo) {
-        synchronized (inspectionQueue) {
-            inspectionQueue.add(typeInfo);
-        }
     }
 
     @Override
@@ -52,10 +39,15 @@ public class CompiledTypesManagerImpl implements CompiledTypesManager {
 
     @Override
     public void add(TypeInfo typeInfo) {
-        TypeInfo previous = typeMap.put(typeInfo.fullyQualifiedName(), typeInfo);
-        assert previous == null;
-        String[] parts = typeInfo.fullyQualifiedName().split("\\.");
-        typeTrie.add(parts, typeInfo);
+        typeMapLock.writeLock().lock();
+        try {
+            TypeInfo previous = typeMap.put(typeInfo.fullyQualifiedName(), typeInfo);
+            assert previous == null;
+            String[] parts = typeInfo.fullyQualifiedName().split("\\.");
+            typeTrie.add(parts, typeInfo);
+        } finally {
+            typeMapLock.writeLock().unlock();
+        }
     }
 
     @Override
@@ -65,13 +57,23 @@ public class CompiledTypesManagerImpl implements CompiledTypesManager {
 
     @Override
     public TypeInfo get(String fullyQualifiedName) {
-        return typeMap.get(fullyQualifiedName);
+        typeMapLock.readLock().lock();
+        try {
+            return typeMap.get(fullyQualifiedName);
+        } finally {
+            typeMapLock.readLock().unlock();
+        }
     }
 
     @Override
     public TypeInfo getOrLoad(String fullyQualifiedName) {
-        TypeInfo typeInfo = typeMap.get(fullyQualifiedName);
-        if (typeInfo != null) return typeInfo;
+        typeMapLock.readLock().lock();
+        try {
+            TypeInfo typeInfo = typeMap.get(fullyQualifiedName);
+            if (typeInfo != null) return typeInfo;
+        } finally {
+            typeMapLock.readLock().unlock();
+        }
         SourceFile path = fqnToPath(fullyQualifiedName, ".class");
         if (path == null) return null;
         return byteCodeInspector.get().load(path);
@@ -99,7 +101,8 @@ public class CompiledTypesManagerImpl implements CompiledTypesManager {
     @Override
     public void setLazyInspection(TypeInfo typeInfo) {
         if (!typeInfo.haveOnDemandInspection()) {
-            typeInfo.setOnDemandInspection(ti -> byteCodeInspector.get().load(fqnToPath(typeInfo.fullyQualifiedName(), ".class")));
+            typeInfo.setOnDemandInspection(ti -> byteCodeInspector.get()
+                    .load(fqnToPath(typeInfo.fullyQualifiedName(), ".class")));
         }
     }
 
@@ -112,7 +115,13 @@ public class CompiledTypesManagerImpl implements CompiledTypesManager {
             if (!expansion[expansion.length - 1].contains("$")) {
                 String fqn = fqnOfClassFile(thePackage, expansion);
                 assert acceptFQN(fqn);
-                TypeInfo typeInfo = typeMap.get(fqn);
+                typeMapLock.readLock().lock();
+                TypeInfo typeInfo;
+                try {
+                    typeInfo = typeMap.get(fqn);
+                } finally {
+                    typeMapLock.readLock().unlock();
+                }
                 if (typeInfo == null) {
                     SourceFile path = fqnToPath(fqn, ".class");
                     if (path != null) {
@@ -135,16 +144,26 @@ public class CompiledTypesManagerImpl implements CompiledTypesManager {
 
     @Override
     public List<TypeInfo> typesLoaded() {
-        return typeMap.values().stream().sorted(Comparator.comparing(TypeInfo::fullyQualifiedName)).toList();
+        typeMapLock.readLock().lock();
+        try {
+            return typeMap.values().stream().sorted(Comparator.comparing(TypeInfo::fullyQualifiedName)).toList();
+        } finally {
+            typeMapLock.readLock().unlock();
+        }
     }
 
     @Override
     public Collection<TypeInfo> primaryTypesInPackage(String packageName) {
         String[] packages = packageName.split("\\.");
         List<TypeInfo> result = new ArrayList<>();
-        typeTrie.visit(packages, (array, list) -> list.stream()
-                .filter(ti -> ti.isPrimaryType() && packageName.equals(ti.packageName()))
-                .forEach(result::add));
-        return List.copyOf(result);
+        typeMapLock.readLock().lock();
+        try {
+            typeTrie.visit(packages, (array, list) -> list.stream()
+                    .filter(ti -> ti.isPrimaryType() && packageName.equals(ti.packageName()))
+                    .forEach(result::add));
+            return List.copyOf(result);
+        } finally {
+            typeMapLock.readLock().unlock();
+        }
     }
 }

@@ -13,10 +13,6 @@ import java.util.List;
  */
 public interface CompiledTypesManager {
 
-    default void addToQueue(TypeInfo remote) {
-        throw new UnsupportedOperationException();
-    }
-
     default TypeInfo addToTrie(TypeInfo typeInfo) {
         return typeInfo;
     }
@@ -56,10 +52,6 @@ public interface CompiledTypesManager {
     }
 
     default TypeInfo load(SourceFile path) {
-        throw new UnsupportedOperationException();
-    }
-
-    default void loadByteCodeQueue() {
         throw new UnsupportedOperationException();
     }
 

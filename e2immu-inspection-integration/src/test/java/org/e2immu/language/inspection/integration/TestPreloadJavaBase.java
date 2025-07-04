@@ -26,7 +26,6 @@ public class TestPreloadJavaBase {
                 .build();
         JavaInspector javaInspector = new JavaInspectorImpl();
         javaInspector.initialize(inputConfiguration);
-        javaInspector.loadByteCodeQueue();
 
         // NOTE: this may be very dependent on the current JDK and pre-loading settings.
 
@@ -82,7 +81,6 @@ public class TestPreloadJavaBase {
         JavaInspector javaInspector = new JavaInspectorImpl();
         javaInspector.initialize(inputConfiguration);
         javaInspector.preload("java.util.stream");
-        javaInspector.loadByteCodeQueue();
 
         TypeInfo spinedBuffer = javaInspector.compiledTypesManager().get("java.util.stream.SpinedBuffer");
         assertNotNull(spinedBuffer);
@@ -106,7 +104,6 @@ public class TestPreloadJavaBase {
         JavaInspector javaInspector = new JavaInspectorImpl();
         javaInspector.initialize(inputConfiguration);
         javaInspector.preload("java.net.http");
-        javaInspector.loadByteCodeQueue();
         TypeInfo bodyHandler = javaInspector.compiledTypesManager().get("java.net.http.HttpResponse.BodyHandler");
         assertNotNull(bodyHandler);
     }
