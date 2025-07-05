@@ -41,4 +41,8 @@ public class SourceTypeMapImpl implements SourceTypeMap {
         }
         return result;
     }
+
+    public TreeMap<String, TypeInfo> getMap() {
+        return map;
+    }
 }

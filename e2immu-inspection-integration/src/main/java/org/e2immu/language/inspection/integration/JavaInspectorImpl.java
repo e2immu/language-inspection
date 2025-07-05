@@ -741,5 +741,9 @@ public class JavaInspectorImpl implements JavaInspector {
         Formatter formatter = new Formatter2Impl(runtime, new FormattingOptionsImpl.Builder().build());
         return formatter.write(ob);
     }
+
+    public SourceTypeMapImpl getSourceTypeMap() {
+        return sourceTypeMap;
+    }
 }
 
