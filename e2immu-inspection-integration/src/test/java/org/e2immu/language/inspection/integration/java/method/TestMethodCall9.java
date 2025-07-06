@@ -50,4 +50,32 @@ public class TestMethodCall9 extends CommonTest {
         TypeInfo typeInfo = javaInspector.parse(INPUT1);
 
     }
+
+    @Language("java")
+    private static final String INPUT2 = """
+            package a.b;
+
+            class X {
+                interface I { }
+                class C implements I { }
+                String method(C c) {
+                    return "s";
+                }
+                String wrap(String t) {
+                    return t;
+                }
+                void use(C c, long id) {
+                    wrap(method(find(c, id)));
+                }
+                static <T extends I> T find(T t, long id) {
+                    return t;
+                }
+            }
+            """;
+
+    @Test
+    public void test2() {
+        TypeInfo typeInfo = javaInspector.parse(INPUT2);
+
+    }
 }
