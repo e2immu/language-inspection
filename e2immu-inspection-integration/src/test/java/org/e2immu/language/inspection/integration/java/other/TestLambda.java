@@ -1,6 +1,7 @@
 package org.e2immu.language.inspection.integration.java.other;
 
-import org.e2immu.language.cst.api.expression.*;
+import org.e2immu.language.cst.api.expression.Lambda;
+import org.e2immu.language.cst.api.expression.MethodCall;
 import org.e2immu.language.cst.api.info.MethodInfo;
 import org.e2immu.language.cst.api.info.ParameterInfo;
 import org.e2immu.language.cst.api.info.TypeInfo;
@@ -39,7 +40,7 @@ public class TestLambda extends CommonTest {
             MethodInfo mi = lambda.methodInfo();
             assertEquals("7-43:7-54", mi.methodBody().source().compact2());
             assertTrue(mi.isSynthetic());
-            ParameterInfo s = mi.parameters().getFirst() ;
+            ParameterInfo s = mi.parameters().getFirst();
             assertFalse(s.isSynthetic());
             assertEquals("7-38:7-41", s.source().compact2());
             assertEquals("s", s.name());
@@ -138,7 +139,7 @@ public class TestLambda extends CommonTest {
 
     @Test
     public void test4() {
-        TypeInfo typeInfo = javaInspector.parse(INPUT4);
+        javaInspector.parse(INPUT4);
 
     }
 
@@ -146,24 +147,46 @@ public class TestLambda extends CommonTest {
     @Language("java")
     private static final String INPUT5 = """
             package a.b;
-            class C {
-                Runnable make(boolean b, int i) {
-                    var v = () -> {
-                        if(b) {
-                            for(int k=0; k<i; ++k) {
-                                System.out.println(k);
-                            }
-                        }
-                    };
-                    return v;
+            import java.util.function.Consumer;class C {
+                class ProxyFactory {
+                    public ProxyFactory() { }
+                    public void process() { }
+                    public static <T> ProxyBuilderImpl<T> builder(Class<T> type) {
+                        return new ProxyBuilderImpl<>(type);
+                    }
+                }
+            
+                class ProxyBuilderImpl<T> {
+                    ProxyBuilderImpl(Class<T> clazz) {
+                    }
+                    ProxyBuilderImpl<T> customizer(Consumer<T> consumer) { return this; }
+                    ProxyFactory build() { return new ProxyFactory(); }
+                }
+            
+                <T> create(Class<T> clazz, String url, Consumer<T> customizer, boolean b, int k) {
+                    return ProxyFactory.builder(clazz)
+                            .customizer(c -> {
+                                switch(k) {
+                                    case 1 -> { System.out.println(k); }
+                                    case 2-> System.out.println(k+1);
+                                    default -> System.out.println("?");
+                                }
+                            })
+                            .customizer(c -> {
+                                if(b) {
+                                    for(int i = 0; i < k.length; i += 2) {
+                                       System.out.println("?");
+                                    }
+                                }
+                            })
+                            .build();
                 }
             }
             """;
 
     @Test
     public void test5() {
-        TypeInfo typeInfo = javaInspector.parse(INPUT5);
-
+        javaInspector.parse(INPUT5);
     }
 
 }
