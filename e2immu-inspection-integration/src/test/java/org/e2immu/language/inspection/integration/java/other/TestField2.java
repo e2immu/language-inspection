@@ -2,6 +2,7 @@ package org.e2immu.language.inspection.integration.java.other;
 
 import org.e2immu.language.cst.api.expression.BinaryOperator;
 import org.e2immu.language.cst.api.expression.VariableExpression;
+import org.e2immu.language.cst.api.info.FieldInfo;
 import org.e2immu.language.cst.api.info.MethodInfo;
 import org.e2immu.language.cst.api.info.TypeInfo;
 import org.e2immu.language.cst.api.variable.FieldReference;
@@ -40,7 +41,7 @@ public class TestField2 extends CommonTest2 {
             """;
 
     @Test
-    public void testImport() throws IOException {
+    public void test1() throws IOException {
         Map<String, String> sourcesByFqn = Map.of("a.b.Parent", PARENT, "a.b.Child", CHILD);
         ParseResult pr1 = init(sourcesByFqn);
         TypeInfo child = pr1.findType("a.b.Child");
@@ -90,4 +91,33 @@ public class TestField2 extends CommonTest2 {
         MethodInfo method = use.findUniqueMethod("method", 0);
 
     }
+
+
+
+    @Language("java")
+    String PARENT3 = """
+            package a.b;
+            public class Parent {
+                public static final String FIELD = "abc";
+                private static final String ROUNDABOUT = "x" + Child.FIELD;
+            }
+            """;
+
+    @Language("java")
+    String CHILD3 = """
+            package a.b;
+            public class Child extends Parent {
+               // no code needed here
+            }
+            """;
+
+    @Test
+    public void test3() throws IOException {
+        Map<String, String> sourcesByFqn = Map.of("a.b.Parent", PARENT3, "a.b.Child", CHILD3);
+        ParseResult pr1 = init(sourcesByFqn);
+        TypeInfo parent = pr1.findType("a.b.Parent");
+        FieldInfo r = parent.getFieldByName("ROUNDABOUT", true);
+        assertEquals("\"x\"+Parent.FIELD", r.initializer().toString());
+    }
+
 }
