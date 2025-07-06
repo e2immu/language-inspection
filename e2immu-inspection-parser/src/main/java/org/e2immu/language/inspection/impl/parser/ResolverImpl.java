@@ -13,6 +13,8 @@ import org.slf4j.LoggerFactory;
 
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Stream;
 
 public class ResolverImpl implements Resolver {
     private static final Logger LOGGER = LoggerFactory.getLogger(ResolverImpl.class);
@@ -20,10 +22,10 @@ public class ResolverImpl implements Resolver {
     private final ParseHelper parseHelper;
     private final ComputeMethodOverrides computeMethodOverrides;
 
-    public ResolverImpl(ComputeMethodOverrides computeMethodOverrides,
-                        ParseHelper parseHelper) {
+    public ResolverImpl(ComputeMethodOverrides computeMethodOverrides, ParseHelper parseHelper, boolean parallel) {
         this.parseHelper = parseHelper;
         this.computeMethodOverrides = computeMethodOverrides;
+        this.parallel = parallel;
     }
 
     record Todo(Info info,
@@ -51,10 +53,11 @@ public class ResolverImpl implements Resolver {
     private final List<MethodInfo> recordAccessors = new LinkedList<>();
     private final List<FieldInfo> recordFields = new LinkedList<>();
     private final List<JavaDocToDo> javaDocs = new LinkedList<>();
+    private final boolean parallel;
 
     @Override
     public Resolver newEmpty() {
-        return new ResolverImpl(computeMethodOverrides, parseHelper);
+        return new ResolverImpl(computeMethodOverrides, parseHelper, parallel);
     }
 
     @Override
@@ -110,7 +113,8 @@ public class ResolverImpl implements Resolver {
                     types.size(), todos.size());
         }
 
-        for (AnnotationTodo annotationTodo : annotationTodos) {
+        Stream<AnnotationTodo> annotationStream = parallel ? annotationTodos.parallelStream() : annotationTodos.stream();
+        annotationStream.forEach(annotationTodo -> {
             try {
                 AnnotationExpression ae = parseAnnotationExpression(annotationTodo);
                 annotationTodo.infoBuilder.setAnnotationExpression(annotationTodo.indexInAnnotationList, ae);
@@ -119,8 +123,9 @@ public class ResolverImpl implements Resolver {
                 Summary.ParseException pe = new Summary.ParseException(annotationTodo.context, annotationTodo.infoBuilder, re.getMessage(), re);
                 annotationTodo.context.summary().addParseException(pe);
             }
-        }
-        for (JavaDocToDo javaDocToDo : javaDocs) {
+        });
+        Stream<JavaDocToDo> javaDocToDoStream = parallel ? javaDocs.parallelStream() : javaDocs.stream();
+        javaDocToDoStream.forEach(javaDocToDo -> {
             try {
                 JavaDoc resolved = resolveJavaDoc(javaDocToDo);
                 javaDocToDo.infoBuilder.setJavaDoc(resolved);
@@ -129,37 +134,34 @@ public class ResolverImpl implements Resolver {
                 Summary.ParseException pe = new Summary.ParseException(javaDocToDo.context, javaDocToDo.info, re.getMessage(), re);
                 javaDocToDo.context.summary().addParseException(pe);
             }
-        }
+        });
 
-        int cnt = 0;
-        try {
-            for (Todo todo : todos) {
-                if (todo.infoBuilder instanceof FieldInfo.Builder builder) {
-                    try {
-                        resolveField(todo, builder);
-                    } catch (RuntimeException | AssertionError re) {
-                        LOGGER.error("Caught exception resolving field {}", todo.info);
-                        Summary.ParseException pe = new Summary.ParseException(todo.context, todo.info, re.getMessage(), re);
-                        todo.context.summary().addParseException(pe);
-                    }
-                    todo.context.summary().addType(todo.context.enclosingType().primaryType());
-                } else if (todo.infoBuilder instanceof MethodInfo.Builder builder) {
-                    try {
-                        resolveMethod(todo, builder);
-                    } catch (RuntimeException | AssertionError re) {
-                        LOGGER.error("Caught exception resolving method {}", todo.info);
-                        Summary.ParseException pe = new Summary.ParseException(todo.context, todo.info, re.getMessage(), re);
-                        todo.context.summary().addParseException(pe);
-                    }
-                    todo.context.summary().addType(todo.context.enclosingType().primaryType());
-                } else throw new UnsupportedOperationException("In java, we cannot have expressions in other places");
-                ++cnt;
-                TIMED_LOGGER.info("Phase 4: parsing bodies {} of {} methods/field initializers", cnt, todos.size());
-            }
-        } catch (RuntimeException | AssertionError re) {
-            LOGGER.error("Failed after resolving {} of {} fields/methods", cnt, todos.size());
-            throw re;
-        }
+        AtomicInteger done = new AtomicInteger();
+        Stream<Todo> todoStream = parallel ? todos.parallelStream() : todos.stream();
+        todoStream.forEach(todo -> {
+            if (todo.infoBuilder instanceof FieldInfo.Builder builder) {
+                try {
+                    resolveField(todo, builder);
+                } catch (RuntimeException | AssertionError re) {
+                    LOGGER.error("Caught exception resolving field {}", todo.info);
+                    Summary.ParseException pe = new Summary.ParseException(todo.context, todo.info, re.getMessage(), re);
+                    todo.context.summary().addParseException(pe);
+                }
+                todo.context.summary().addType(todo.context.enclosingType().primaryType());
+            } else if (todo.infoBuilder instanceof MethodInfo.Builder builder) {
+                try {
+                    resolveMethod(todo, builder);
+                } catch (RuntimeException | AssertionError re) {
+                    LOGGER.error("Caught exception resolving method {}", todo.info);
+                    Summary.ParseException pe = new Summary.ParseException(todo.context, todo.info, re.getMessage(), re);
+                    todo.context.summary().addParseException(pe);
+                }
+                todo.context.summary().addType(todo.context.enclosingType().primaryType());
+            } else throw new UnsupportedOperationException("In java, we cannot have expressions in other places");
+            done.incrementAndGet();
+            TIMED_LOGGER.info("Phase 4: parsing bodies {} of {} methods/field initializers", done, todos.size());
+        });
+
         for (FieldInfo recordField : recordFields) {
             recordField.builder().commit();
         }

@@ -401,7 +401,8 @@ public class JavaInspectorImpl implements JavaInspector {
                                                     SourceFile sourceFile,
                                                     Supplier<JavaParser> parser,
                                                     ParseOptions parseOptions) {
-        Resolver resolver = new ResolverImpl(runtime.computeMethodOverrides(), new ParseHelperImpl(runtime));
+        Resolver resolver = new ResolverImpl(runtime.computeMethodOverrides(), new ParseHelperImpl(runtime),
+                parseOptions.parallel());
         TypeContextImpl typeContext = new TypeContextImpl(runtime, compiledTypesManager, sourceTypeMap,
                 parseOptions.allowCreationOfStubTypes());
         Context rootContext = ContextImpl.create(runtime, summary, resolver, typeContext,
@@ -459,7 +460,8 @@ public class JavaInspectorImpl implements JavaInspector {
     @Override
     public Summary parse(Map<String, String> sourcesByTestProtocolURIString, ParseOptions parseOptions) {
         Summary summary = new SummaryImpl(parseOptions.failFast()); // once stable, change to false
-        Resolver resolver = new ResolverImpl(runtime.computeMethodOverrides(), new ParseHelperImpl(runtime));
+        Resolver resolver = new ResolverImpl(runtime.computeMethodOverrides(), new ParseHelperImpl(runtime),
+                parseOptions.parallel());
 
         TypeContextImpl typeContext = new TypeContextImpl(runtime, compiledTypesManager, sourceTypeMap,
                 parseOptions.allowCreationOfStubTypes());
