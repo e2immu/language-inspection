@@ -63,4 +63,39 @@ public class TestConstructor2 extends CommonTest {
         assertEquals("Type a.b.X.Pair<Y,X>", cc2.parameterizedType().toString());
     }
 
+
+    @Language("java")
+    private static final String INPUT3 = """
+            package a.b;
+            public class X {
+                static class MyException {
+                   public MyException(long id, Throwable theCause) {
+                   }
+                   public MyException(long id, String... args){
+                   }
+                   public MyException(long id, boolean logTrace, String... args){
+                   }
+                   public MyException(long id, String[] args, Throwable theCause) {
+                   }
+                   public MyException(long id, String[] args, Throwable theCause, boolean logTrace) {
+                   }
+                   public MyException(long id, long[] args) {
+                   }
+                   public MyException(long id, long[] args, Throwable theCause) {
+                   }
+                   public MyException(long id, int[] args) {
+                   }
+                }
+                void method(String msg, Exception e) {
+                    throw new MyException(3L, new String[] { "a" + msg }, e);
+                }
+            }
+            """;
+
+    @Test
+    public void test3() {
+        TypeInfo X = javaInspector.parse(INPUT3);
+
+    }
+
 }

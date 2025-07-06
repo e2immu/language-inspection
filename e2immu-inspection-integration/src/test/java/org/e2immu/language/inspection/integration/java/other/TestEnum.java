@@ -17,8 +17,13 @@ public class TestEnum extends CommonTest {
     @Language("java")
     private static final String INPUT1 = """
             package a.b;
+
             public class X {
-                enum State { START, BUSY, END }
+                @interface FieldAnnotation { }
+                enum State { START,
+                 @FieldAnnotation
+                 BUSY,
+                 END }
 
                 int method(State state) {
                    return switch(state) {
@@ -55,7 +60,9 @@ public class TestEnum extends CommonTest {
         assertTrue(typeInfo.hasImplicitParent());
         TypeInfo state = typeInfo.findSubType("State");
         assertTrue(state.hasImplicitParent());
-
+        assertEquals("[BUSY, END, START]", state.fields().stream().map(FieldInfo::name).sorted().toList().toString());
+        FieldInfo BUSY = state.getFieldByName("BUSY", true);
+        assertEquals(1, BUSY.annotations().size());
         assertEquals("Type Enum<a.b.X.State>", state.parentClass().toString());
         TypeInfo enumType = state.parentClass().typeInfo();
         assertEquals("Type Enum<E extends Enum<E>>", enumType.asParameterizedType().toString());

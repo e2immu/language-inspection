@@ -178,7 +178,7 @@ public class ListMethodAndConstructorCandidates {
         TypeInfo typeInfo;
         if (typeOfObject.typeInfo() == null) {
             if (typeOfObject.typeParameter() == null) {
-                throw new UnsupportedOperationException();
+                return List.of(runtime.objectTypeInfo());
             }
             ParameterizedType pt = typeMap.get(typeOfObject.typeParameter());
             if (pt == null) {
