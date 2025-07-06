@@ -39,6 +39,13 @@ public class TestEnum extends CommonTest {
                    }
                    return -1;
                 }
+
+                int method3(State state) {
+                    if (State.BUSY.equals(state)) {
+                        return 3;
+                    }
+                    return 2;
+                }
             }
             """;
 

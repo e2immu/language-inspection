@@ -141,4 +141,29 @@ public class TestLambda extends CommonTest {
         TypeInfo typeInfo = javaInspector.parse(INPUT4);
 
     }
+
+
+    @Language("java")
+    private static final String INPUT5 = """
+            package a.b;
+            class C {
+                Runnable make(boolean b, int i) {
+                    var v = () -> {
+                        if(b) {
+                            for(int k=0; k<i; ++k) {
+                                System.out.println(k);
+                            }
+                        }
+                    };
+                    return v;
+                }
+            }
+            """;
+
+    @Test
+    public void test5() {
+        TypeInfo typeInfo = javaInspector.parse(INPUT5);
+
+    }
+
 }

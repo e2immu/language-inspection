@@ -51,4 +51,43 @@ public class TestField2 extends CommonTest2 {
             assertEquals("a.b.Parent.FIELD", fr.fullyQualifiedName());
         } else fail();
     }
+
+
+    @Language("java")
+    String PARENT2 = """
+            package a.b;
+            public class Parent {
+                protected int v;
+            }
+            """;
+
+    @Language("java")
+    String CHILD2 = """
+            package a.b;
+            public class Child extends Parent {
+               //nothing
+            }
+            """;
+
+    @Language("java")
+    String USE2 = """
+            package a.c;
+            import a.b.Child;
+            public class Use {
+                void method() {
+                    Child child = new Child();
+                    child.v = 3;
+                }
+            }
+            """;
+
+    @Test
+    public void test2() throws IOException {
+        Map<String, String> sourcesByFqn = Map.of("a.b.Parent", PARENT2, "a.b.Child", CHILD2,
+                "a.c.Use", USE2);
+        ParseResult pr1 = init(sourcesByFqn);
+        TypeInfo use = pr1.findType("a.c.Use");
+        MethodInfo method = use.findUniqueMethod("method", 0);
+
+    }
 }

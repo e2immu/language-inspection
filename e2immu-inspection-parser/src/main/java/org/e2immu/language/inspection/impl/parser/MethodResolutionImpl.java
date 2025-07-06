@@ -220,8 +220,10 @@ public class MethodResolutionImpl implements MethodResolution {
         if (formalType.typeInfo() != null) {
             Map<NamedType, ParameterizedType> map = genericsHelper.translateMap(formalType, concreteType,
                     true);
+            mapAll.putAll(map);
             map.forEach((namedType, pt) -> {
-                if (namedType instanceof TypeParameter tp) {
+                if (namedType instanceof TypeParameter tp &&
+                    tp.getOwner().isLeft() && formalType.typeInfo().equals(tp.getOwner().getLeft())) {
                     ParameterizedType original = formalType.parameters().get(tp.getIndex());
                     if (original.typeParameter() != null) {
                         mapAll.put(original.typeParameter(), pt);
@@ -922,7 +924,8 @@ public class MethodResolutionImpl implements MethodResolution {
      * @param methodCandidates the candidates to sort
      * @return a list of size>1 when also candidate 1 is accessible... this will result in an error?
      */
-    private List<MethodTypeParameterMap> sortRemainingCandidatesByShallowPublic(Map<MethodTypeParameterMap, Integer> methodCandidates) {
+    private List<MethodTypeParameterMap> sortRemainingCandidatesByShallowPublic
+    (Map<MethodTypeParameterMap, Integer> methodCandidates) {
         if (methodCandidates.size() > 1) {
             Comparator<MethodTypeParameterMap> comparator =
                     (m1, m2) -> {
@@ -1041,7 +1044,8 @@ public class MethodResolutionImpl implements MethodResolution {
     //
     // this step if AFTER the score step, so we've already dealt with type conversions.
     // we still have to deal with overloads in supertypes, methods with the same type signature
-    private static void trimVarargsVsMethodsWithFewerParameters(Map<MethodTypeParameterMap, Integer> methodCandidates) {
+    private static void trimVarargsVsMethodsWithFewerParameters
+    (Map<MethodTypeParameterMap, Integer> methodCandidates) {
         int countVarargs = (int) methodCandidates.keySet().stream().filter(e -> e.methodInfo().isVarargs()).count();
         if (countVarargs > 0 && countVarargs < methodCandidates.size()) {
             methodCandidates.keySet().removeIf(e -> e.methodInfo().isVarargs());
@@ -1156,7 +1160,8 @@ public class MethodResolutionImpl implements MethodResolution {
 
      */
     @Override
-    public Expression resolveMethodReference(Context context, List<Comment> comments, Source source, String index,
+    public Expression resolveMethodReference(Context context, List<Comment> comments, Source source, String
+                                                     index,
                                              ForwardType forwardType,
                                              Expression scope, String methodName) {
         assert !forwardType.erasure();
@@ -1357,7 +1362,8 @@ public class MethodResolutionImpl implements MethodResolution {
     }
 
     @Override
-    public Either<Set<Count>, Expression> computeMethodReferenceErasureCounts(Context context, List<Comment> comments,
+    public Either<Set<Count>, Expression> computeMethodReferenceErasureCounts(Context
+                                                                                      context, List<Comment> comments,
                                                                               Source source, Expression scope, String methodName) {
         ParameterizedType parameterizedType = scope.parameterizedType();
         boolean constructor = "new".equals(methodName);
