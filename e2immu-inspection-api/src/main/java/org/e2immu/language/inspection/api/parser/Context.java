@@ -27,6 +27,8 @@ public interface Context {
 
     Info info();
 
+    boolean isDetailedSources();
+
     MethodResolution methodResolution();
 
     Context newCompilationUnit(CompilationUnit compilationUnit);
@@ -40,6 +42,8 @@ public interface Context {
             ParameterizedType> typeParameterMap);
 
     Context newAnonymousClassBody(TypeInfo anonymousType);
+
+    Context newLocalTypeDeclaration();
 
     Context newSubType(TypeInfo typeInfo);
 

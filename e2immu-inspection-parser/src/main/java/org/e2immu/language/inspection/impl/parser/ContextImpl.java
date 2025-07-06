@@ -162,6 +162,15 @@ public class ContextImpl implements Context {
                 newVariableContext, anonymousTypeCounters, typeOfEnclosingSwitchExpression, detailedSources);
     }
 
+    @Override
+    public Context newLocalTypeDeclaration() {
+        assert enclosingType != null;
+        assert enclosingMethod != null;
+        TypeContext newTypeContext = typeContext.newAnonymousClassBody(enclosingType);
+        VariableContext newVariableContext = variableContext.newVariableContext();
+        return new ContextImpl(data, enclosingType, enclosingMethod, null, resolver.newEmpty(), newTypeContext,
+                newVariableContext, anonymousTypeCounters, typeOfEnclosingSwitchExpression, detailedSources);
+    }
 
     public ContextImpl newSubType(TypeInfo subType) {
         return new ContextImpl(data, subType, null, null, resolver,
@@ -232,5 +241,10 @@ public class ContextImpl implements Context {
     public DetailedSources.Builder newDetailedSourcesBuilder() {
         if (detailedSources) return runtime().newDetailedSourcesBuilder();
         return null;
+    }
+
+    @Override
+    public boolean isDetailedSources() {
+        return detailedSources;
     }
 }
