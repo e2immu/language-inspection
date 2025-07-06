@@ -1,16 +1,9 @@
 package org.e2immu.language.inspection.integration.java.method;
 
-import org.e2immu.language.cst.api.expression.Lambda;
-import org.e2immu.language.cst.api.expression.MethodCall;
-import org.e2immu.language.cst.api.info.MethodInfo;
 import org.e2immu.language.cst.api.info.TypeInfo;
-import org.e2immu.language.cst.api.type.ParameterizedType;
 import org.e2immu.language.inspection.integration.java.CommonTest;
 import org.intellij.lang.annotations.Language;
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class TestMethodCall9 extends CommonTest {
 
@@ -76,6 +69,34 @@ public class TestMethodCall9 extends CommonTest {
     @Test
     public void test2() {
         TypeInfo typeInfo = javaInspector.parse(INPUT2);
+
+    }
+
+    @Language("java")
+    private static final String INPUT3 = """
+            package a.b;
+            
+            class X {
+                interface I { }
+                class C implements I { }
+                String method(C c) {
+                    return "s";
+                }
+                String wrap(String t) {
+                    return t;
+                }
+                void use(C c, long id) {
+                    wrap(method(id < 0 ? null : find(c, id)));
+                }
+                static <T extends I> T find(T t, long id) {
+                    return t;
+                }
+            }
+            """;
+
+    @Test
+    public void test3() {
+        TypeInfo typeInfo = javaInspector.parse(INPUT3);
 
     }
 }

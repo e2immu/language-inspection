@@ -1097,7 +1097,12 @@ public class MethodResolutionImpl implements MethodResolution {
     private int compatibleParameter(Expression evaluatedExpression, ParameterizedType typeOfParameter) {
         Set<ParameterizedType> erasureTypes = erasureTypes(evaluatedExpression);
         if (!erasureTypes.isEmpty()) {
-            return erasureTypes.stream().mapToInt(type -> callIsAssignableFrom(type, typeOfParameter))
+            return erasureTypes.stream().mapToInt(type -> {
+                  // FIXME temp code, must improve
+                        int a = callIsAssignableFrom(type, typeOfParameter);
+                        int b = callIsAssignableFrom(typeOfParameter, type);
+                        return Math.max(a, b);
+                    })
                     .reduce(notAssignable, (v0, v1) -> {
                         if (v0 < 0) return v1;
                         if (v1 < 0) return v0;

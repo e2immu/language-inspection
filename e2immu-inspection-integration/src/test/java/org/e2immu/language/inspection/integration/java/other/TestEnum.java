@@ -51,6 +51,13 @@ public class TestEnum extends CommonTest {
                     }
                     return 2;
                 }
+
+                private <T extends Enum<T>> T getEnum(Class<T> enumType, String string) {
+                	if (string == null || string.isEmpty()) {
+                		return null;
+                	}
+                	return T.valueOf(enumType, string.toUpperCase());
+                }
             }
             """;
 
@@ -70,4 +77,5 @@ public class TestEnum extends CommonTest {
         FieldInfo start = state.getFieldByName("START", true);
         assertEquals("Type a.b.X.State", start.type().toString());
     }
+
 }

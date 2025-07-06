@@ -17,8 +17,6 @@ public interface Context {
 
     ForwardType emptyForwardType();
 
-    FieldInfo enclosingField();
-
     MethodInfo enclosingMethod();
 
     TypeInfo enclosingType();
@@ -32,8 +30,6 @@ public interface Context {
     MethodResolution methodResolution();
 
     Context newCompilationUnit(CompilationUnit compilationUnit);
-
-    Context newLambdaContext(MethodInfo sam);
 
     ForwardType newForwardType(ParameterizedType parameterizedType);
 
@@ -50,8 +46,6 @@ public interface Context {
     Context newTypeBody();
 
     Context newTypeContext();
-
-    Context newVariableContext(String reason, VariableContext variableContext);
 
     Context newVariableContext(String lambda);
 

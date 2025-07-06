@@ -1,9 +1,14 @@
 package org.e2immu.language.inspection.integration.java.type;
 
+import org.e2immu.language.cst.api.info.MethodInfo;
 import org.e2immu.language.cst.api.info.TypeInfo;
+import org.e2immu.language.cst.api.statement.LocalTypeDeclaration;
 import org.e2immu.language.inspection.integration.java.CommonTest;
 import org.intellij.lang.annotations.Language;
 import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 public class TestLocalType extends CommonTest {
 
@@ -27,6 +32,14 @@ public class TestLocalType extends CommonTest {
     @Test
     public void test2() {
         TypeInfo X = javaInspector.parse(INPUT2);
+        MethodInfo make = X.findUniqueMethod("make", 1);
+        LocalTypeDeclaration ltd = (LocalTypeDeclaration) make.methodBody().statements().getFirst();
+        assertEquals("a.b.X.0$make$C", ltd.typeInfo().fullyQualifiedName());
+        MethodInfo method = ltd.typeInfo().findUniqueMethod("method", 1);
+        assertEquals("a.b.X.0$make$C.method(String)", method.fullyQualifiedName());
+        assertNotNull(method.methodBody());
+        assertEquals("System.out.println(s+t)",
+                method.methodBody().statements().getFirst().expression().toString());
     }
 
 }
