@@ -9,8 +9,9 @@ import org.springframework.test.web.servlet.setup.AbstractMockMvcBuilder;
 
 import java.io.FileOutputStream;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class TestByteCode extends CommonTest {
     @Test
@@ -55,6 +56,20 @@ public class TestByteCode extends CommonTest {
         assertEquals("i", rotateRight.parameters().getFirst().name());
         // automatically assigned name
         assertEquals("i1", rotateRight.parameters().get(1).name());
+    }
+
+    @Test
+    public void testOnDemandInspection() {
+        TypeInfo stream = javaInspector.compiledTypesManager().getOrLoad(Stream.class);
+        assertTrue(stream.parentClass().isJavaLangObject());
+        MethodInfo flatMapToDouble = stream.findUniqueMethod("flatMapToDouble", 1);
+        TypeInfo doubleStream = flatMapToDouble.returnType().bestTypeInfo();
+        // parent of doubleStream is not yet known; the type was not loaded because it is not in the hierarchy of Stream
+        assertTrue(doubleStream.haveOnDemandInspection());
+        // asking for it triggers on-demand inspection
+        assertTrue(doubleStream.parentClass().isJavaLangObject());
+        // afterwards, on demand inspection for this type is deactivated
+        assertFalse(doubleStream.haveOnDemandInspection());
     }
 
 }

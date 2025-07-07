@@ -3,6 +3,7 @@ package org.e2immu.language.inspection.integration.java.method;
 import org.e2immu.language.cst.api.info.TypeInfo;
 import org.e2immu.language.inspection.integration.java.CommonTest;
 import org.intellij.lang.annotations.Language;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 public class TestMethodCall9 extends CommonTest {
@@ -68,8 +69,7 @@ public class TestMethodCall9 extends CommonTest {
 
     @Test
     public void test2() {
-        TypeInfo typeInfo = javaInspector.parse(INPUT2);
-
+        javaInspector.parse(INPUT2);
     }
 
     @Language("java")
@@ -86,7 +86,7 @@ public class TestMethodCall9 extends CommonTest {
                     return t;
                 }
                 void use(C c, long id) {
-                    wrap(method(id < 0 ? null : find(c, id)));
+                    wrap(method(id < 0 ? find(c, -id) : find(c, id)));
                 }
                 static <T extends I> T find(T t, long id) {
                     return t;
@@ -94,9 +94,9 @@ public class TestMethodCall9 extends CommonTest {
             }
             """;
 
+    @DisplayName("added complication: ?: operator")
     @Test
     public void test3() {
-        TypeInfo typeInfo = javaInspector.parse(INPUT3);
-
+        javaInspector.parse(INPUT3);
     }
 }

@@ -691,14 +691,11 @@ public class MethodResolutionImpl implements MethodResolution {
                 // parameter type: Collector<? super T,A,R>   (T belongs to Stream, A,R to the collect method)
                 // we want to add R --> Set<T> to the type map
                 Map<NamedType, ParameterizedType> map = new HashMap<>();
-                Set<ParameterizedType> erasureTypes = erasureTypes(expression);
-                if (!erasureTypes.isEmpty()) {
-                    for (ParameterizedType pt : erasureTypes) {
-                        map.putAll(pt.initialTypeParameterMap());
-                    }
-                } else {
-                    map.putAll(expression.parameterizedType().initialTypeParameterMap());
+                Set<ParameterizedType> erasureTypes = expandErasureTypes(expression);
+                for (ParameterizedType pt : erasureTypes) {
+                    map.putAll(pt.initialTypeParameterMap());
                 }
+
                 // we now have R as #2 in Collector mapped to Set<T>, and we need to replace that by the
                 // actual type parameter of the formal type of parameterInfo
                 //result.putAll( parameterInfo.parameterizedType.translateMap(typeContext, map));
@@ -741,7 +738,7 @@ public class MethodResolutionImpl implements MethodResolution {
                                                       TypeParameterMap typeParameterMap) {
         Map<Integer, Set<ParameterizedType>> acceptedErasedTypes =
                 evaluatedExpressions.entrySet().stream().collect(Collectors.toUnmodifiableMap(Map.Entry::getKey, e ->
-                        erasureTypes(e.getValue()).stream()
+                        expandErasureTypes(e.getValue()).stream()
                                 .map(pt -> pt.applyTranslation(runtime, typeParameterMap.map()))
                                 .collect(Collectors.toUnmodifiableSet())));
 
@@ -805,13 +802,12 @@ public class MethodResolutionImpl implements MethodResolution {
                     varargsPenalty = 0;
                 }
 
-
                 for (ParameterizedType actualType : acceptedErased) {
                     int penaltyForReturnType = computePenaltyForReturnType(actualType, formalType);
                     for (ParameterizedType actualTypeReplaced : actualType.replaceByTypeBounds()) {
                         for (ParameterizedType formalTypeReplaced : formalType.replaceByTypeBounds()) {
 
-                            boolean paramIsErasure = evaluatedExpressions.get(pos) instanceof ErasedExpression;
+                            boolean paramIsErasure = containsErasedExpressions(evaluatedExpressions.get(pos));
                             int compatible;
                             if (actualTypeReplaced.isTypeOfNullConstant()) {
                                 // compute the distance to Object, so that the nearest one loses. See MethodCall_66
@@ -828,9 +824,10 @@ public class MethodResolutionImpl implements MethodResolution {
                                 }
                             } else if (paramIsErasure && actualTypeReplaced != actualType) {
                                 /*
-                                 See 'method' call in MethodCall_32; this feels like a hack.
-                                 Map.get(e.getKey()) call in MethodCall_37 shows the opposite direction; so we do Max.
+                                 See 'method' call in TestMethodCall_3,2; this feels like a hack.
+                                 Map.get(e.getKey()) call in TestMethodCall_3,7 shows the opposite direction; so we do Max.
                                  Feels even more like a hack.
+                                 Same hack in compatibleParameter(); see TestMethod9,3 as well
                                  */
                                 compatible = Math.max(callIsAssignableFrom(formalTypeReplaced, actualTypeReplaced),
                                         callIsAssignableFrom(actualTypeReplaced, formalTypeReplaced));
@@ -1095,26 +1092,18 @@ public class MethodResolutionImpl implements MethodResolution {
     }
 
     private int compatibleParameter(Expression evaluatedExpression, ParameterizedType typeOfParameter) {
-        Set<ParameterizedType> erasureTypes = erasureTypes(evaluatedExpression);
-        if (!erasureTypes.isEmpty()) {
-            return erasureTypes.stream().mapToInt(type -> {
-                  // FIXME temp code, must improve
-                        int a = callIsAssignableFrom(type, typeOfParameter);
-                        int b = callIsAssignableFrom(typeOfParameter, type);
-                        return Math.max(a, b);
-                    })
-                    .reduce(notAssignable, (v0, v1) -> {
-                        if (v0 < 0) return v1;
-                        if (v1 < 0) return v0;
-                        return Math.min(v0, v1);
-                    });
-        }
-
-        /* If the evaluated expression is a method with type parameters, then these type parameters
-         are allowed in a reverse way (expect List<String>, accept List<T> with T a type parameter of the method,
-         as long as T <- String).
-        */
-        return callIsAssignableFrom(evaluatedExpression.parameterizedType(), typeOfParameter);
+        Set<ParameterizedType> erasureTypes = expandErasureTypes(evaluatedExpression);
+        return erasureTypes.stream().mapToInt(type -> {
+                    // Hack? see also paramIsErasure higher up in filterCandidatesByParameters
+                    int a = callIsAssignableFrom(type, typeOfParameter);
+                    int b = callIsAssignableFrom(typeOfParameter, type);
+                    return Math.max(a, b);
+                })
+                .reduce(notAssignable, (v0, v1) -> {
+                    if (v0 < 0) return v1;
+                    if (v1 < 0) return v0;
+                    return Math.min(v0, v1);
+                });
     }
 
     private int callIsAssignableFrom(ParameterizedType actualType, ParameterizedType typeOfParameter) {
@@ -1132,7 +1121,8 @@ public class MethodResolutionImpl implements MethodResolution {
         return found.get();
     }
 
-    private static Set<ParameterizedType> erasureTypes(Expression start) {
+    // replace an ErasedExpression with its erasure types
+    private static Set<ParameterizedType> expandErasureTypes(Expression start) {
         Set<ParameterizedType> set = new HashSet<>();
         if (!(start instanceof ErasedExpression)) {
             set.add(start.parameterizedType());
