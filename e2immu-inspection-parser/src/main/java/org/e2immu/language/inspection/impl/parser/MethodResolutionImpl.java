@@ -245,6 +245,8 @@ public class MethodResolutionImpl implements MethodResolution {
                                     String methodName,
                                     Object unparsedScope,
                                     Source unparsedScopeSource,
+                                    List<ParameterizedType> methodTypeArguments,
+                                    DetailedSources.Builder typeArgumentsDetailedSources,
                                     List<Object> unparsedArguments) {
         // we must create it here, because the importMap only exists once we're parsing a compilation unit
         ListMethodAndConstructorCandidates list = new ListMethodAndConstructorCandidates(runtime,
@@ -288,18 +290,18 @@ public class MethodResolutionImpl implements MethodResolution {
         ParameterizedType returnType = candidate.returnType(runtime, context.enclosingType().primaryType(), extra);
         //LOGGER.info("- Concrete return type of {} is {}", methodName, returnType.detailedString());
 
-        DetailedSources.Builder detailedSourcesBuilder = context.newDetailedSourcesBuilder();
-        if (detailedSourcesBuilder != null) {
-            detailedSourcesBuilder.put(resolvedMethod.name(), sourceOfName);
+        if (typeArgumentsDetailedSources != null) {
+            typeArgumentsDetailedSources.put(resolvedMethod.name(), sourceOfName);
         }
         return runtime.newMethodCallBuilder()
-                .setSource(detailedSourcesBuilder != null
-                        ? source.withDetailedSources(detailedSourcesBuilder.build()) : source)
+                .setSource(typeArgumentsDetailedSources != null
+                        ? source.withDetailedSources(typeArgumentsDetailedSources.build()) : source)
                 .addComments(comments)
                 .setObjectIsImplicit(scope.objectIsImplicit())
                 .setObject(newScope)
                 .setMethodInfo(resolvedMethod)
                 .setConcreteReturnType(returnType)
+                .setTypeArguments(methodTypeArguments)
                 .setParameterExpressions(candidate.newParameterExpressions).build();
     }
 

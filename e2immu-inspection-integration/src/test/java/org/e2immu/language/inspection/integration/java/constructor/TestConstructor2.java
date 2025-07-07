@@ -89,6 +89,9 @@ public class TestConstructor2 extends CommonTest {
                 void method(String msg, Exception e) {
                     throw new MyException(3L, new String[] { "a" + msg }, e);
                 }
+                void method2(String msg) {
+                    throw new MyException(3L, new String[] { "a", "b"}, new RuntimeException(msg+" abc"));
+                }
             }
             """;
 

@@ -53,7 +53,7 @@ public record TypeParameterMap(Map<NamedType, ParameterizedType> map) {
         return false;
     }
 
-    private boolean isEmpty() {
+    public boolean isEmpty() {
         return map.isEmpty();
     }
 }

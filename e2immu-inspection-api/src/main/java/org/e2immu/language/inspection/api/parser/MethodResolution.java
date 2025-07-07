@@ -44,6 +44,8 @@ public interface MethodResolution {
                              String methodName,
                              Object unparsedObject,
                              Source unparsedObjectSource,
+                             List<ParameterizedType> methodTypeArguments,
+                             DetailedSources.Builder typeArgumentsDetailedSources,
                              List<Object> unparsedArguments);
 
     Expression resolveMethodReference(Context context, List<Comment> comments, Source source, String index,
