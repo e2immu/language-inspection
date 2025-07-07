@@ -4,6 +4,7 @@ import org.e2immu.language.cst.api.expression.ConstructorCall;
 import org.e2immu.language.cst.api.info.FieldInfo;
 import org.e2immu.language.cst.api.info.MethodInfo;
 import org.e2immu.language.cst.api.info.TypeInfo;
+import org.e2immu.language.cst.api.statement.LocalVariableCreation;
 import org.e2immu.language.cst.api.statement.ReturnStatement;
 import org.e2immu.language.inspection.integration.JavaInspectorImpl;
 import org.e2immu.language.inspection.integration.java.CommonTest;
@@ -65,9 +66,18 @@ public class TestConstructor extends CommonTest {
 
     @Test
     public void test2() {
-        javaInspector.parse(INPUT2);
-    }
+        TypeInfo C = javaInspector.parse(INPUT2, new JavaInspectorImpl.ParseOptionsBuilder().setDetailedSources(true).build());
+        MethodInfo test = C.findUniqueMethod("test", 0);
+        LocalVariableCreation lvc = (LocalVariableCreation) test.methodBody().statements().getFirst();
+        ConstructorCall cc = (ConstructorCall) lvc.localVariable().assignmentExpression();
+        assertEquals(1, cc.typeArguments().size());
+        assertEquals("Type String", cc.typeArguments().getFirst().toString());
+        assertEquals("18-31:18-36", cc.source().detailedSources().detail(cc.typeArguments().getFirst()).compact2());
 
+        assertEquals("""
+                new <String> Parametrized("3",new ArrayList<>())\
+                """, cc.print(javaInspector.runtime().qualificationSimpleNames()).toString());
+    }
 
     @Language("java")
     private static final String INPUT3 = """

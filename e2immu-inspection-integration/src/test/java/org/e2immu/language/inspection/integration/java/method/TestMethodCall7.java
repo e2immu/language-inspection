@@ -163,7 +163,7 @@ public class TestMethodCall7 extends CommonTest {
         LocalVariableCreation lvc = (LocalVariableCreation) ts.resources().getFirst();
         MethodCall nfs = (MethodCall) lvc.localVariable().assignmentExpression();
         Expression arg1 = nfs.parameterExpressions().get(1);
-        assertEquals("Collections.emptyMap()", arg1.toString()); // TODO have no type parameters on method call (yet)
+        assertEquals("Collections.<String,Object> emptyMap()", arg1.toString());
     }
 
 

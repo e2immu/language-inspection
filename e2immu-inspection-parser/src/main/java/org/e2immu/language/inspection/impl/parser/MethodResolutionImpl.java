@@ -167,6 +167,7 @@ public class MethodResolutionImpl implements MethodResolution {
                 .setDiamond(diamond)
                 .setConcreteReturnType(finalParameterizedType)
                 .setParameterExpressions(candidate.newParameterExpressions)
+                .setTypeArguments(methodTypeArguments)
                 .setSource(source)
                 .addComments(comments)
                 .build();
