@@ -41,7 +41,7 @@ public class TestField2 extends CommonTest2 {
             """;
 
     @Test
-    public void test1() throws IOException {
+    public void test() throws IOException {
         Map<String, String> sourcesByFqn = Map.of("a.b.Parent", PARENT, "a.b.Child", CHILD);
         ParseResult pr1 = init(sourcesByFqn);
         TypeInfo child = pr1.findType("a.b.Child");
@@ -51,6 +51,37 @@ public class TestField2 extends CommonTest2 {
         if (bo.rhs() instanceof VariableExpression ve && ve.variable() instanceof FieldReference fr) {
             assertEquals("a.b.Parent.FIELD", fr.fullyQualifiedName());
         } else fail();
+    }
+
+
+    @Language("java")
+    String PARENT1 = """
+            package a.b;
+            public class Parent {
+                public static class Sub {
+                    
+                }
+            }
+            """;
+
+    @Language("java")
+    String CHILD1 = """
+            package a.b;
+            public class Child {
+                private class Create extends Parent {
+                    Sub sub = new Sub();
+                }
+            }
+            """;
+
+    @Test
+    public void test1() throws IOException {
+        Map<String, String> sourcesByFqn = Map.of("a.b.Parent", PARENT1, "a.b.Child", CHILD1);
+        ParseResult pr1 = init(sourcesByFqn);
+        TypeInfo child = pr1.findType("a.b.Child");
+        TypeInfo create = child.findSubType("Create");
+        FieldInfo sub = create.getFieldByName("sub", true);
+        assertEquals("new Sub()", sub.initializer().toString());
     }
 
 

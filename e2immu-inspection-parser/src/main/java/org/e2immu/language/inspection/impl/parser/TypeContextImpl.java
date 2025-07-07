@@ -383,12 +383,11 @@ public class TypeContextImpl implements TypeContext {
     public boolean addSubTypesOfHierarchyReturnAllDefined(TypeInfo typeInfo) {
         Set<TypeInfo> superTypes = new HashSet<>();
         boolean allDefined = recursivelyComputeSuperTypesExcludingJLO(typeInfo, superTypes);
-        if (!allDefined) return false;
         Stream.concat(Stream.of(typeInfo), superTypes.stream())
                 .forEach(superType -> superType.subTypes()
                         // not checking accessibility here
                         .forEach(this::addToContext));
-        return true;
+        return allDefined;
     }
 
     private boolean recursivelyComputeSuperTypesExcludingJLO(TypeInfo type, Set<TypeInfo> superTypes) {

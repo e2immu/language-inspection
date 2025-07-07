@@ -66,7 +66,7 @@ public class TestModuleInfo {
         javaInspector.initialize(inputConfiguration);
         Runtime runtime = javaInspector.runtime();
         Summary summary = new SummaryImpl(true); // once stable, change to false
-        Resolver resolver = new ResolverImpl(runtime.computeMethodOverrides(), new ParseHelperImpl(runtime));
+        Resolver resolver = new ResolverImpl(runtime.computeMethodOverrides(), new ParseHelperImpl(runtime), false);
 
         TypeContextImpl typeContext = new TypeContextImpl(runtime, javaInspector.compiledTypesManager(),
                 new SourceTypeMapImpl(), true);

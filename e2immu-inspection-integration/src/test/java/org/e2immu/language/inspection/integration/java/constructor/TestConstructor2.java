@@ -98,4 +98,32 @@ public class TestConstructor2 extends CommonTest {
 
     }
 
+
+    @Language("java")
+    private static final String INPUT4 = """
+            package a.b;
+            import java.util.Arrays;import java.util.stream.Stream;public class X {
+                static class B {
+                    B(String s) {}
+                    B(String s1, String s2) {}
+                    B(String... strings) {}
+                    B(B b, String... strings) {}
+                }
+                static class A extends B {
+                   A(String s) { super(mod(s)); }
+                   A(String s1, String s2) { super(mod(s1), s2); }
+                   A(String s1, String... strings) { super(append(new String[] { s1 }, strings)); }
+                }
+                static String mod(String in) { return in.repeat(2); }
+                static <T> T[] append(T[] t1, T[] t2) {
+                    return Stream.concat(Arrays.stream(t1), Arrays.stream(t2)).toArray(); 
+                }
+            }
+            """;
+
+    @Test
+    public void test4() {
+        TypeInfo X = javaInspector.parse(INPUT4);
+    }
+
 }
