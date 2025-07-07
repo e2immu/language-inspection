@@ -113,4 +113,48 @@ public class TestExplicitConstructorInvocation extends CommonTest {
         assertTrue(descendants.contains(C3));
         assertEquals(2, descendants.size());
     }
+
+
+    @Language("java")
+    private static final String INPUT9 = """
+            package a.b;
+
+            import java.time.ZoneId;
+            import java.time.ZoneOffset;
+            import java.time.ZonedDateTime;
+            import java.time.format.DateTimeFormatter;
+            import java.time.temporal.TemporalAccessor;
+            import java.time.Instant;
+            import java.util.function.BiFunction;
+            import java.util.function.Function;
+            
+            public class X {
+                record FromIntegerArguments(long value, ZoneId zoneId) {}
+                record FromDecimalArguments(long integer, long fraction, ZoneId zoneId) {}
+                static class Y<T> {
+                    protected Y(Class<T> supportedType,
+                            DateTimeFormatter formatter,
+                            Function<TemporalAccessor, T> parsedToValue,
+                            Function<FromIntegerArguments, T> fromMilliseconds,
+                            Function<FromDecimalArguments, T> fromNanoseconds,
+                            BiFunction<T, ZoneId, T> adjust,
+                            boolean replaceZeroOffsetAsZ){
+                        }
+                }
+                static class Z extends Y<ZonedDateTime> {
+                    protected Z(DateTimeFormatter formatter) {
+                        super(ZonedDateTime.class, formatter, ZonedDateTime::from,
+                            a -> ZonedDateTime.ofInstant(Instant.ofEpochMilli(a.value), a.zoneId.getId().equals("UTC") ? ZoneOffset.UTC : a.zoneId),
+                            a -> ZonedDateTime.ofInstant(Instant.ofEpochSecond(a.integer, a.fraction), a.zoneId.getId().equals("UTC") ? ZoneOffset.UTC : a.zoneId),
+                            ZonedDateTime::withZoneSameInstant, false);
+                    }
+                }
+            }
+            """;
+
+    @Test
+    public void test9() {
+        javaInspector.parse(INPUT9);
+    }
+
 }

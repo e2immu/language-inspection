@@ -396,19 +396,16 @@ public class TypeContextImpl implements TypeContext {
             return false;
         }
         TypeInfo parent = parentPt.typeInfo();
+        boolean allDefined = true;
         if (!parent.isJavaLangObject() && superTypes.add(parent)) {
-            if (!recursivelyComputeSuperTypesExcludingJLO(parent, superTypes)) {
-                return false;
-            }
+            allDefined = recursivelyComputeSuperTypesExcludingJLO(parent, superTypes);
         }
         for (ParameterizedType interfaceImplemented : type.interfacesImplemented()) {
             TypeInfo i = interfaceImplemented.typeInfo();
             if (superTypes.add(i)) {
-                if (!recursivelyComputeSuperTypesExcludingJLO(i, superTypes)) {
-                    return false;
-                }
+                allDefined &= recursivelyComputeSuperTypesExcludingJLO(i, superTypes);
             }
         }
-        return true;
+        return allDefined;
     }
 }
