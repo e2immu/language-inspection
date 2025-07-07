@@ -127,7 +127,6 @@ public class MethodResolutionImpl implements MethodResolution {
                                          boolean useObjectForUndefinedTypeParameters) {
         ContextAndScope cas = determineTypeContextAndScope(contextIn, index, unparsedObject);
         Context context = cas.context;
-        // FIXME cas.scope.pt() has type parameters, which we should add to the expectedConcreteType?
         ListMethodAndConstructorCandidates list = new ListMethodAndConstructorCandidates(runtime,
                 context.typeContext().importMap());
         Map<NamedType, ParameterizedType> typeMap = expectedConcreteType == null ? Map.of() :
@@ -135,9 +134,8 @@ public class MethodResolutionImpl implements MethodResolution {
         TypeParameterMap typeParameterMap = new TypeParameterMap(typeMap);
         Map<MethodTypeParameterMap, Integer> candidates = list.resolveConstructor(formalType, expectedConcreteType,
                 unparsedArguments.size(), typeMap);
-        Candidate candidate = chooseCandidateAndEvaluateCall(context, index, "<init>", candidates,
-                unparsedArguments, formalType,
-                typeParameterMap, complain);
+        Candidate candidate = chooseCandidateAndEvaluateCall(context, index, "<init>",
+                methodTypeArguments, candidates, unparsedArguments, formalType, typeParameterMap, complain);
         if (candidate == null) {
             if (complain) {
                 throw new UnsupportedOperationException("No candidate for constructor, "
@@ -262,8 +260,8 @@ public class MethodResolutionImpl implements MethodResolution {
                     "No method candidates for " + methodName + ", " + numArguments + " arg(s)");
         }
         TypeParameterMap extra = forwardType.extra().merge(scope.typeParameterMap());
-        Candidate candidate = chooseCandidateAndEvaluateCall(context, index, methodName, methodCandidates,
-                unparsedArguments, forwardType.type(), extra, true);
+        Candidate candidate = chooseCandidateAndEvaluateCall(context, index, methodName, methodTypeArguments,
+                methodCandidates, unparsedArguments, forwardType.type(), extra, true);
 
         if (candidate == null) {
             throw new Summary.ParseException(context, "Failed to find a unique method candidate");
@@ -371,6 +369,7 @@ public class MethodResolutionImpl implements MethodResolution {
     Candidate chooseCandidateAndEvaluateCall(Context context,
                                              String index,
                                              String methodName,
+                                             List<ParameterizedType> methodTypeArguments,
                                              Map<MethodTypeParameterMap, Integer> methodCandidates,
                                              List<Object> unparsedArguments,
                                              ParameterizedType returnType,
@@ -413,10 +412,25 @@ public class MethodResolutionImpl implements MethodResolution {
         MethodTypeParameterMap method = sorted.getFirst();
         LOGGER.debug("Found method {}", method.methodInfo());
 
+        TypeParameterMap extra2 = methodTypeArguments.isEmpty() ? extra :
+                extra.merge(makeMethodTypeParameterMap(method.methodInfo(), methodTypeArguments));
+
         List<Expression> newParameterExpressions = reEvaluateErasedExpression(context, index, unparsedArguments,
-                returnType, extra, methodName, filterResult.evaluatedExpressions, method);
+                returnType, extra2, methodName, filterResult.evaluatedExpressions, method);
         Map<NamedType, ParameterizedType> mapExpansion = computeMapExpansion(method, newParameterExpressions, returnType);
         return new Candidate(newParameterExpressions, mapExpansion, method);
+    }
+
+    private TypeParameterMap makeMethodTypeParameterMap(MethodInfo methodInfo, List<ParameterizedType> methodTypeArguments) {
+        int i = 0;
+        Map<NamedType, ParameterizedType> map = new HashMap<>();
+        for (TypeParameter typeParameter : methodInfo.typeParameters()) {
+            if (i < methodTypeArguments.size()) {
+                map.put(typeParameter, methodTypeArguments.get(i));
+            }
+            ++i;
+        }
+        return new TypeParameterMap(map);
     }
 
     private void trimMethodsByReevaluatingErasedParameterExpressions(Context context,
@@ -580,17 +594,19 @@ public class MethodResolutionImpl implements MethodResolution {
                 positionsToDo.add(i);
             } else {
                 newParameterExpressions[i] = e;
-                Map<NamedType, ParameterizedType> learned = e.parameterizedType().initialTypeParameterMap();
-                ParameterizedType formal = i < parameters.size() ? parameters.get(i).parameterizedType() :
-                        parameters.getLast().parameterizedType().copyWithOneFewerArrays();
-                Map<NamedType, ParameterizedType> inMethod = formal.forwardTypeParameterMap();
-                Map<NamedType, ParameterizedType> combined = genericsHelper.combineMaps(learned, inMethod);
-                if (!combined.isEmpty()) {
-                    cumulative = cumulative.merge(new TypeParameterMap(combined));
-                }
-                if (formal.typeParameter() != null) {
-                    Map<NamedType, ParameterizedType> map = Map.of(formal.typeParameter(), e.parameterizedType().copyWithoutArrays());
-                    cumulative = cumulative.merge(new TypeParameterMap(map));
+                if (!(e instanceof NullConstant)) {
+                    Map<NamedType, ParameterizedType> learned = e.parameterizedType().initialTypeParameterMap();
+                    ParameterizedType formal = i < parameters.size() ? parameters.get(i).parameterizedType() :
+                            parameters.getLast().parameterizedType().copyWithOneFewerArrays();
+                    Map<NamedType, ParameterizedType> inMethod = formal.forwardTypeParameterMap();
+                    Map<NamedType, ParameterizedType> combined = genericsHelper.combineMaps(learned, inMethod);
+                    if (!combined.isEmpty()) {
+                        cumulative = cumulative.merge(new TypeParameterMap(combined));
+                    }
+                    if (formal.typeParameter() != null) {
+                        Map<NamedType, ParameterizedType> map = Map.of(formal.typeParameter(), e.parameterizedType().copyWithoutArrays());
+                        cumulative = cumulative.merge(new TypeParameterMap(map));
+                    }
                 }
             }
         }
@@ -970,19 +986,16 @@ public class MethodResolutionImpl implements MethodResolution {
         Set<TypeParameter> typeParameters = parameterType.extractTypeParameters();
         Map<NamedType, ParameterizedType> outsideMap = outsideContext.initialTypeParameterMap();
         if (typeParameters.isEmpty() || outsideMap.isEmpty()) {
-            if (outsideMap.isEmpty()) {
-                /* here we test whether the return type of the method is a method type parameter. If so,
-                   we have and outside type that we can assign to it. See MethodCall_68, assigning B to type parameter T
-                 */
-                ParameterizedType returnType = method.getConcreteReturnType(runtime);
-                if (returnType.typeParameter() != null) {
-                    Map<NamedType, ParameterizedType> translate = Map.of(returnType.typeParameter(), outsideContext);
-                    ParameterizedType translated = parameterType.applyTranslation(runtime, translate);
-                    return new ForwardTypeImpl(translated, false, extra);
-                }
-            }
-            // No type parameters to fill in or to extract
-            ParameterizedType translated = parameterType.applyTranslation(runtime, extra.map());
+            Map<NamedType, ParameterizedType> map = new HashMap<>(extra.map());
+            ParameterizedType returnType = method.getConcreteReturnType(runtime);
+            /* here we test whether the return type of the method is a method type parameter. If so,
+               we have and outside type that we can assign to it. See MethodCall_68, assigning B to type parameter T
+               See TestParseMethods,6
+             */
+            if (returnType.typeParameter() != null) {
+                map.put(returnType.typeParameter(), outsideContext);
+            } // else e.g. TestMethodCall9,4
+            ParameterizedType translated = parameterType.applyTranslation(runtime, map);
             return new ForwardTypeImpl(translated, false, extra);
         }
         Map<NamedType, ParameterizedType> translate = new HashMap<>(extra.map());
