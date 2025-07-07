@@ -174,7 +174,7 @@ public class TestLambda extends CommonTest {
                             })
                             .customizer(c -> {
                                 if(b) {
-                                    for(int i = 0; i < k.length; i += 2) {
+                                    for(int i = 0; i < k; i += 2) {
                                        System.out.println("?");
                                     }
                                 }
