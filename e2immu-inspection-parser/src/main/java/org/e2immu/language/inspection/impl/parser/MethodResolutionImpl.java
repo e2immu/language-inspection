@@ -396,12 +396,19 @@ public class MethodResolutionImpl implements MethodResolution {
         }
 
         if (methodCandidates.size() > 1) {
+        //    trimMethodsKeepMostSpecificReturnType(context.enclosingType().primaryType(), methodCandidates);
+        }
+
+        // DISTANCE IN THE HIERARCHY
+        if (methodCandidates.size() > 1) {
             trimMethodsWithBestScore(methodCandidates, filterResult.compatibilityScore);
         }
+        // return type of erased lambdas
         if (methodCandidates.size() > 1) {
             trimMethodsByReevaluatingErasedParameterExpressions(context, index, filterResult.evaluatedExpressions,
                     unparsedArguments, methodCandidates, returnType, extra);
         }
+        // varargs vs single element
         if (methodCandidates.size() > 1) {
             trimVarargsVsMethodsWithFewerParameters(methodCandidates);
         }
@@ -1049,6 +1056,51 @@ public class MethodResolutionImpl implements MethodResolution {
         // map points from E as 0 in List to E as 0 in List.of()
         return map.entrySet().stream().filter(e -> methodTypeParameter.equals(e.getValue().typeParameter()))
                 .map(e -> (TypeParameter) e.getKey()).findFirst().orElse(null);
+    }
+
+    private void trimMethodsKeepMostSpecificReturnType(TypeInfo currentPrimaryType, Map<MethodTypeParameterMap, Integer> methodCandidates) {
+        Map<ParameterizedType, List<MethodTypeParameterMap>> perPt = new HashMap<>();
+        for (MethodTypeParameterMap method : methodCandidates.keySet()) {
+            perPt.computeIfAbsent(method.getConcreteReturnType(runtime).erased(),
+                    pt -> new ArrayList<>()).add(method);
+        }
+        if (perPt.size() > 1) {
+            Set<ParameterizedType> mostSpecific = new HashSet<>();
+            for (ParameterizedType pt : perPt.keySet()) {
+                if (mostSpecific.isEmpty()) mostSpecific.add(pt);
+                else {
+                    Boolean add = null;
+                    boolean independent = false;
+                    Iterator<ParameterizedType> iterator = mostSpecific.iterator();
+                    while (iterator.hasNext()) {
+                        ParameterizedType inMostSpecific = iterator.next();
+                        ParameterizedType ms = inMostSpecific.mostSpecific(runtime, currentPrimaryType, pt);
+                        ParameterizedType ms2 = pt.mostSpecific(runtime, currentPrimaryType, inMostSpecific);
+
+                        boolean newOneIsStrictlyMoreSpecific = ms == pt && ms2 == pt;
+                        boolean existingOneIsStrictlyMoreSpecific = ms == inMostSpecific && ms2 == inMostSpecific;
+
+                        if (newOneIsStrictlyMoreSpecific) {
+                            add = true;
+                            iterator.remove(); // replace by new one
+                        } else if (existingOneIsStrictlyMoreSpecific) {
+                            // there is a more specific one:
+                            add = false;
+                        } else {
+                            independent = true;
+                        }
+                    }
+                    if (add != null && add || add == null && independent) {
+                        mostSpecific.add(pt);
+                    }
+                }
+            }
+            for (Map.Entry<ParameterizedType, List<MethodTypeParameterMap>> entry : perPt.entrySet()) {
+                if (!mostSpecific.contains(entry.getKey().erased())) {
+                    entry.getValue().forEach(methodCandidates::remove);
+                }
+            }
+        }
     }
 
     private void trimMethodsWithBestScore(Map<MethodTypeParameterMap, Integer> methodCandidates,

@@ -96,9 +96,12 @@ public class ListMethodAndConstructorCandidates {
         // or import by name
         TypeInfo byName = staticImportMap.getStaticMemberToTypeInfo(methodName);
         if (byName != null && !visited.contains(byName) && !visitedStatic.contains(byName)) {
-            visitedStatic.add(byName);
-            resolveOverloadedMethodsSingleType(byName, true, scopeNature, methodName,
-                    parametersPresented, decrementWhenNotStatic, typeMap, result, visited, visitedStatic, distance);
+            // see TestMethodCall10,1
+            if (scopeNature != ScopeNature.INSTANCE || multipleTypeInfoObjects.contains(byName)) {
+                visitedStatic.add(byName);
+                resolveOverloadedMethodsSingleType(byName, true, scopeNature, methodName,
+                        parametersPresented, decrementWhenNotStatic, typeMap, result, visited, visitedStatic, distance);
+            }
         }
     }
 

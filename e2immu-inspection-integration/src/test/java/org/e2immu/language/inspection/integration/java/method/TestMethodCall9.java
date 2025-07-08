@@ -207,7 +207,31 @@ public class TestMethodCall9 extends CommonTest {
         TypeInfo X = javaInspector.parse(INPUT5);
         MethodInfo methodInfo = X.findUniqueMethod("method", 1);
         MethodCall mc = (MethodCall) methodInfo.methodBody().lastStatement().expression();
-        assertEquals("a.b.X.H2.special()", mc.methodInfo().fullyQualifiedName());
+        assertEquals("a.b.X.H1.special()", mc.methodInfo().fullyQualifiedName());
         assertEquals("a.b.X.JI1.getHeader()", ((MethodCall)mc.object()).methodInfo().fullyQualifiedName());
     }
+
+
+    @Language("java")
+    private static final String INPUT6 = """
+            package a.b;
+            
+            import java.util.Arrays;
+            import java.util.Set;
+            import java.util.stream.Collectors;
+            
+            class X {
+               void method(long[] allocationStepIds){
+                		Set<Long> allocationStepIdSet = Arrays.stream(allocationStepIds).boxed().collect(Collectors.toSet());
+                }
+            }
+            """;
+
+    @DisplayName("overrides and covariance, 2")
+    @Test
+    public void test6() {
+        TypeInfo X = javaInspector.parse(INPUT6);
+
+    }
+
 }
