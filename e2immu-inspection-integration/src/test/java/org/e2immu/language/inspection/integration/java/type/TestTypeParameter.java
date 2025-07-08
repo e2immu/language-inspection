@@ -4,6 +4,7 @@ import org.e2immu.language.cst.api.expression.Assignment;
 import org.e2immu.language.cst.api.expression.Expression;
 import org.e2immu.language.cst.api.info.MethodInfo;
 import org.e2immu.language.cst.api.info.TypeInfo;
+import org.e2immu.language.cst.api.statement.LocalVariableCreation;
 import org.e2immu.language.cst.api.type.TypeParameter;
 import org.e2immu.language.inspection.integration.java.CommonTest;
 import org.intellij.lang.annotations.Language;
@@ -68,6 +69,59 @@ public class TestTypeParameter extends CommonTest {
             assertEquals("a.b.X.I.k#`12-8`[a.b.X.set(a.b.X.ArrayList<a.b.X.I[]>,int,int,int):2:j]",
                     a.variableTarget().fullyQualifiedName());
         }
+    }
+
+
+    @Language("java")
+    public static final String INPUT2 = """
+            package a.b;
+            
+            import java.util.ArrayList;
+            import java.util.List;import java.util.concurrent.atomic.AtomicBoolean;
+            
+            class X {
+              int method() {
+                 return new ArrayList<AtomicBoolean>().size();
+              }
+              int method2() {
+                 return new ArrayList<>().size();
+              }
+              int method3() {
+                 List<AtomicBoolean> list = new ArrayList<>();
+                 return list.size();
+              }
+              int method4() {
+                List<AtomicBoolean> list = new ArrayList();
+                return list.size();
+              }
+            }
+            """;
+
+    @Test
+    public void test2() {
+        TypeInfo typeInfo = javaInspector.parse(INPUT2);
+        MethodInfo method = typeInfo.findUniqueMethod("method", 0);
+        assertEquals("""
+                [TypeReference[typeInfo=int, explicit=true], \
+                TypeReference[typeInfo=java.util.concurrent.atomic.AtomicBoolean, explicit=true], \
+                TypeReference[typeInfo=java.util.ArrayList, explicit=true]]\
+                """, method.typesReferenced(true).toList().toString());
+        MethodInfo method2 = typeInfo.findUniqueMethod("method2", 0);
+        assertEquals("""
+                [TypeReference[typeInfo=int, explicit=true], \
+                TypeReference[typeInfo=java.util.ArrayList, explicit=true]]\
+                """, method2.typesReferenced(true).toList().toString());
+        MethodInfo method3 = typeInfo.findUniqueMethod("method3", 0);
+        LocalVariableCreation lvc3 = (LocalVariableCreation) method3.methodBody().statements().getFirst();
+        assertEquals("""
+                [TypeReference[typeInfo=java.util.concurrent.atomic.AtomicBoolean, explicit=false], \
+                TypeReference[typeInfo=java.util.ArrayList, explicit=true]]\
+                """, lvc3.localVariable().assignmentExpression().typesReferenced().toList().toString());
+        MethodInfo method4 = typeInfo.findUniqueMethod("method4", 0);
+        LocalVariableCreation lvc4 = (LocalVariableCreation) method4.methodBody().statements().getFirst();
+        assertEquals("""
+               [TypeReference[typeInfo=java.util.ArrayList, explicit=true]]\
+                """, lvc4.localVariable().assignmentExpression().typesReferenced().toList().toString());
     }
 
 }
