@@ -10,6 +10,8 @@ import org.intellij.lang.annotations.Language;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import java.io.Serializable;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class TestMethodCall9 extends CommonTest {
@@ -178,20 +180,23 @@ public class TestMethodCall9 extends CommonTest {
             import java.io.Serializable;
             
             class X {
-                interface H { }
-                interface SH extends H { int special(); }
-                interface J { H getHeader(); }
-                static abstract class Super implements Serializable {
-                    abstract H getHeader();
+                static abstract class H implements Serializable { }  // Header
+                static abstract class H1 extends H { int special() { return 3;} } // CommonSEHeader
+                static final class H2 extends H1 { } // JWSHeader
+        
+                interface J extends Serializable { H getHeader(); } // JWT
+                static abstract class JI implements Serializable { // JOSEObject
+                    public abstract H getHeader();
                 }
-                static class JI extends Super {
-                    SH getHeader() { return null; }
+                static class JI1 extends JI { // JWSObject
+                    public H2 getHeader() { return null; }
                 }
-                static class JIS extends JI implements H {
+                static class JI2 extends JI1 implements J { // SignedJWT
                 }
-
-                int method(JIS jis) {
-                   return jis.getHeader().special();
+                int method(JI2 ji2) {
+                    //H2 h2 = ji2.getHeader();
+                    //return h2.special();
+                    return ji2.getHeader().special();
                 }
             }
             """;
@@ -202,7 +207,7 @@ public class TestMethodCall9 extends CommonTest {
         TypeInfo X = javaInspector.parse(INPUT5);
         MethodInfo methodInfo = X.findUniqueMethod("method", 1);
         MethodCall mc = (MethodCall) methodInfo.methodBody().lastStatement().expression();
-        assertEquals("a.b.X.SH.special()", mc.methodInfo().fullyQualifiedName());
-        assertEquals("a.b.X.JI.getHeader()", ((MethodCall)mc.object()).methodInfo().fullyQualifiedName());
+        assertEquals("a.b.X.H2.special()", mc.methodInfo().fullyQualifiedName());
+        assertEquals("a.b.X.JI1.getHeader()", ((MethodCall)mc.object()).methodInfo().fullyQualifiedName());
     }
 }
