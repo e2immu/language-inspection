@@ -476,15 +476,23 @@ public class MethodResolutionImpl implements MethodResolution {
                                                                         TypeParameterMap extra) {
         int score = 0;
         TypeParameterMap cumulative = extra;
+        List<ParameterInfo> parameters = method.methodInfo().parameters();
         for (int i : erased) {
             LOGGER.debug("Reevaluating erased expression for score computation, {}, pos {}", method.methodInfo(), i);
             Expression evEx = evaluatedExpressions.get(i);
             ReEval reEval = reevaluateParameterExpression(context, index, unparsedArguments, outsideContext,
-                    method.methodInfo().name(), evEx, method, i, cumulative, method.methodInfo().parameters());
+                    method.methodInfo().name(), evEx, method, i, cumulative, parameters);
             cumulative = reEval.typeParameterMap;
-
-            ParameterInfo parameterInfo = method.methodInfo().parameters().get(i);
-            score += compatibleParameter(reEval.evaluated, parameterInfo.parameterizedType());
+            ParameterizedType pt;
+            if (i >= parameters.size()) {
+                ParameterInfo parameterInfo = parameters.getLast();
+                assert parameterInfo.isVarArgs();
+                pt = parameterInfo.parameterizedType().copyWithOneFewerArrays();
+            } else {
+                ParameterInfo parameterInfo = parameters.get(i);
+                pt = parameterInfo.parameterizedType();
+            }
+            score += compatibleParameter(reEval.evaluated, pt);
         }
         return score;
     }

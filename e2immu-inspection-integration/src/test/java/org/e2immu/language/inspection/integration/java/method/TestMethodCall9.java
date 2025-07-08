@@ -169,4 +169,40 @@ public class TestMethodCall9 extends CommonTest {
         assertEquals("X.<PR> filter(pr,b->b.r==1)",
                 mc2.print(javaInspector.runtime().qualificationSimpleNames()).toString());
     }
+
+
+    @Language("java")
+    private static final String INPUT5 = """
+            package a.b;
+            
+            import java.io.Serializable;
+            
+            class X {
+                interface H { }
+                interface SH extends H { int special(); }
+                interface J { H getHeader(); }
+                static abstract class Super implements Serializable {
+                    abstract H getHeader();
+                }
+                static class JI extends Super {
+                    SH getHeader() { return null; }
+                }
+                static class JIS extends JI implements H {
+                }
+
+                int method(JIS jis) {
+                   return jis.getHeader().special();
+                }
+            }
+            """;
+
+    @DisplayName("overrides and covariance")
+    @Test
+    public void test5() {
+        TypeInfo X = javaInspector.parse(INPUT5);
+        MethodInfo methodInfo = X.findUniqueMethod("method", 1);
+        MethodCall mc = (MethodCall) methodInfo.methodBody().lastStatement().expression();
+        assertEquals("a.b.X.SH.special()", mc.methodInfo().fullyQualifiedName());
+        assertEquals("a.b.X.JI.getHeader()", ((MethodCall)mc.object()).methodInfo().fullyQualifiedName());
+    }
 }

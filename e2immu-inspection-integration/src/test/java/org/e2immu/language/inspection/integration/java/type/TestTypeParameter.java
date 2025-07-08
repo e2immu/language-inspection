@@ -1,5 +1,8 @@
 package org.e2immu.language.inspection.integration.java.type;
 
+import org.e2immu.language.cst.api.expression.Assignment;
+import org.e2immu.language.cst.api.expression.Expression;
+import org.e2immu.language.cst.api.info.MethodInfo;
 import org.e2immu.language.cst.api.info.TypeInfo;
 import org.e2immu.language.cst.api.type.TypeParameter;
 import org.e2immu.language.inspection.integration.java.CommonTest;
@@ -34,6 +37,37 @@ public class TestTypeParameter extends CommonTest {
                 import org.e2immu.annotation.Independent;
                 class X { class Class$<@Independent @Container T> { } }
                 """, javaInspector.print2(typeInfo));
+    }
+
+
+    @Language("java")
+    public static final String INPUT1 = """
+            package a.b;
+            
+            class X {
+               static class ArrayList<T> extends java.util.ArrayList<T> {
+                   // no need for anything here
+               }
+               static class I {
+                   int k;
+               }
+            
+               static void set(ArrayList<I[]> iArrayList, int i, int j, int k) {
+                   iArrayList.get(i)[j].k = k;
+               }
+            }
+            """;
+
+    @Test
+    public void test1() {
+        TypeInfo typeInfo = javaInspector.parse(INPUT1);
+        MethodInfo set = typeInfo.findUniqueMethod("set", 4);
+        Expression expression = set.methodBody().lastStatement().expression();
+        assertEquals("iArrayList.get(i)[j].k=k", expression.toString());
+        if (expression instanceof Assignment a) {
+            assertEquals("a.b.X.I.k#`12-8`[a.b.X.set(a.b.X.ArrayList<a.b.X.I[]>,int,int,int):2:j]",
+                    a.variableTarget().fullyQualifiedName());
+        }
     }
 
 }
