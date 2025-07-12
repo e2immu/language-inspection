@@ -212,6 +212,41 @@ public class TestMethodCall9 extends CommonTest {
     }
 
 
+
+    @Language("java")
+    private static final String INPUT5b = """
+            package a.b;
+            
+            import java.io.Serializable;
+            
+            class X {
+                static abstract class H implements Serializable { }
+                static abstract class H1 extends H { int special() { return 3;} }
+                static final class H2 extends H1 { }
+        
+                interface J extends Serializable { H getHeader(); }
+                interface K extends Serializable { H1 getHeader(); }
+
+                static abstract class A implements J, K {
+                }
+                static abstract class B implements K, J {
+                }
+                int method(A a) {
+                    return a.getHeader().special();
+                }
+                int method(B b) {
+                    return b.getHeader().special();
+                }
+            }
+            """;
+    
+    @DisplayName("overrides and covariance, 2: most specific return type wins")
+    @Test
+    public void test5b() {
+        TypeInfo X = javaInspector.parse(INPUT5b);
+    }
+
+
     @Language("java")
     private static final String INPUT6 = """
             package a.b;
@@ -227,7 +262,7 @@ public class TestMethodCall9 extends CommonTest {
             }
             """;
 
-    @DisplayName("overrides and covariance, 2")
+
     @Test
     public void test6() {
         TypeInfo X = javaInspector.parse(INPUT6);

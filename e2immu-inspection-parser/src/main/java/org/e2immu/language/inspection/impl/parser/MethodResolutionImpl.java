@@ -395,13 +395,13 @@ public class MethodResolutionImpl implements MethodResolution {
             return null;
         }
 
-        if (methodCandidates.size() > 1) {
-        //    trimMethodsKeepMostSpecificReturnType(context.enclosingType().primaryType(), methodCandidates);
-        }
-
         // DISTANCE IN THE HIERARCHY
         if (methodCandidates.size() > 1) {
             trimMethodsWithBestScore(methodCandidates, filterResult.compatibilityScore);
+        }
+        // equal distance: most specific return type
+        if (methodCandidates.size() > 1) {
+                trimMethodsKeepMostSpecificReturnType(context.enclosingType().primaryType(), methodCandidates);
         }
         // return type of erased lambdas
         if (methodCandidates.size() > 1) {

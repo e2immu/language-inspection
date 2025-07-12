@@ -133,18 +133,15 @@ public class ListMethodAndConstructorCandidates {
         boolean isJLO = typeInfo.isJavaLangObject();
         assert isJLO || parentClass != null :
                 "Parent class of " + typeInfo.fullyQualifiedName() + " is null";
-        int numInterfaces = typeInfo.interfacesImplemented().size();
         if (!isJLO) {
             recursivelyResolveOverloadedMethods(parentClass, methodName, parametersPresented, decrementWhenNotStatic,
                     joinMaps(typeMap, parentClass), result, visited, visitedStatic, staticOnly, scopeNature,
-                    distance + numInterfaces + 1);
+                    distance + 1);
         }
-        int count = 0;
         for (ParameterizedType interfaceImplemented : typeInfo.interfacesImplemented()) {
             recursivelyResolveOverloadedMethods(interfaceImplemented, methodName, parametersPresented,
                     decrementWhenNotStatic, joinMaps(typeMap, interfaceImplemented), result, visited, visitedStatic,
-                    staticOnly, scopeNature, distance + count);
-            ++count;
+                    staticOnly, scopeNature, distance + 1);
         }
         // See UtilityClass_2 for an example where we should go to the static methods of the enclosing type
         if (typeInfo.compilationUnitOrEnclosingType().isRight()) {
@@ -155,7 +152,7 @@ public class ListMethodAndConstructorCandidates {
                 ParameterizedType enclosingType = typeInfo.compilationUnitOrEnclosingType().getRight().asParameterizedType();
                 recursivelyResolveOverloadedMethods(enclosingType, methodName, parametersPresented, decrementWhenNotStatic,
                         joinMaps(typeMap, enclosingType), result, visited, visitedStatic,
-                        onlyStatic, scopeNature, distance + numInterfaces);
+                        onlyStatic, scopeNature, distance + 1);
             }
         }
     }
