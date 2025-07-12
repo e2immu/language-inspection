@@ -73,6 +73,7 @@ public class TypeContextImpl implements TypeContext {
             TypeInfo typeInfo = loadTypeDoNotImport(fqn);
             LOGGER.debug("Add import static wildcard {}", typeInfo);
             addImportStaticWildcard(typeInfo);
+            typeInfo.subTypes().forEach(st -> addImportStatic(typeInfo, st.simpleName()));
         } else {
             int dot = fqn.lastIndexOf('.');
             String typeOrSubTypeName = fqn.substring(0, dot);
@@ -323,8 +324,7 @@ public class TypeContextImpl implements TypeContext {
          */
         TypeInfo parent = data.staticImportMap.getStaticMemberToTypeInfo(name);
         if (parent != null) {
-            TypeInfo subType = parent.recursiveSubTypeStream()
-                    .filter(st -> name.equals(st.simpleName())).findFirst().orElse(null);
+            TypeInfo subType = parent.findSubType(name, false);
             if (subType != null) {
                 map.put(name, subType);
                 return subType;
