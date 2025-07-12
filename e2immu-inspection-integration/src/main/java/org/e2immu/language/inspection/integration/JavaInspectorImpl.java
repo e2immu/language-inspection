@@ -149,9 +149,9 @@ public class JavaInspectorImpl implements JavaInspector {
         List<InitializationProblem> initializationProblems = new LinkedList<>();
         try {
 
-            Resources classPath = assemblePath(inputConfiguration.workingDirectory(),
+            Resources classPath = assembleClassPath(inputConfiguration.workingDirectory(),
                     inputConfiguration.classPathParts(), inputConfiguration.alternativeJREDirectory(),
-                    "Classpath", initializationProblems);
+                    initializationProblems);
             CompiledTypesManagerImpl ctm = new CompiledTypesManagerImpl(classPath);
             runtime = new RuntimeWithCompiledTypesManager(ctm);
             ByteCodeInspector byteCodeInspector = new ByteCodeInspectorImpl(runtime, ctm, computeFingerPrints);
@@ -162,8 +162,8 @@ public class JavaInspectorImpl implements JavaInspector {
                 preload(packageName);
             }
 
-            Resources sourcePath = assemblePath(inputConfiguration.workingDirectory(), inputConfiguration.sourceSets(),
-                    inputConfiguration.alternativeJREDirectory(), "Source path", initializationProblems);
+            Resources sourcePath = assembleSourcePath(inputConfiguration.workingDirectory(),
+                    inputConfiguration.sourceSets(), initializationProblems);
             List<SourceFile> sourceFiles = computeSourceURIs(sourcePath);
             this.sourceFiles = new HashMap<>();
             sourceFiles.forEach(sf -> this.sourceFiles.put(sf, List.of()));
@@ -193,8 +193,8 @@ public class JavaInspectorImpl implements JavaInspector {
         List<InitializationProblem> initializationProblems = new LinkedList<>();
         Set<TypeInfo> changed = new HashSet<>();
         try {
-            Resources sourcePath = assemblePath(inputConfiguration.workingDirectory(), inputConfiguration.sourceSets(),
-                    inputConfiguration.alternativeJREDirectory(), "Source path", initializationProblems);
+            Resources sourcePath = assembleSourcePath(inputConfiguration.workingDirectory(),
+                    inputConfiguration.sourceSets(), initializationProblems);
             Set<SourceFile> removed = new HashSet<>(this.sourceFiles.keySet());
             List<SourceFile> sourceFiles = computeSourceURIs(sourcePath);
             AtomicInteger sourceFilesChanged = new AtomicInteger();
@@ -270,71 +270,97 @@ public class JavaInspectorImpl implements JavaInspector {
         compiledTypesManager.preload(thePackage);
     }
 
-    private Resources assemblePath(Path workingDirectory,
-                                   List<SourceSet> sourceSets,
-                                   Path alternativeJREDirectory,
-                                   String msg,
-                                   List<InitializationProblem> initializationProblems) throws IOException, URISyntaxException {
+    private Resources assembleClassPath(Path workingDirectory,
+                                        List<SourceSet> sourceSets,
+                                        Path alternativeJREDirectory,
+                                        List<InitializationProblem> initializationProblems) throws IOException, URISyntaxException {
         Resources resources = new ResourcesImpl(workingDirectory);
         for (SourceSet sourceSet : sourceSets) {
             String scheme = sourceSet.uri().getScheme();
-            Throwable throwable = null;
             String path = sourceSet.uri().getSchemeSpecificPart();
-            assert path != null && !path.isBlank();
-            switch (scheme) {
-                case JAR_WITH_PATH -> {
-                    URL jarUrl = resources.findJarInClassPath(path);
-                    if (jarUrl == null) {
-                        String msgString = msg + " part '" + sourceSet.uri() + "': jar not found";
-                        LOGGER.warn(msgString);
-                        initializationProblems.add(new InitializationProblem(msgString, null));
-                    } else {
-                        addJar(resources, path, jarUrl, sourceSet);
-                    }
+            handleSourceSet(workingDirectory, alternativeJREDirectory, "Class path", initializationProblems,
+                    sourceSet, path, scheme, resources);
+        }
+        return resources;
+    }
+
+    private Resources assembleSourcePath(Path workingDirectory,
+                                         List<SourceSet> sourceSets,
+                                         List<InitializationProblem> initializationProblems) throws IOException, URISyntaxException {
+        Resources resources = new ResourcesImpl(workingDirectory);
+        for (SourceSet sourceSet : sourceSets) {
+            if (sourceSet.sourceDirectories().isEmpty()) {
+                String scheme = sourceSet.uri().getScheme();
+                String path = sourceSet.uri().getSchemeSpecificPart();
+                handleSourceSet(workingDirectory, null, "Source path", initializationProblems,
+                        sourceSet, path, scheme, resources);
+            } else {
+                for (Path sourceDir : sourceSet.sourceDirectories()) {
+                    handleSourceSet(workingDirectory, null, "Source path", initializationProblems,
+                            sourceSet, sourceDir.toString(), "file", resources);
                 }
-                case "jmod" -> {
-                    try {
-                        URL url = ResourcesImpl.constructJModURL(path, alternativeJREDirectory);
-                        FingerPrint fingerPrint = makeFingerPrint(url);
-                        sourceSet.setFingerPrint(fingerPrint);
-                        int entries = resources.addJmod(new SourceFile(path, url.toURI(), sourceSet, null));
-                        LOGGER.debug("Added {} entries for jmod {}", entries, path);
-                    } catch (IOException e) {
-                        throwable = e;
-                    }
-                }
-                case TEST_PROTOCOL -> resources.addTestProtocol(new SourceFile(path, sourceSet.uri(), sourceSet,
-                        null));
-                case "file" -> {
-                    File file = toAbsoluteFile(workingDirectory, path);
-                    if (path.endsWith(".jar")) {
-                        try {
-                            // "jar:file:build/libs/equivalent.jar!/"
-                            URL jarUrl = URI.create("jar:file:" + file.getPath() + "!/").toURL();
-                            addJar(resources, path, jarUrl, sourceSet);
-                        } catch (IOException e) {
-                            throwable = e;
-                        }
-                    } else {
-                        if (file.isDirectory()) {
-                            LOGGER.info("Adding {} to {}", file.getAbsolutePath(), msg);
-                            resources.addDirectoryFromFileSystem(file, sourceSet);
-                        } else {
-                            String msgString = msg + " part '" + path + "' is not a .jar file, and not a directory: ignored";
-                            LOGGER.warn(msgString);
-                            initializationProblems.add(new InitializationProblem(msgString, null));
-                        }
-                    }
-                }
-                case null, default -> throw new UnsupportedOperationException("Unknown URI scheme " + scheme);
-            }
-            if (throwable != null) {
-                String msgString = msg + " part '" + path + "' ignored: " + throwable.getMessage();
-                LOGGER.warn(msgString);
-                initializationProblems.add(new InitializationProblem(msgString, throwable));
             }
         }
         return resources;
+    }
+
+    private void handleSourceSet(Path workingDirectory, Path alternativeJREDirectory,
+                                 String msg, List<InitializationProblem> initializationProblems,
+                                 SourceSet sourceSet, String path, String scheme, Resources resources) throws IOException, URISyntaxException {
+        Throwable throwable = null;
+        assert path != null && !path.isBlank();
+        switch (scheme) {
+            case JAR_WITH_PATH -> {
+                URL jarUrl = resources.findJarInClassPath(path);
+                if (jarUrl == null) {
+                    String msgString = msg + " part '" + sourceSet.uri() + "': jar not found";
+                    LOGGER.warn(msgString);
+                    initializationProblems.add(new InitializationProblem(msgString, null));
+                } else {
+                    addJar(resources, path, jarUrl, sourceSet);
+                }
+            }
+            case "jmod" -> {
+                try {
+                    URL url = ResourcesImpl.constructJModURL(path, alternativeJREDirectory);
+                    FingerPrint fingerPrint = makeFingerPrint(url);
+                    sourceSet.setFingerPrint(fingerPrint);
+                    int entries = resources.addJmod(new SourceFile(path, url.toURI(), sourceSet, null));
+                    LOGGER.debug("Added {} entries for jmod {}", entries, path);
+                } catch (IOException e) {
+                    throwable = e;
+                }
+            }
+            case TEST_PROTOCOL -> resources.addTestProtocol(new SourceFile(path, sourceSet.uri(), sourceSet,
+                    null));
+            case "file" -> {
+                File file = toAbsoluteFile(workingDirectory, path);
+                if (path.endsWith(".jar")) {
+                    try {
+                        // "jar:file:build/libs/equivalent.jar!/"
+                        URL jarUrl = URI.create("jar:file:" + file.getPath() + "!/").toURL();
+                        addJar(resources, path, jarUrl, sourceSet);
+                    } catch (IOException e) {
+                        throwable = e;
+                    }
+                } else {
+                    if (file.isDirectory()) {
+                        LOGGER.info("Adding {} to {}", file.getAbsolutePath(), msg);
+                        resources.addDirectoryFromFileSystem(file, sourceSet);
+                    } else {
+                        String msgString = msg + " part '" + path + "' is not a .jar file, and not a directory: ignored";
+                        LOGGER.warn(msgString);
+                        initializationProblems.add(new InitializationProblem(msgString, null));
+                    }
+                }
+            }
+            case null, default -> throw new UnsupportedOperationException("Unknown URI scheme " + scheme);
+        }
+        if (throwable != null) {
+            String msgString = msg + " part '" + path + "' ignored: " + throwable.getMessage();
+            LOGGER.warn(msgString);
+            initializationProblems.add(new InitializationProblem(msgString, throwable));
+        }
     }
 
     private File toAbsoluteFile(Path workingDirectory, String path) {
