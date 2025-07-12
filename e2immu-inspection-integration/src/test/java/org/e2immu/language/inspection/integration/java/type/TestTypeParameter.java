@@ -4,12 +4,18 @@ import org.e2immu.language.cst.api.expression.Assignment;
 import org.e2immu.language.cst.api.expression.Expression;
 import org.e2immu.language.cst.api.info.MethodInfo;
 import org.e2immu.language.cst.api.info.TypeInfo;
+import org.e2immu.language.cst.api.statement.LocalVariableCreation;
+import org.e2immu.language.cst.api.type.ParameterizedType;
 import org.e2immu.language.cst.api.type.TypeParameter;
+import org.e2immu.language.inspection.integration.JavaInspectorImpl;
 import org.e2immu.language.inspection.integration.java.CommonTest;
 import org.intellij.lang.annotations.Language;
 import org.junit.jupiter.api.Test;
 
+import static org.e2immu.language.cst.api.info.TypeInfo.QualificationState.FULLY_QUALIFIED;
+import static org.e2immu.language.cst.api.info.TypeInfo.QualificationState.QUALIFIED;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
 
 public class TestTypeParameter extends CommonTest {
 
@@ -68,6 +74,44 @@ public class TestTypeParameter extends CommonTest {
             assertEquals("a.b.X.I.k#`12-8`[a.b.X.set(a.b.X.ArrayList<a.b.X.I[]>,int,int,int):2:j]",
                     a.variableTarget().fullyQualifiedName());
         }
+    }
+
+
+    @Language("java")
+    public static final String INPUT2 = """
+            package b;
+            
+            import java.util.List;
+            
+            class C {
+                interface D { }
+                interface A {
+                    interface B<T> { }
+                    List<B<D>> get();
+                }
+            
+                void m(A a) {
+                    List<A.B<D>> x = a.get();
+                }
+            }
+            """;
+
+    @Test
+    public void test2() {
+        TypeInfo typeInfo = javaInspector.parse(INPUT2,
+                new JavaInspectorImpl.ParseOptionsBuilder().setDetailedSources(true).build());
+        MethodInfo m = typeInfo.findUniqueMethod("m", 1);
+        LocalVariableCreation lvc = (LocalVariableCreation) m.methodBody().lastStatement();
+        ParameterizedType list = lvc.localVariable().parameterizedType();
+        assertEquals("java.util.List<b.C.A.B<b.C.D>>", list.fullyQualifiedName());
+        ParameterizedType pt = list.parameters().getFirst();
+        assertEquals("13-14:13-19", lvc.source().detailedSources().detail(pt).compact2());
+
+        TypeInfo.QualificationData qd = pt.qualificationData(lvc.source());
+        assertSame(QUALIFIED, qd.state());
+        assertEquals("b.C.A", qd.qualifier().fullyQualifiedName());
+        assertEquals("13-14:13-14", qd.sourceMap().get(qd.qualifier()).compact2());
+        assertSame(typeInfo, qd.qualifier().compilationUnitOrEnclosingType().getRight());
     }
 
 }
