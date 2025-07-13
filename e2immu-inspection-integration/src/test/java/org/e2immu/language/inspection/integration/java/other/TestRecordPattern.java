@@ -126,6 +126,30 @@ public class TestRecordPattern extends CommonTest {
                 record ColoredPoint(Point p, Color c) {}
                 record Rectangle(ColoredPoint upperLeft, ColoredPoint lowerRight) {}
                 static void printXCoordOfUpperLeftPointWithPatterns(Rectangle r) {
+                    if (r instanceof Rectangle(ColoredPoint(Point(int x, int _), Color c), _)) {
+                         System.out.println("Upper-left corner: " + x);
+                    }
+                }
+            }
+            """;
+
+    @DisplayName("record pattern 5, unnamed")
+    @Test
+    public void test5() {
+        TypeInfo X = javaInspector.parse(INPUT5);
+
+    }
+
+
+    @Language("java")
+    private static final String INPUT6 = """
+            package a.b;
+            class X5 {
+                record Point(int x, int y) {}
+                enum Color { RED, GREEN, BLUE }
+                record ColoredPoint(Point p, Color c) {}
+                record Rectangle(ColoredPoint upperLeft, ColoredPoint lowerRight) {}
+                static void printXCoordOfUpperLeftPointWithPatterns(Rectangle r) {
                     if (r instanceof Rectangle(ColoredPoint(Point(var x, var y), var c), var lr)) {
                          System.out.println("Upper-left corner: " + x);
                     }
@@ -138,10 +162,10 @@ public class TestRecordPattern extends CommonTest {
             }
             """;
 
-    @DisplayName("record pattern 5, var, unnamed")
+    @DisplayName("record pattern 6, var")
     @Test
-    public void test5() {
-        TypeInfo X = javaInspector.parse(INPUT5);
+    public void test6() {
+        TypeInfo X = javaInspector.parse(INPUT6);
 
     }
 }
