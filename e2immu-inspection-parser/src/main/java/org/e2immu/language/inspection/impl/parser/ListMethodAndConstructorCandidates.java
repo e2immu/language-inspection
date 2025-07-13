@@ -141,7 +141,7 @@ public class ListMethodAndConstructorCandidates {
         for (ParameterizedType interfaceImplemented : typeInfo.interfacesImplemented()) {
             recursivelyResolveOverloadedMethods(interfaceImplemented, methodName, parametersPresented,
                     decrementWhenNotStatic, joinMaps(typeMap, interfaceImplemented), result, visited, visitedStatic,
-                    staticOnly, scopeNature, distance + 1);
+                    staticOnly, scopeNature, distance + 2);
         }
         // See UtilityClass_2 for an example where we should go to the static methods of the enclosing type
         if (typeInfo.compilationUnitOrEnclosingType().isRight()) {

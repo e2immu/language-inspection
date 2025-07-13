@@ -1,8 +1,8 @@
-package org.e2immu.language.inspection.integration.java.other;
+package org.e2immu.language.inspection.integration.java.example;
 
-import static org.e2immu.language.cst.api.analysis.Value.*;
+import static org.e2immu.language.cst.impl.analysis.ValueImpl.*;
 
-public class TestImport4c {
+public class Import4b {
 
     Bool fieldValue;
     Immutable fieldValueImpl;

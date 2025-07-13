@@ -18,7 +18,11 @@ public interface TypeContext {
      */
     boolean addSubTypesOfHierarchyReturnAllDefined(TypeInfo typeInfo);
 
-    void addToStaticImportMap(ImportStatement importStatement);
+    /*
+    return true when all types in the hierarchy of a static * import have been resolved,
+    or this was not a * import.
+     */
+    boolean addToStaticImportMap(ImportStatement importStatement);
 
     void addNonStaticImportToContext(ImportStatement importStatement);
 
