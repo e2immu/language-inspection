@@ -1,11 +1,19 @@
 package org.e2immu.language.inspection.integration.java.other;
 
 
+import org.e2immu.language.cst.api.element.RecordPattern;
+import org.e2immu.language.cst.api.expression.InstanceOf;
+import org.e2immu.language.cst.api.info.MethodInfo;
 import org.e2immu.language.cst.api.info.TypeInfo;
+import org.e2immu.language.cst.api.variable.LocalVariable;
+import org.e2immu.language.inspection.integration.JavaInspectorImpl;
 import org.e2immu.language.inspection.integration.java.CommonTest;
 import org.intellij.lang.annotations.Language;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 public class TestRecordPattern extends CommonTest {
 
@@ -26,8 +34,16 @@ public class TestRecordPattern extends CommonTest {
     @DisplayName("record pattern 1, basics")
     @Test
     public void test1() {
-        TypeInfo X = javaInspector.parse(INPUT1);
-
+        TypeInfo X = javaInspector.parse(INPUT1, new JavaInspectorImpl.ParseOptionsBuilder().setDetailedSources(true).build());
+        MethodInfo methodInfo = X.findUniqueMethod("method", 1);
+        InstanceOf instanceOf = (InstanceOf) methodInfo.methodBody().statements().getFirst().expression();
+        RecordPattern recordPattern = instanceOf.patternVariable();
+        assertNotNull(recordPattern);
+        assertEquals("6-25:6-36", instanceOf.source().detailedSources().detail(recordPattern).compact2());
+        RecordPattern p0 = recordPattern.patterns().getFirst();
+        assertEquals("6-28:6-35", recordPattern.source().detailedSources().detail(p0).compact2());
+        LocalVariable lv = p0.localVariable();
+        assertEquals("6-28:6-35", p0.source().detailedSources().detail(lv).compact2());
     }
 
     @Language("java")
