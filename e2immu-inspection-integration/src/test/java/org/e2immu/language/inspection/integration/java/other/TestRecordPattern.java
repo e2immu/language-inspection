@@ -114,10 +114,15 @@ public class TestRecordPattern extends CommonTest {
                          System.out.println("Upper-left corner: " + x);
                     }
                 }
+                static void printXCoordOfUpperLeftPointWithPatterns2(Rectangle r) {
+                    if (r instanceof Rectangle(ColoredPoint(Point(var x, var y), var c), _)) {
+                         System.out.println("Upper-left corner: " + x);
+                    }
+                }
             }
             """;
 
-    @DisplayName("record pattern 5, var")
+    @DisplayName("record pattern 5, var, unnamed")
     @Test
     public void test5() {
         TypeInfo X = javaInspector.parse(INPUT5);
