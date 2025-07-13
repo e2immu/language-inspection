@@ -39,7 +39,7 @@ public class TestInstanceOf extends CommonTest {
             assertEquals("5-12:5-34", io.source().compact2());
             DetailedSources ds = io.source().detailedSources();
             assertEquals("@5:25-5:30", ds.detail(io.testType()).toString());
-            assertEquals("@5:32-5:34", ds.detail(io.patternVariable()).toString());
+            assertEquals("@5:32-5:34", ds.detail(io.patternVariable().localVariable()).toString());
         } else fail();
     }
 
