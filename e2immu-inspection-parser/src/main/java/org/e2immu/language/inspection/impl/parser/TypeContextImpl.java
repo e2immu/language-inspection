@@ -74,29 +74,36 @@ public class TypeContextImpl implements TypeContext {
             LOGGER.debug("Add import static wildcard {}", typeInfo);
             addImportStaticWildcard(typeInfo);
             typeInfo.subTypes().forEach(st -> addImportStatic(typeInfo, st.simpleName()));
-            TypeInfo enclosing = typeInfo;
-            while(true) {
-                if (enclosing.parentClass() == null && !enclosing.isJavaLangObject()) {
-                    /*
-                    this is the situation where we must delay: we need to know the interfaces of this type, but it is
-                    possible that because of parsing order, they have not been parsed yet.
-                     */
+            return traverseInterfaceHierarchy(typeInfo, new HashSet<>());
+        }
+
+        int dot = fqn.lastIndexOf('.');
+        String typeOrSubTypeName = fqn.substring(0, dot);
+        String member = fqn.substring(dot + 1);
+        TypeInfo typeInfo = loadTypeDoNotImport(typeOrSubTypeName);
+        LOGGER.debug("Add import static, type {}, member {}", typeInfo, member);
+        addImportStatic(typeInfo, member);
+        return true;
+    }
+
+    private boolean traverseInterfaceHierarchy(TypeInfo typeInfo, Set<TypeInfo> visited) {
+        if (visited.add(typeInfo)) {
+            if (typeInfo.parentClass() == null && !typeInfo.isJavaLangObject()) {
+               /*
+                this is the situation where we must delay: we need to know the interfaces of this type, but it is
+                possible that because of parsing order, they have not been parsed yet.
+                */
+                return false;
+            }
+            // see Import4, TestImport4 and variants
+            for (ParameterizedType interfaceType : typeInfo.interfacesImplemented()) {
+                interfaceType.typeInfo().subTypes()
+                        .forEach(st -> addImportStatic(interfaceType.typeInfo(), st.simpleName()));
+                if (!traverseInterfaceHierarchy(interfaceType.typeInfo(), visited)) {
+                    // recursion
                     return false;
                 }
-                // see Import4, TestImport4 and variants
-                for (ParameterizedType interfaceType : enclosing.interfacesImplemented()) {
-                    interfaceType.typeInfo().subTypes().forEach(st -> addImportStatic(interfaceType.typeInfo(), st.simpleName()));
-                }
-                if(enclosing.compilationUnitOrEnclosingType().isLeft()) break;
-                enclosing = enclosing.compilationUnitOrEnclosingType().getRight();
             }
-        } else {
-            int dot = fqn.lastIndexOf('.');
-            String typeOrSubTypeName = fqn.substring(0, dot);
-            String member = fqn.substring(dot + 1);
-            TypeInfo typeInfo = loadTypeDoNotImport(typeOrSubTypeName);
-            LOGGER.debug("Add import static, type {}, member {}", typeInfo, member);
-            addImportStatic(typeInfo, member);
         }
         return true;
     }
