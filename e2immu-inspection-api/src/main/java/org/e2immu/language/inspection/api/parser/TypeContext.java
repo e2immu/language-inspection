@@ -39,6 +39,12 @@ public interface TypeContext {
     // name can be fully qualified
     NamedType get(String name, boolean complain);
 
+    // a.b.X.I.J -> X, I, J
+    // X.I.J -> X, I, J
+    // J -> J
+    // I.J -> I, J,
+    List<? extends NamedType> getWithQualification(String name, boolean complain);
+
     void addToContext(@NotNull NamedType namedType);
 
     void addToContext(@NotNull NamedType namedType, boolean allowOverwrite);

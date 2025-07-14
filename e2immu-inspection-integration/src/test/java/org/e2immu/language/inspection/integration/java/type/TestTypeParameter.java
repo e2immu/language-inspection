@@ -1,5 +1,6 @@
 package org.e2immu.language.inspection.integration.java.type;
 
+import org.e2immu.language.cst.api.element.DetailedSources;
 import org.e2immu.language.cst.api.expression.Assignment;
 import org.e2immu.language.cst.api.expression.Expression;
 import org.e2immu.language.cst.api.info.MethodInfo;
@@ -12,10 +13,9 @@ import org.e2immu.language.inspection.integration.java.CommonTest;
 import org.intellij.lang.annotations.Language;
 import org.junit.jupiter.api.Test;
 
-import static org.e2immu.language.cst.api.info.TypeInfo.QualificationState.FULLY_QUALIFIED;
-import static org.e2immu.language.cst.api.info.TypeInfo.QualificationState.QUALIFIED;
+import java.util.List;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertSame;
 
 public class TestTypeParameter extends CommonTest {
 
@@ -98,8 +98,7 @@ public class TestTypeParameter extends CommonTest {
 
     @Test
     public void test2() {
-        TypeInfo typeInfo = javaInspector.parse(INPUT2,
-                JavaInspectorImpl.DETAILED_SOURCES);
+        TypeInfo typeInfo = javaInspector.parse(INPUT2, JavaInspectorImpl.DETAILED_SOURCES);
         MethodInfo m = typeInfo.findUniqueMethod("m", 1);
         LocalVariableCreation lvc = (LocalVariableCreation) m.methodBody().lastStatement();
         ParameterizedType list = lvc.localVariable().parameterizedType();
@@ -107,11 +106,12 @@ public class TestTypeParameter extends CommonTest {
         ParameterizedType pt = list.parameters().getFirst();
         assertEquals("13-14:13-19", lvc.source().detailedSources().detail(pt).compact2());
 
-        TypeInfo.QualificationData qd = pt.qualificationData(lvc.source());
-        assertSame(QUALIFIED, qd.state());
-        assertEquals("b.C.A", qd.qualifier().fullyQualifiedName());
-        assertEquals("13-14:13-14", qd.sourceMap().get(qd.qualifier()).compact2());
-        assertSame(typeInfo, qd.qualifier().compilationUnitOrEnclosingType().getRight());
+        //noinspection ALL
+        List<DetailedSources.Builder.TypeInfoSource> tis = (List<DetailedSources.Builder.TypeInfoSource>)
+                lvc.source().detailedSources().associatedObject(pt.typeInfo());
+        assertEquals("13-14:13-16", lvc.source().detailedSources().detail(pt.typeInfo()).compact2());
+        assertEquals(1, tis.size());
+        assertEquals("TypeInfoSource[typeInfo=b.C.A, source=@13:14-13:14]", tis.getFirst().toString());
+        // Note that there is no b.C are, the qualification is A.
     }
-
 }

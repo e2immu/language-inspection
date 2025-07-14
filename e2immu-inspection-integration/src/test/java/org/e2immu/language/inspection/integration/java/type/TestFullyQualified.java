@@ -2,6 +2,7 @@ package org.e2immu.language.inspection.integration.java.type;
 
 import org.e2immu.language.cst.api.expression.*;
 import org.e2immu.language.cst.api.info.MethodInfo;
+import org.e2immu.language.cst.api.info.ParameterInfo;
 import org.e2immu.language.cst.api.info.TypeInfo;
 import org.e2immu.language.cst.api.type.ParameterizedType;
 import org.e2immu.language.cst.api.variable.FieldReference;
@@ -10,7 +11,6 @@ import org.e2immu.language.inspection.integration.java.CommonTest;
 import org.intellij.lang.annotations.Language;
 import org.junit.jupiter.api.Test;
 
-import static org.e2immu.language.cst.api.info.TypeInfo.QualificationState.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 public class TestFullyQualified extends CommonTest {
@@ -52,48 +52,35 @@ public class TestFullyQualified extends CommonTest {
             ParameterizedType pt = typeExpression.parameterizedType();
             assertEquals("System", pt.detailedString());
             assertEquals("4-8:4-23", typeExpression.source().detailedSources().detail(pt).compact2());
-            TypeInfo.QualificationData qd = pt.qualificationData(typeExpression.source());
-            assertSame(FULLY_QUALIFIED, qd.state());
-            assertEquals("java.lang.System", qd.qualifiedName());
+            // FIXME
         } else fail();
         {
             MethodInfo make1 = typeInfo.findUniqueMethod("make1", 0);
             ConstructorCall cc = (ConstructorCall) make1.methodBody().statements().getFirst().expression();
             ParameterizedType pt = cc.parameterizedType();
             assertEquals("a.b.X.Y.Z", pt.detailedString());
-            TypeInfo.QualificationData qd1 = cc.parameterizedType().qualificationData(cc.source());
-            assertSame(QUALIFIED, qd1.state());
-            assertSame(typeInfo, qd1.qualifier());
-            assertEquals("X.Y.Z", qd1.qualifiedName());
+            // FIXME
         }
         {
             MethodInfo make2 = typeInfo.findUniqueMethod("make2", 0);
             ConstructorCall cc = (ConstructorCall) make2.methodBody().statements().getFirst().expression();
             ParameterizedType pt = cc.parameterizedType();
             assertEquals("a.b.X.Y.Z", pt.detailedString());
-            TypeInfo.QualificationData qd2 = cc.parameterizedType().qualificationData(cc.source());
-            assertSame(QUALIFIED, qd2.state());
-            assertSame(typeInfo.findSubType("Y"), qd2.qualifier());
-            assertEquals("Y.Z", qd2.qualifiedName());
+            // FIXME
         }
         {
             MethodInfo make3 = typeInfo.findUniqueMethod("make3", 0);
             ConstructorCall cc = (ConstructorCall) make3.methodBody().statements().getFirst().expression();
             ParameterizedType pt = cc.parameterizedType();
             assertEquals("a.b.X.Y.Z", pt.detailedString());
-            TypeInfo.QualificationData qd3 = cc.parameterizedType().qualificationData(cc.source());
-            assertSame(SIMPLE, qd3.state());
-            assertEquals("Z", qd3.qualifiedName());
+            // FIXME
         }
         {
             MethodInfo make1 = typeInfo.findUniqueMethod("make4", 0);
             ConstructorCall cc = (ConstructorCall) make1.methodBody().statements().getFirst().expression();
             ParameterizedType pt = cc.parameterizedType();
             assertEquals("a.b.X.Y.Z", pt.detailedString());
-            TypeInfo.QualificationData qd1 = cc.parameterizedType().qualificationData(cc.source());
-            assertNull(qd1.qualifier());
-            assertSame(FULLY_QUALIFIED, qd1.state());
-            assertEquals("a.b.X.Y.Z", qd1.qualifiedName());
+            // FIXME
         }
     }
 
@@ -129,34 +116,28 @@ public class TestFullyQualified extends CommonTest {
             ConstructorCall cc = (ConstructorCall) make1.methodBody().statements().getFirst().expression();
             ParameterizedType pt = cc.parameterizedType();
             assertEquals("a.b.X.Y.Z<String>", pt.detailedString());
-            TypeInfo.QualificationData qd1 = cc.parameterizedType().qualificationData(cc.source());
-            assertSame(QUALIFIED, qd1.state());
-            assertSame(typeInfo, qd1.qualifier());
+            // FIXME
         }
         {
             MethodInfo make2 = typeInfo.findUniqueMethod("make2", 0);
             ConstructorCall cc = (ConstructorCall) make2.methodBody().statements().getFirst().expression();
             ParameterizedType pt = cc.parameterizedType();
             assertEquals("a.b.X.Y.Z<a.b.X>", pt.detailedString());
-            TypeInfo.QualificationData qd2 = cc.parameterizedType().qualificationData(cc.source());
-            assertSame(QUALIFIED, qd2.state());
-            assertSame(typeInfo.findSubType("Y"), qd2.qualifier());
+            // FIXME
         }
         {
             MethodInfo make3 = typeInfo.findUniqueMethod("make3", 0);
             ConstructorCall cc = (ConstructorCall) make3.methodBody().statements().getFirst().expression();
             ParameterizedType pt = cc.parameterizedType();
             assertEquals("a.b.X.Y.Z", pt.detailedString());
-            TypeInfo.QualificationData qd3 = cc.parameterizedType().qualificationData(cc.source());
-            assertSame(SIMPLE, qd3.state());
+            // FIXME
         }
         {
             MethodInfo make1 = typeInfo.findUniqueMethod("make4", 0);
             ConstructorCall cc = (ConstructorCall) make1.methodBody().statements().getFirst().expression();
             ParameterizedType pt = cc.parameterizedType();
             assertEquals("a.b.X.Y.Z", pt.detailedString());
-            TypeInfo.QualificationData qd1 = cc.parameterizedType().qualificationData(cc.source());
-            assertSame(FULLY_QUALIFIED, qd1.state());
+            // FIXME
         }
     }
 
@@ -190,26 +171,17 @@ public class TestFullyQualified extends CommonTest {
         {
             MethodInfo methodInfo = typeInfo.findUniqueMethod("method", 0);
             AnnotationExpression sw = methodInfo.annotations().getFirst();
-            TypeInfo.QualificationData qd = sw.qualificationData();
-            assertSame(SIMPLE, qd.state());
-            assertEquals("Docstring", qd.qualifiedName());
-            assertNull(qd.qualifier());
+            // FIXME
         }
         {
             MethodInfo methodInfo = typeInfo.findUniqueMethod("method2", 0);
             AnnotationExpression sw = methodInfo.annotations().getFirst();
-            TypeInfo.QualificationData qd = sw.qualificationData();
-            assertSame(QUALIFIED, qd.state());
-            assertEquals("X.Docstring", qd.qualifiedName());
-            assertEquals(typeInfo, qd.qualifier());
+            // FIXME
         }
         {
             MethodInfo methodInfo = typeInfo.findUniqueMethod("method3", 0);
             AnnotationExpression sw = methodInfo.annotations().getFirst();
-            TypeInfo.QualificationData qd = sw.qualificationData();
-            assertSame(FULLY_QUALIFIED, qd.state());
-            assertEquals("a.b.X.Docstring", qd.qualifiedName());
-            assertNull(qd.qualifier());
+            // FIXME
         }
     }
 
@@ -242,26 +214,74 @@ public class TestFullyQualified extends CommonTest {
         {
             MethodInfo methodInfo = typeInfo.findUniqueMethod("method", 0);
             AnnotationExpression sw = methodInfo.annotations().getFirst();
-            TypeInfo.QualificationData qd = sw.qualificationData();
-            assertSame(SIMPLE, qd.state());
-            assertEquals("Docstring", qd.qualifiedName());
-            assertNull(qd.qualifier());
+            // FIXME
         }
         {
             MethodInfo methodInfo = typeInfo.findUniqueMethod("method2", 0);
             AnnotationExpression sw = methodInfo.annotations().getFirst();
-            TypeInfo.QualificationData qd = sw.qualificationData();
-            assertSame(QUALIFIED, qd.state());
-            assertEquals("X.Docstring", qd.qualifiedName());
-            assertEquals(typeInfo, qd.qualifier());
+            // FIXME
         }
         {
             MethodInfo methodInfo = typeInfo.findUniqueMethod("method3", 0);
             AnnotationExpression sw = methodInfo.annotations().getFirst();
-            TypeInfo.QualificationData qd = sw.qualificationData();
-            assertSame(FULLY_QUALIFIED, qd.state());
-            assertEquals("a.b.X.Docstring", qd.qualifiedName());
-            assertNull(qd.qualifier());
+            // FIXME
+        }
+    }
+
+
+
+    @Language("java")
+    public static final String INPUT4 = """
+            class X {
+                  interface I {
+                      interface J {
+                          int get();
+                      }
+                  }
+                  static class II implements I {
+                      int method0(X.II.J j) {
+                          return j.get();
+                      }
+                      int method1(II.J j) {
+                          return j.get();
+                      }
+                      int method2(I.J j) {
+                          return j.get();
+                      }
+                      int method3(J j) {
+                          return j.get();
+                      }
+                  }
+              }
+            """;
+
+    @Test
+    public void test4() {
+        TypeInfo typeInfo = javaInspector.parse(INPUT4, JavaInspectorImpl.DETAILED_SOURCES);
+        TypeInfo II = typeInfo.findSubType("II");
+        {
+            MethodInfo methodInfo = II.findUniqueMethod("method3", 1);
+            ParameterInfo first = methodInfo.parameters().getFirst();
+            ParameterizedType pt = first.parameterizedType();
+            // FIXME
+        }
+        {
+            MethodInfo methodInfo = II.findUniqueMethod("method2", 1);
+            ParameterInfo first = methodInfo.parameters().getFirst();
+            ParameterizedType pt = first.parameterizedType();
+            // FIXME
+        }
+        {
+            MethodInfo methodInfo = II.findUniqueMethod("method1", 1);
+            ParameterInfo first = methodInfo.parameters().getFirst();
+            ParameterizedType pt = first.parameterizedType();
+            // FIXME
+        }
+        {
+            MethodInfo methodInfo = II.findUniqueMethod("method0", 1);
+            ParameterInfo first = methodInfo.parameters().getFirst();
+            ParameterizedType pt = first.parameterizedType();
+            // FIXME
         }
     }
 

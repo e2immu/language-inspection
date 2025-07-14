@@ -273,6 +273,48 @@ public class TypeContextImpl implements TypeContext {
                 });
     }
 
+
+    // pretty similar to get(), but we keep track of the qualification
+    @Override
+    public List<? extends NamedType> getWithQualification(String name, boolean complain) {
+        int dot = name.lastIndexOf('.');
+        if (dot < 0) {
+            NamedType simple = getSimpleName(name);
+            if (simple != null) {
+                return List.of(simple);
+            }
+        }
+        // name can be fully qualified, or semi qualified; but the package can be empty, too.
+        // try fully qualified first
+        NamedType fullyQualified = getFullyQualified(name);
+        if (fullyQualified instanceof TypeInfo typeInfo) {
+            return Stream.concat(typeInfo.enclosingTypeStream(), Stream.of(typeInfo)).toList();
+        }
+
+        if (dot >= 0) {
+            // it must be semi qualified now... go recursive;
+            String prefix = name.substring(0, dot);
+            List<? extends NamedType> prefixTypes = getWithQualification(prefix, complain);
+            if (prefixTypes != null) {
+                String tail = name.substring(dot + 1);
+                TypeInfo tailType = subTypeOfRelated((TypeInfo) prefixTypes.getLast(), tail);
+                if (tailType != null) {
+                    return Stream.concat(prefixTypes.stream(), Stream.of(tailType)).toList();
+                }
+            }
+        }
+
+        NamedType javaLang = data.compiledTypesManager.get("java.lang." + name);
+        if (javaLang != null) return List.of(javaLang);
+        if (data.allowCreationOfStubTypes()) {
+            return List.of(getOrCreateStubType(name));
+        }
+        if (complain) {
+            throw new UnsupportedOperationException("Cannot find type " + name);
+        }
+        return null;
+    }
+
     @Override
     public NamedType get(String name, boolean complain) {
         int dot = name.lastIndexOf('.');
