@@ -460,7 +460,7 @@ public class TestTypeParameter extends CommonTest {
 
     @Test
     public void test9() {
-        TypeInfo A = javaInspector.parse(INPUT9, new JavaInspectorImpl.ParseOptionsBuilder().setDetailedSources(true).build());
+        TypeInfo A = javaInspector.parse(INPUT9, JavaInspectorImpl.DETAILED_SOURCES);
         DetailedSources ds = A.source().detailedSources();
         assertEquals("5-13:5-19", ds.detail(DetailedSources.EXTENDS).compact2());
         ParameterizedType map = A.interfacesImplemented().getFirst();

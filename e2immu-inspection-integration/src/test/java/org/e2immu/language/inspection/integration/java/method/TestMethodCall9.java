@@ -161,7 +161,7 @@ public class TestMethodCall9 extends CommonTest {
 
     @Test
     public void test4b() {
-       TypeInfo X = javaInspector.parse(INPUT4b, new JavaInspectorImpl.ParseOptionsBuilder().setDetailedSources(true).build());
+       TypeInfo X = javaInspector.parse(INPUT4b, JavaInspectorImpl.DETAILED_SOURCES);
         MethodInfo methodInfo = X.findUniqueMethod("method2", 1);
         MethodCall mc2 = (MethodCall) methodInfo.methodBody().lastStatement().expression();
         assertEquals(1, mc2.typeArguments().size());

@@ -44,7 +44,7 @@ public class TestFullyQualified extends CommonTest {
 
     @Test
     public void test1() {
-        TypeInfo typeInfo = javaInspector.parse(INPUT1, new JavaInspectorImpl.ParseOptionsBuilder().setDetailedSources(true).build());
+        TypeInfo typeInfo = javaInspector.parse(INPUT1, JavaInspectorImpl.DETAILED_SOURCES);
         MethodInfo methodInfo = typeInfo.findUniqueMethod("method", 0);
         MethodCall methodCall = (MethodCall) methodInfo.methodBody().statements().getFirst().expression();
         if (methodCall.object() instanceof VariableExpression ve && ve.variable() instanceof FieldReference fr) {
@@ -123,7 +123,7 @@ public class TestFullyQualified extends CommonTest {
 
     @Test
     public void test2() {
-        TypeInfo typeInfo = javaInspector.parse(INPUT2, new JavaInspectorImpl.ParseOptionsBuilder().setDetailedSources(true).build());
+        TypeInfo typeInfo = javaInspector.parse(INPUT2, JavaInspectorImpl.DETAILED_SOURCES);
         {
             MethodInfo make1 = typeInfo.findUniqueMethod("make1", 0);
             ConstructorCall cc = (ConstructorCall) make1.methodBody().statements().getFirst().expression();

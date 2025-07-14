@@ -66,7 +66,7 @@ public class TestConstructor extends CommonTest {
 
     @Test
     public void test2() {
-        TypeInfo C = javaInspector.parse(INPUT2, new JavaInspectorImpl.ParseOptionsBuilder().setDetailedSources(true).build());
+        TypeInfo C = javaInspector.parse(INPUT2, JavaInspectorImpl.DETAILED_SOURCES);
         MethodInfo test = C.findUniqueMethod("test", 0);
         LocalVariableCreation lvc = (LocalVariableCreation) test.methodBody().statements().getFirst();
         ConstructorCall cc = (ConstructorCall) lvc.localVariable().assignmentExpression();

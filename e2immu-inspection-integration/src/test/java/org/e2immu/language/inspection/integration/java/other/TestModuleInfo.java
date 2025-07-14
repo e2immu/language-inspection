@@ -118,7 +118,7 @@ public class TestModuleInfo {
                 .build();
         JavaInspector javaInspector = new JavaInspectorImpl();
         javaInspector.initialize(inputConfiguration);
-        JavaInspector.ParseOptions options = new JavaInspectorImpl.ParseOptionsBuilder().setDetailedSources(true).build();
+        JavaInspector.ParseOptions options = JavaInspectorImpl.DETAILED_SOURCES;
         ParseResult parseResult = javaInspector.parse(options).parseResult();
         assertEquals(1, parseResult.sourceSetsByName().size());
         SourceSet set = parseResult.sourceSetsByName().values().stream().findFirst().orElseThrow();

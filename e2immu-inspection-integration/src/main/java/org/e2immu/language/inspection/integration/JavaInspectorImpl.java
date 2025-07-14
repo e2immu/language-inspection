@@ -100,6 +100,7 @@ public class JavaInspectorImpl implements JavaInspector {
     public static final String TEST_PROTOCOL_PREFIX = TEST_PROTOCOL + ":";
     public static final ParseOptions FAIL_FAST = new ParseOptions(true, false,
             false, typeInfo -> UNCHANGED, false);
+    public static final ParseOptions DETAILED_SOURCES = new ParseOptionsBuilder().setDetailedSources(true).build();
 
     public static class ParseOptionsBuilder implements JavaInspector.ParseOptionsBuilder {
         private boolean failFast;

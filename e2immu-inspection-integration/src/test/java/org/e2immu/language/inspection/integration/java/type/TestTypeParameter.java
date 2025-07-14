@@ -99,7 +99,7 @@ public class TestTypeParameter extends CommonTest {
     @Test
     public void test2() {
         TypeInfo typeInfo = javaInspector.parse(INPUT2,
-                new JavaInspectorImpl.ParseOptionsBuilder().setDetailedSources(true).build());
+                JavaInspectorImpl.DETAILED_SOURCES);
         MethodInfo m = typeInfo.findUniqueMethod("m", 1);
         LocalVariableCreation lvc = (LocalVariableCreation) m.methodBody().lastStatement();
         ParameterizedType list = lvc.localVariable().parameterizedType();

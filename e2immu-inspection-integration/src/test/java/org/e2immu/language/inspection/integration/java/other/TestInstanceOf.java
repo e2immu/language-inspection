@@ -31,7 +31,7 @@ public class TestInstanceOf extends CommonTest {
 
     @Test
     public void test1() {
-        TypeInfo typeInfo = javaInspector.parse(INPUT1, new JavaInspectorImpl.ParseOptionsBuilder().setDetailedSources(true).build());
+        TypeInfo typeInfo = javaInspector.parse(INPUT1, JavaInspectorImpl.DETAILED_SOURCES);
         assertEquals("C", typeInfo.simpleName());
         MethodInfo C = typeInfo.findConstructor(1);
         Expression expression = C.methodBody().statements().getFirst().expression();

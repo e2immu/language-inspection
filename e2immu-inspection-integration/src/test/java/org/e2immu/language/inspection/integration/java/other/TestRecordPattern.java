@@ -34,7 +34,7 @@ public class TestRecordPattern extends CommonTest {
     @DisplayName("record pattern 1, basics")
     @Test
     public void test1() {
-        TypeInfo X = javaInspector.parse(INPUT1, new JavaInspectorImpl.ParseOptionsBuilder().setDetailedSources(true).build());
+        TypeInfo X = javaInspector.parse(INPUT1, JavaInspectorImpl.DETAILED_SOURCES);
         MethodInfo methodInfo = X.findUniqueMethod("method", 1);
         InstanceOf instanceOf = (InstanceOf) methodInfo.methodBody().statements().getFirst().expression();
         RecordPattern recordPattern = instanceOf.patternVariable();
