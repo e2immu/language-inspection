@@ -107,7 +107,7 @@ public class TestSwitch extends CommonTest {
                         case String s -> s.length();
                         case List<?> list -> list.size();
                         case int i when i > 10 -> i;
-                        default -> 0;
+                        case null, default -> 0;
                     };
                 }
             }

@@ -143,7 +143,7 @@ public class ResolverImpl implements Resolver {
                 try {
                     resolveField(todo, builder);
                 } catch (RuntimeException | AssertionError re) {
-                    LOGGER.error("Caught exception resolving field {}", todo.info);
+                    LOGGER.error("Caught exception resolving field {}, done {}", todo.info, done);
                     Summary.ParseException pe = new Summary.ParseException(todo.context, todo.info, re.getMessage(), re);
                     todo.context.summary().addParseException(pe);
                 }
