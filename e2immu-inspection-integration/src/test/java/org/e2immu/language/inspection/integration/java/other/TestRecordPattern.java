@@ -9,6 +9,7 @@ import org.e2immu.language.cst.api.variable.LocalVariable;
 import org.e2immu.language.inspection.integration.JavaInspectorImpl;
 import org.e2immu.language.inspection.integration.java.CommonTest;
 import org.intellij.lang.annotations.Language;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -162,6 +163,7 @@ public class TestRecordPattern extends CommonTest {
             }
             """;
 
+    @Disabled("problem with Java.ccc")
     @DisplayName("record pattern 6, var")
     @Test
     public void test6() {

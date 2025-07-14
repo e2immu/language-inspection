@@ -13,6 +13,52 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class TestSwitch extends CommonTest {
 
+
+    @Language("java")
+    private static final String INPUT2 = """
+            package a.b;
+            import java.util.List;
+            class X {
+                int method(Object o) {
+                    switch(o) {
+                        case String s:  return s.length();
+                        case List<?> list: return list.size();
+                        case int i when i > 10: return i;
+                        default: throw new UnsupportedOperationException();
+                    }
+                }
+            }
+            """;
+
+    @Test
+    public void test2() {
+        TypeInfo typeInfo = javaInspector.parse(INPUT2, JavaInspectorImpl.DETAILED_SOURCES);
+        MethodInfo methodInfo = typeInfo.findUniqueMethod("method", 1);
+    }
+
+
+    @Language("java")
+    private static final String INPUT3 = """
+            package a.b;
+            import java.util.List;
+            class X {
+                record R(int i, int j) { }
+                record S(String s, R r) { }
+                int method(Object o) {
+                    switch(o) {
+                        case R(int i, int j): return i + j;
+                        case S(String s, R(int i, int j)): return s.length() - i; 
+                        default: throw new UnsupportedOperationException();
+                    }
+                }
+            }
+            """;
+
+    @Test
+    public void test3() {
+        TypeInfo typeInfo = javaInspector.parse(INPUT3, JavaInspectorImpl.DETAILED_SOURCES);
+    }
+
     @Language("java")
     private static final String INPUT4 = """
             package a.b;
