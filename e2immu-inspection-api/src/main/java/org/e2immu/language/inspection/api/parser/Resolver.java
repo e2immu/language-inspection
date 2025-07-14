@@ -2,10 +2,14 @@ package org.e2immu.language.inspection.api.parser;
 
 import org.e2immu.language.cst.api.element.JavaDoc;
 import org.e2immu.language.cst.api.expression.AnnotationExpression;
+import org.e2immu.language.cst.api.expression.Assignment;
 import org.e2immu.language.cst.api.info.FieldInfo;
 import org.e2immu.language.cst.api.info.Info;
 import org.e2immu.language.cst.api.info.MethodInfo;
 import org.e2immu.language.cst.api.info.TypeInfo;
+import org.e2immu.language.cst.api.statement.Statement;
+
+import java.util.List;
 
 public interface Resolver {
     void add(Info info,
@@ -13,7 +17,8 @@ public interface Resolver {
              ForwardType forwardType,
              Object explicitConstructorInvocation,
              Object toResolve,
-             Context newContext);
+             Context newContext,
+             List<Statement> recordAssignments);
 
     void addRecordField(FieldInfo recordField);
 

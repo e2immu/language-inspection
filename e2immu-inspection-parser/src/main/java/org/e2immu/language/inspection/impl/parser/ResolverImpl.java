@@ -3,8 +3,10 @@ package org.e2immu.language.inspection.impl.parser;
 
 import org.e2immu.language.cst.api.element.JavaDoc;
 import org.e2immu.language.cst.api.expression.AnnotationExpression;
+import org.e2immu.language.cst.api.expression.Assignment;
 import org.e2immu.language.cst.api.expression.Expression;
 import org.e2immu.language.cst.api.info.*;
+import org.e2immu.language.cst.api.statement.Statement;
 import org.e2immu.language.cst.api.type.TypeParameter;
 import org.e2immu.language.inspection.api.parser.*;
 import org.e2immu.util.internal.graph.util.TimedLogger;
@@ -33,7 +35,8 @@ public class ResolverImpl implements Resolver {
                 ForwardType forwardType,
                 Object eci,
                 Object expression,
-                Context context) {
+                Context context,
+                List<Statement> recordAssignments) {
     }
 
     record AnnotationTodo(Info.Builder<?> infoBuilder,
@@ -62,9 +65,9 @@ public class ResolverImpl implements Resolver {
 
     @Override
     public void add(Info info, Info.Builder<?> infoBuilder, ForwardType forwardType, Object eci, Object expression,
-                    Context context) {
+                    Context context, List<Statement> recordAssignments) {
         synchronized (todos) {
-            todos.add(new Todo(info, infoBuilder, forwardType, eci, expression, context));
+            todos.add(new Todo(info, infoBuilder, forwardType, eci, expression, context, recordAssignments));
         }
     }
 
@@ -221,7 +224,8 @@ public class ResolverImpl implements Resolver {
     }
 
     private void resolveMethod(Todo todo, MethodInfo.Builder builder) {
-        parseHelper.resolveMethodInto(builder, todo.context, todo.forwardType, todo.eci, todo.expression);
+        parseHelper.resolveMethodInto(builder, todo.context, todo.forwardType, todo.eci, todo.expression,
+                todo.recordAssignments);
         MethodInfo methodInfo = (MethodInfo) todo.info;
         builder.addOverrides(computeMethodOverrides.overrides(methodInfo));
         builder.commit();

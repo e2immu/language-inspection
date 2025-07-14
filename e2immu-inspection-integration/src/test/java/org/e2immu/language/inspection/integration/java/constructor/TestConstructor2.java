@@ -1,15 +1,14 @@
 package org.e2immu.language.inspection.integration.java.constructor;
 
 import org.e2immu.language.cst.api.expression.ConstructorCall;
-import org.e2immu.language.cst.api.expression.Expression;
 import org.e2immu.language.cst.api.info.MethodInfo;
 import org.e2immu.language.cst.api.info.TypeInfo;
+import org.e2immu.language.cst.api.statement.ExplicitConstructorInvocation;
 import org.e2immu.language.inspection.integration.java.CommonTest;
 import org.intellij.lang.annotations.Language;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class TestConstructor2 extends CommonTest {
     @Language("java")
@@ -129,4 +128,34 @@ public class TestConstructor2 extends CommonTest {
         TypeInfo X = javaInspector.parse(INPUT4);
     }
 
+    @Language("java")
+    private static final String INPUT5 = """
+            package a.b;
+            record R(int k) {
+              R {
+                  assert k > 0;
+              }
+              R() {
+                  this(3);
+              }
+            }
+            """;
+
+    @Test
+    public void test5() {
+        TypeInfo X = javaInspector.parse(INPUT5);
+        assertEquals(2, X.constructors().size());
+        MethodInfo c0 = X.findConstructor(0);
+        assertFalse(c0.isCompactConstructor());
+        assertEquals(1, c0.methodBody().statements().size());
+        assertInstanceOf(ExplicitConstructorInvocation.class, c0.methodBody().lastStatement());
+
+        MethodInfo c1 = X.findConstructor(1);
+        assertTrue(c1.isCompactConstructor());
+        // parameters are synthetically copied
+        assertEquals(1, c1.parameters().size());
+        assertEquals("k", c1.parameters().getFirst().name());
+        // and assignments are added in the background
+        assertEquals(2, c1.methodBody().statements().size());
+    }
 }

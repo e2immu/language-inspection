@@ -704,13 +704,9 @@ public class TestConstructor extends CommonTest {
         assertEquals("4-9:4-12", cPair.source().detailedSources().detail(cPair.name()).compact2());
 
         TypeInfo R = X.findSubType("R");
-        assertEquals(2, R.constructors().size());
+        assertEquals(1, R.constructors().size());
 
-        MethodInfo cR = R.findConstructor(1);
-        assertFalse(cR.isCompactConstructor());
-        assertTrue(cR.isSynthetic());
-
-        MethodInfo cc = R.findConstructor(0);
+        MethodInfo cc = R.findConstructor(1);
         assertTrue(cc.isCompactConstructor());
         assertFalse(cc.isSynthetic());
         assertEquals("16-16:16-16", cc.source().detailedSources().detail(cc.name()).compact2());
