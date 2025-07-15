@@ -92,7 +92,7 @@ public class TestRecordPattern extends CommonTest {
         assertEquals("s", s.localVariable().simpleName());
         assertEquals("String", s.localVariable().parameterizedType().fullyQualifiedName());
     }
-    
+
     @Language("java")
     private static final String INPUT3 = """
             package a.b;
