@@ -1062,8 +1062,11 @@ public class MethodResolutionImpl implements MethodResolution {
     private void trimMethodsKeepMostSpecificReturnType(TypeInfo currentPrimaryType, Map<MethodTypeParameterMap, Integer> methodCandidates) {
         Map<ParameterizedType, List<MethodTypeParameterMap>> perPt = new HashMap<>();
         for (MethodTypeParameterMap method : methodCandidates.keySet()) {
-            perPt.computeIfAbsent(method.getConcreteReturnType(runtime).erased(),
-                    pt -> new ArrayList<>()).add(method);
+            ParameterizedType erased = method.getConcreteReturnType(runtime).erased();
+            if (!erased.isVoidOrJavaLangVoid()) {
+                perPt.computeIfAbsent(erased,
+                        pt -> new ArrayList<>()).add(method);
+            } // else: see TestMethodCall9,8; void is not in competition with others
         }
         if (perPt.size() > 1) {
             Set<ParameterizedType> mostSpecific = new HashSet<>();

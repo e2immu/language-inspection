@@ -11,6 +11,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.io.Serializable;
+import java.util.function.Consumer;
+import java.util.function.Function;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -291,6 +293,40 @@ public class TestMethodCall9 extends CommonTest {
         MethodInfo method = A.findUniqueMethod("method", 1);
         MethodCall methodCall = (MethodCall) method.methodBody().lastStatement().expression();
         assertEquals("a.b.A.m(X,java.util.function.Consumer<String>)", methodCall.methodInfo().fullyQualifiedName());
+    }
+
+
+    @Language("java")
+    private static final String INPUT8 = """
+            package a.b;
+            import java.util.function.Consumer;
+            import java.util.function.Function;
+            class A {
+                void m(String s, Consumer<String> c) {}
+                <X> X m(String s, Function<String, X> c) { return c.apply(s); }
+                void method(A a) {
+                    a.m("test", string -> {});
+                }
+                int method2(A a) {
+                    return a.m("test", String::length);
+                }
+            }
+            """;
+
+    @Test
+    public void test8() {
+        TypeInfo A = javaInspector.parse(INPUT8);
+        {
+            MethodInfo method = A.findUniqueMethod("method", 1);
+            MethodCall methodCall = (MethodCall) method.methodBody().lastStatement().expression();
+            assertEquals("a.b.A.m(String,java.util.function.Consumer<String>)", methodCall.methodInfo().fullyQualifiedName());
+        }
+        {
+            MethodInfo method = A.findUniqueMethod("method2", 1);
+            MethodCall methodCall = (MethodCall) method.methodBody().lastStatement().expression();
+            assertEquals("a.b.A.m(String,java.util.function.Function<String,X>)",
+                    methodCall.methodInfo().fullyQualifiedName());
+        }
     }
 
 }
