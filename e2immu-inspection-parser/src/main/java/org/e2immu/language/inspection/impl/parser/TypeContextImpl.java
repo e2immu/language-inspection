@@ -288,7 +288,7 @@ public class TypeContextImpl implements TypeContext {
         // try fully qualified first
         NamedType fullyQualified = getFullyQualified(name);
         if (fullyQualified instanceof TypeInfo typeInfo) {
-            return Stream.concat(typeInfo.enclosingTypeStream(), Stream.of(typeInfo)).toList();
+            return typeInfo.enclosingTypeStream().toList().reversed();
         }
 
         if (dot >= 0) {

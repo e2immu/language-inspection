@@ -1,5 +1,6 @@
 package org.e2immu.language.inspection.integration.java.type;
 
+import org.e2immu.language.cst.api.element.DetailedSources;
 import org.e2immu.language.cst.api.expression.*;
 import org.e2immu.language.cst.api.info.MethodInfo;
 import org.e2immu.language.cst.api.info.ParameterInfo;
@@ -10,6 +11,8 @@ import org.e2immu.language.inspection.integration.JavaInspectorImpl;
 import org.e2immu.language.inspection.integration.java.CommonTest;
 import org.intellij.lang.annotations.Language;
 import org.junit.jupiter.api.Test;
+
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -52,35 +55,52 @@ public class TestFullyQualified extends CommonTest {
             ParameterizedType pt = typeExpression.parameterizedType();
             assertEquals("System", pt.detailedString());
             assertEquals("4-8:4-23", typeExpression.source().detailedSources().detail(pt).compact2());
-            // FIXME
+            assertNull(typeExpression.source().detailedSources().associatedObject(pt.typeInfo()));
         } else fail();
         {
             MethodInfo make1 = typeInfo.findUniqueMethod("make1", 0);
             ConstructorCall cc = (ConstructorCall) make1.methodBody().statements().getFirst().expression();
             ParameterizedType pt = cc.parameterizedType();
             assertEquals("a.b.X.Y.Z", pt.detailedString());
-            // FIXME
+            //noinspection ALL
+            List<DetailedSources.Builder.TypeInfoSource> tis = (List<DetailedSources.Builder.TypeInfoSource>)
+                    cc.source().detailedSources().associatedObject(pt.typeInfo());
+            assertEquals("12-20:12-24", cc.source().detailedSources().detail(pt.typeInfo()).compact2());
+            assertEquals(2, tis.size());
+            assertEquals("TypeInfoSource[typeInfo=a.b.X.Y, source=@12:20-12:22]", tis.getFirst().toString());
+            assertEquals("TypeInfoSource[typeInfo=a.b.X, source=@12:20-12:20]", tis.getLast().toString());
         }
         {
             MethodInfo make2 = typeInfo.findUniqueMethod("make2", 0);
             ConstructorCall cc = (ConstructorCall) make2.methodBody().statements().getFirst().expression();
             ParameterizedType pt = cc.parameterizedType();
             assertEquals("a.b.X.Y.Z", pt.detailedString());
-            // FIXME
+            //noinspection ALL
+            List<DetailedSources.Builder.TypeInfoSource> tis = (List<DetailedSources.Builder.TypeInfoSource>)
+                    cc.source().detailedSources().associatedObject(pt.typeInfo());
+            assertEquals("15-20:15-22", cc.source().detailedSources().detail(pt.typeInfo()).compact2());
+            assertEquals(1, tis.size());
+            assertEquals("TypeInfoSource[typeInfo=a.b.X.Y, source=@15:20-15:20]", tis.getFirst().toString());
         }
         {
             MethodInfo make3 = typeInfo.findUniqueMethod("make3", 0);
             ConstructorCall cc = (ConstructorCall) make3.methodBody().statements().getFirst().expression();
             ParameterizedType pt = cc.parameterizedType();
             assertEquals("a.b.X.Y.Z", pt.detailedString());
-            // FIXME
+            assertNull(cc.source().detailedSources().associatedObject(pt.typeInfo()));
         }
         {
             MethodInfo make1 = typeInfo.findUniqueMethod("make4", 0);
             ConstructorCall cc = (ConstructorCall) make1.methodBody().statements().getFirst().expression();
             ParameterizedType pt = cc.parameterizedType();
             assertEquals("a.b.X.Y.Z", pt.detailedString());
-            // FIXME
+            //noinspection ALL
+            List<DetailedSources.Builder.TypeInfoSource> tis = (List<DetailedSources.Builder.TypeInfoSource>)
+                    cc.source().detailedSources().associatedObject(pt.typeInfo());
+            assertEquals("21-20:21-28", cc.source().detailedSources().detail(pt.typeInfo()).compact2());
+            assertEquals(2, tis.size());
+            assertEquals("TypeInfoSource[typeInfo=a.b.X.Y, source=@21:20-21:26]", tis.getFirst().toString());
+            assertEquals("TypeInfoSource[typeInfo=a.b.X, source=@21:20-21:24]", tis.getLast().toString());
         }
     }
 
@@ -116,28 +136,45 @@ public class TestFullyQualified extends CommonTest {
             ConstructorCall cc = (ConstructorCall) make1.methodBody().statements().getFirst().expression();
             ParameterizedType pt = cc.parameterizedType();
             assertEquals("a.b.X.Y.Z<String>", pt.detailedString());
-            // FIXME
+            //noinspection ALL
+            List<DetailedSources.Builder.TypeInfoSource> tis = (List<DetailedSources.Builder.TypeInfoSource>)
+                    cc.source().detailedSources().associatedObject(pt.typeInfo());
+            assertEquals("8-20:8-24", cc.source().detailedSources().detail(pt.typeInfo()).compact2());
+            assertEquals(2, tis.size());
+            assertEquals("TypeInfoSource[typeInfo=a.b.X.Y, source=@8:20-8:22]", tis.getFirst().toString());
+            assertEquals("TypeInfoSource[typeInfo=a.b.X, source=@8:20-8:20]", tis.getLast().toString());
         }
         {
             MethodInfo make2 = typeInfo.findUniqueMethod("make2", 0);
             ConstructorCall cc = (ConstructorCall) make2.methodBody().statements().getFirst().expression();
             ParameterizedType pt = cc.parameterizedType();
             assertEquals("a.b.X.Y.Z<a.b.X>", pt.detailedString());
-            // FIXME
+            //noinspection ALL
+            List<DetailedSources.Builder.TypeInfoSource> tis = (List<DetailedSources.Builder.TypeInfoSource>)
+                    cc.source().detailedSources().associatedObject(pt.typeInfo());
+            assertEquals("11-20:11-22", cc.source().detailedSources().detail(pt.typeInfo()).compact2());
+            assertEquals(1, tis.size());
+            assertEquals("TypeInfoSource[typeInfo=a.b.X.Y, source=@11:20-11:20]", tis.getFirst().toString());
         }
         {
             MethodInfo make3 = typeInfo.findUniqueMethod("make3", 0);
             ConstructorCall cc = (ConstructorCall) make3.methodBody().statements().getFirst().expression();
             ParameterizedType pt = cc.parameterizedType();
             assertEquals("a.b.X.Y.Z", pt.detailedString());
-            // FIXME
+            assertNull(cc.source().detailedSources().associatedObject(pt.typeInfo()));
         }
         {
             MethodInfo make1 = typeInfo.findUniqueMethod("make4", 0);
             ConstructorCall cc = (ConstructorCall) make1.methodBody().statements().getFirst().expression();
             ParameterizedType pt = cc.parameterizedType();
             assertEquals("a.b.X.Y.Z", pt.detailedString());
-            // FIXME
+            //noinspection ALL
+            List<DetailedSources.Builder.TypeInfoSource> tis = (List<DetailedSources.Builder.TypeInfoSource>)
+                    cc.source().detailedSources().associatedObject(pt.typeInfo());
+            assertEquals("17-20:17-28", cc.source().detailedSources().detail(pt.typeInfo()).compact2());
+            assertEquals(2, tis.size());
+            assertEquals("TypeInfoSource[typeInfo=a.b.X.Y, source=@17:20-17:26]", tis.getFirst().toString());
+            assertEquals("TypeInfoSource[typeInfo=a.b.X, source=@17:20-17:24]", tis.getLast().toString());
         }
     }
 
@@ -171,17 +208,32 @@ public class TestFullyQualified extends CommonTest {
         {
             MethodInfo methodInfo = typeInfo.findUniqueMethod("method", 0);
             AnnotationExpression sw = methodInfo.annotations().getFirst();
-            // FIXME
+            assertEquals("a.b.X.Docstring", sw.typeInfo().fullyQualifiedName());
+            assertNull(sw.source().detailedSources().associatedObject(sw.typeInfo()));
         }
         {
             MethodInfo methodInfo = typeInfo.findUniqueMethod("method2", 0);
             AnnotationExpression sw = methodInfo.annotations().getFirst();
-            // FIXME
+            assertEquals("a.b.X.Docstring", sw.typeInfo().fullyQualifiedName());
+
+            //noinspection ALL
+            List<DetailedSources.Builder.TypeInfoSource> tis = (List<DetailedSources.Builder.TypeInfoSource>)
+                    sw.source().detailedSources().associatedObject(sw.typeInfo());
+            assertEquals("7-6:7-16", sw.source().detailedSources().detail(sw.typeInfo()).compact2());
+            assertEquals(1, tis.size());
+            assertEquals("TypeInfoSource[typeInfo=a.b.X, source=@7:6-7:6]", tis.getFirst().toString());
         }
         {
             MethodInfo methodInfo = typeInfo.findUniqueMethod("method3", 0);
             AnnotationExpression sw = methodInfo.annotations().getFirst();
-            // FIXME
+            assertEquals("a.b.X.Docstring", sw.typeInfo().fullyQualifiedName());
+
+            //noinspection ALL
+            List<DetailedSources.Builder.TypeInfoSource> tis = (List<DetailedSources.Builder.TypeInfoSource>)
+                    sw.source().detailedSources().associatedObject(sw.typeInfo());
+            assertEquals("11-6:11-20", sw.source().detailedSources().detail(sw.typeInfo()).compact2());
+            assertEquals(1, tis.size());
+            assertEquals("TypeInfoSource[typeInfo=a.b.X, source=@11:6-11:10]", tis.getFirst().toString());
         }
     }
 
@@ -214,20 +266,34 @@ public class TestFullyQualified extends CommonTest {
         {
             MethodInfo methodInfo = typeInfo.findUniqueMethod("method", 0);
             AnnotationExpression sw = methodInfo.annotations().getFirst();
-            // FIXME
+            assertEquals("a.b.X.Docstring", sw.typeInfo().fullyQualifiedName());
+            assertNull(sw.source().detailedSources().associatedObject(sw.typeInfo()));
         }
         {
             MethodInfo methodInfo = typeInfo.findUniqueMethod("method2", 0);
             AnnotationExpression sw = methodInfo.annotations().getFirst();
-            // FIXME
+            assertEquals("a.b.X.Docstring", sw.typeInfo().fullyQualifiedName());
+
+            //noinspection ALL
+            List<DetailedSources.Builder.TypeInfoSource> tis = (List<DetailedSources.Builder.TypeInfoSource>)
+                    sw.source().detailedSources().associatedObject(sw.typeInfo());
+            assertEquals("7-6:7-16", sw.source().detailedSources().detail(sw.typeInfo()).compact2());
+            assertEquals(1, tis.size());
+            assertEquals("TypeInfoSource[typeInfo=a.b.X, source=@7:6-7:6]", tis.getFirst().toString());
         }
         {
             MethodInfo methodInfo = typeInfo.findUniqueMethod("method3", 0);
             AnnotationExpression sw = methodInfo.annotations().getFirst();
-            // FIXME
+            assertEquals("a.b.X.Docstring", sw.typeInfo().fullyQualifiedName());
+
+            //noinspection ALL
+            List<DetailedSources.Builder.TypeInfoSource> tis = (List<DetailedSources.Builder.TypeInfoSource>)
+                    sw.source().detailedSources().associatedObject(sw.typeInfo());
+            assertEquals("11-6:11-20", sw.source().detailedSources().detail(sw.typeInfo()).compact2());
+            assertEquals(1, tis.size());
+            assertEquals("TypeInfoSource[typeInfo=a.b.X, source=@11:6-11:10]", tis.getFirst().toString());
         }
     }
-
 
 
     @Language("java")
@@ -263,25 +329,41 @@ public class TestFullyQualified extends CommonTest {
             MethodInfo methodInfo = II.findUniqueMethod("method3", 1);
             ParameterInfo first = methodInfo.parameters().getFirst();
             ParameterizedType pt = first.parameterizedType();
-            // FIXME
+            assertNull(first.source().detailedSources().associatedObject(pt.typeInfo()));
         }
         {
             MethodInfo methodInfo = II.findUniqueMethod("method2", 1);
             ParameterInfo first = methodInfo.parameters().getFirst();
             ParameterizedType pt = first.parameterizedType();
-            // FIXME
+            //noinspection ALL
+            List<DetailedSources.Builder.TypeInfoSource> tis = (List<DetailedSources.Builder.TypeInfoSource>)
+                    first.source().detailedSources().associatedObject(pt.typeInfo());
+            assertEquals("14-23:14-25", first.source().detailedSources().detail(pt.typeInfo()).compact2());
+            assertEquals(1, tis.size());
+            assertEquals("TypeInfoSource[typeInfo=X.I, source=@14:23-14:23]", tis.getFirst().toString());
         }
         {
             MethodInfo methodInfo = II.findUniqueMethod("method1", 1);
             ParameterInfo first = methodInfo.parameters().getFirst();
             ParameterizedType pt = first.parameterizedType();
-            // FIXME
+            //noinspection ALL
+            List<DetailedSources.Builder.TypeInfoSource> tis = (List<DetailedSources.Builder.TypeInfoSource>)
+                    first.source().detailedSources().associatedObject(pt.typeInfo());
+            assertEquals("11-23:11-26", first.source().detailedSources().detail(pt.typeInfo()).compact2());
+            assertEquals(1, tis.size());
+            assertEquals("TypeInfoSource[typeInfo=X.II, source=@11:23-11:24]", tis.getFirst().toString());
         }
         {
             MethodInfo methodInfo = II.findUniqueMethod("method0", 1);
             ParameterInfo first = methodInfo.parameters().getFirst();
             ParameterizedType pt = first.parameterizedType();
-            // FIXME
+            //noinspection ALL
+            List<DetailedSources.Builder.TypeInfoSource> tis = (List<DetailedSources.Builder.TypeInfoSource>)
+                    first.source().detailedSources().associatedObject(pt.typeInfo());
+            assertEquals("8-23:8-28", first.source().detailedSources().detail(pt.typeInfo()).compact2());
+            assertEquals(2, tis.size());
+            assertEquals("TypeInfoSource[typeInfo=X.II, source=@8:23-8:26]", tis.getFirst().toString());
+            assertEquals("TypeInfoSource[typeInfo=X, source=@8:23-8:23]", tis.getLast().toString());
         }
     }
 
