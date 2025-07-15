@@ -269,4 +269,28 @@ public class TestMethodCall9 extends CommonTest {
 
     }
 
+
+    @Language("java")
+    private static final String INPUT7 = """
+            package a.b;
+            import java.util.function.Consumer;
+            import java.util.function.Function;
+            class A<X> {
+                void m(X x, Consumer<String> c) {}
+                void m(X x, Function<String, X> c) {}
+                void method(A<String> a) {
+                    a.m("test", string -> {});
+                }
+            }
+            """;
+
+
+    @Test
+    public void test7() {
+        TypeInfo A = javaInspector.parse(INPUT7);
+        MethodInfo method = A.findUniqueMethod("method", 1);
+        MethodCall methodCall = (MethodCall) method.methodBody().lastStatement().expression();
+        assertEquals("a.b.A.m(X,java.util.function.Consumer<String>)", methodCall.methodInfo().fullyQualifiedName());
+    }
+
 }
