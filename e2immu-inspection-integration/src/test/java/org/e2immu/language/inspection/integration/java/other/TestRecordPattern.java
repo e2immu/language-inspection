@@ -9,7 +9,6 @@ import org.e2immu.language.cst.api.variable.LocalVariable;
 import org.e2immu.language.inspection.integration.JavaInspectorImpl;
 import org.e2immu.language.inspection.integration.java.CommonTest;
 import org.intellij.lang.annotations.Language;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -68,6 +67,32 @@ public class TestRecordPattern extends CommonTest {
 
     }
 
+    @Language("java")
+    private static final String INPUT2b = """
+            package a.b;
+            class X2 {
+                interface I<T> { }
+                record RI<T>(T t) implements I<T> { }
+                void method(I<String> i) {
+                    if(i instanceof RI<String>(var s)) {
+                        System.out.println(s);
+                    }
+                }
+            }
+            """;
+
+    @DisplayName("record pattern 2, type parameter and var")
+    @Test
+    public void test2b() {
+        TypeInfo X = javaInspector.parse(INPUT2b);
+        MethodInfo methodInfo = X.findUniqueMethod("method", 1);
+        InstanceOf instanceOf = (InstanceOf) methodInfo.methodBody().statements().getFirst().expression();
+        RecordPattern recordPattern = instanceOf.patternVariable();
+        RecordPattern s = recordPattern.patterns().getFirst();
+        assertEquals("s", s.localVariable().simpleName());
+        assertEquals("String", s.localVariable().parameterizedType().fullyQualifiedName());
+    }
+    
     @Language("java")
     private static final String INPUT3 = """
             package a.b;
@@ -163,12 +188,23 @@ public class TestRecordPattern extends CommonTest {
             }
             """;
 
-    @Disabled("problem with Java.ccc")
     @DisplayName("record pattern 6, var")
     @Test
     public void test6() {
         TypeInfo X = javaInspector.parse(INPUT6);
-
+        MethodInfo methodInfo = X.findUniqueMethod("printXCoordOfUpperLeftPointWithPatterns", 1);
+        InstanceOf instanceOf = (InstanceOf) methodInfo.methodBody().statements().getFirst().expression();
+        RecordPattern recordPattern = instanceOf.patternVariable();
+        RecordPattern lr = recordPattern.patterns().getLast();
+        assertEquals("a.b.X5.ColoredPoint", lr.localVariable().parameterizedType().fullyQualifiedName());
+        RecordPattern cp = recordPattern.patterns().getFirst();
+        RecordPattern point = cp.patterns().getFirst();
+        RecordPattern x = point.patterns().getFirst();
+        assertEquals("int", x.localVariable().parameterizedType().fullyQualifiedName());
+        assertEquals("x", x.localVariable().simpleName());
+        RecordPattern color = cp.patterns().getLast();
+        assertEquals("a.b.X5.Color", color.localVariable().parameterizedType().fullyQualifiedName());
+        assertEquals("c", color.localVariable().fullyQualifiedName());
     }
 }
 
