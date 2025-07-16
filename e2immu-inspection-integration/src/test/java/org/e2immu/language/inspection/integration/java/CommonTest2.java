@@ -36,7 +36,9 @@ public abstract class CommonTest2 {
         InputConfiguration inputConfiguration = makeInputConfiguration(sourcesByURIString);
         javaInspector = new JavaInspectorImpl(true);
         javaInspector.initialize(inputConfiguration);
-        return javaInspector.parse(sourcesByURIString, JavaInspectorImpl.FAIL_FAST).parseResult();
+        return javaInspector.parse(sourcesByURIString,
+                        new JavaInspectorImpl.ParseOptionsBuilder().setFailFast(true).setDetailedSources(true).build())
+                .parseResult();
     }
 
     public static InputConfiguration makeInputConfiguration(Map<String, String> sourcesByURIString) {
