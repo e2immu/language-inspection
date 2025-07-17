@@ -15,6 +15,8 @@ public interface SourceTypeMap {
 
     TypeInfo get(String fullyQualifiedName, SourceSet sourceSetOfRequest);
 
+    void put(TypeInfo typeInfo);
+
     void invalidate(TypeInfo typeInfo);
 
     List<TypeInfo> primaryTypesInPackage(String packageName);

@@ -16,7 +16,7 @@ import java.util.stream.Collectors;
 public class ParseResultImpl implements ParseResult {
     private static final Set<TypeInfo> NO_CHILDREN = Set.of();
     private final Set<TypeInfo> types;
-    private final Map<String, TypeInfo> typesByFQN;
+    private final Map<String, List<TypeInfo>> typesByFQN;
     private final Map<String, Set<TypeInfo>> primaryTypesOfPackage;
     private final Map<TypeInfo, Set<TypeInfo>> children;
     private final Map<String, List<TypeInfo>> typesBySimpleName;
@@ -27,7 +27,7 @@ public class ParseResultImpl implements ParseResult {
         this.types = types;
         typesByFQN = types.stream()
                 .flatMap(TypeInfo::recursiveSubTypeStream)
-                .collect(Collectors.toUnmodifiableMap(Info::fullyQualifiedName, t -> t));
+                .collect(Collectors.groupingBy(Info::fullyQualifiedName, Collectors.toList()));
         Map<String, Set<TypeInfo>> mutableTypesOfPackage = new HashMap<>();
         types.forEach(ti -> mutableTypesOfPackage.computeIfAbsent(ti.packageName(),
                 t -> new HashSet<>()).add(ti));
@@ -87,8 +87,8 @@ public class ParseResultImpl implements ParseResult {
     @Override
     public List<TypeInfo> findMostLikelyType(String name) {
         if (name == null || name.isBlank()) return List.of();
-        TypeInfo byFqn = typesByFQN.get(name);
-        if (byFqn != null) return List.of(byFqn);
+        List<TypeInfo> byFqn = typesByFQN.get(name);
+        if (byFqn != null) return byFqn;
         List<TypeInfo> byName = typesBySimpleName.get(name.toLowerCase());
         if (byName != null) {
             return byName;
@@ -113,9 +113,16 @@ public class ParseResultImpl implements ParseResult {
         return List.of();
     }
 
-
     @Override
     public TypeInfo findType(String fqn) {
+        List<TypeInfo> list = typesByFQN.get(fqn);
+        if (list == null) return null;
+        if (list.size() > 1) throw new UnsupportedOperationException("Use 'typeByFullyQualifiedName'");
+        return list.getFirst();
+    }
+
+    @Override
+    public List<TypeInfo> typeByFullyQualifiedName(String fqn) {
         return typesByFQN.get(fqn);
     }
 

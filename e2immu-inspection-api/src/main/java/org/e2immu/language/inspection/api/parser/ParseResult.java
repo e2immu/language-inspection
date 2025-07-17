@@ -32,6 +32,7 @@ public interface ParseResult {
 
     List<TypeInfo> findMostLikelyType(String name);
 
+    // primarily intended for testing; use 'typeByFullyQualifiedName' in production
     TypeInfo findType(String typeFqn);
 
     Set<TypeInfo> primaryTypes();
@@ -43,6 +44,8 @@ public interface ParseResult {
     Map<String, Set<TypeInfo>> primaryTypesPerPackage();
 
     int size();
+
+    List<TypeInfo> typeByFullyQualifiedName(String fqn);
 
     Set<TypeInfo> primaryTypesOfPackage(String packageName);
 

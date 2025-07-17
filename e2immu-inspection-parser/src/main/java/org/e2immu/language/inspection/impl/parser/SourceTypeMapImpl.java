@@ -9,6 +9,7 @@ import java.util.*;
 public class SourceTypeMapImpl implements SourceTypeMap {
     private final TreeMap<String, Object> map = new TreeMap<>();
 
+    @Override
     public synchronized void put(TypeInfo typeInfo) {
         String fqn = typeInfo.fullyQualifiedName();
         Object prev = map.put(fqn, typeInfo);

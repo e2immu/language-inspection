@@ -41,6 +41,9 @@ dependencies {
     implementation("org.e2immu:e2immu-internal-graph:$version")
     implementation("org.slf4j:slf4j-api:$slf4jVersion")
 
+    testImplementation("org.e2immu:e2immu-cst-impl:$version")
+    testImplementation("org.e2immu:e2immu-inspection-resource:$version")
+
     testImplementation("org.junit.jupiter:junit-jupiter-api:$jupiterApiVersion")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:$jupiterEngineVersion")
     testRuntimeOnly("ch.qos.logback:logback-classic:$logbackClassicVersion")
