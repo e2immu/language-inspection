@@ -64,7 +64,7 @@ public class TestPreloadJavaBase {
         TypeInfo string = javaInspector.compiledTypesManager().get(String.class);
         assertFalse(string.isExtensible());
 
-        TypeInfo asb = javaInspector.compiledTypesManager().get("java.lang.AbstractStringBuilder");
+        TypeInfo asb = javaInspector.compiledTypesManager().get("java.lang.AbstractStringBuilder", null);
         assertFalse(asb.isPublic());
 
         TypeInfo comparable = javaInspector.compiledTypesManager().get(Comparable.class);
@@ -82,7 +82,8 @@ public class TestPreloadJavaBase {
         javaInspector.initialize(inputConfiguration);
         javaInspector.preload("java.util.stream");
 
-        TypeInfo spinedBuffer = javaInspector.compiledTypesManager().get("java.util.stream.SpinedBuffer");
+        TypeInfo spinedBuffer = javaInspector.compiledTypesManager().get("java.util.stream.SpinedBuffer",
+                null);
         assertNotNull(spinedBuffer);
         assertFalse(spinedBuffer.isPublic());
         TypeInfo ofPrimitive = spinedBuffer.findSubType("OfPrimitive");
@@ -104,7 +105,8 @@ public class TestPreloadJavaBase {
         JavaInspector javaInspector = new JavaInspectorImpl();
         javaInspector.initialize(inputConfiguration);
         javaInspector.preload("java.net.http");
-        TypeInfo bodyHandler = javaInspector.compiledTypesManager().get("java.net.http.HttpResponse.BodyHandler");
+        TypeInfo bodyHandler = javaInspector.compiledTypesManager().get("java.net.http.HttpResponse.BodyHandler",
+                null);
         assertNotNull(bodyHandler);
     }
 }

@@ -1,5 +1,6 @@
 package org.e2immu.language.inspection.api.resource;
 
+import org.e2immu.language.cst.api.element.SourceSet;
 import org.e2immu.language.cst.api.info.TypeInfo;
 
 import java.util.Collection;
@@ -26,17 +27,17 @@ public interface CompiledTypesManager {
     }
 
     default TypeInfo get(Class<?> clazz) {
-        return get(clazz.getCanonicalName());
+        return get(clazz.getCanonicalName(), null);
     }
 
-    TypeInfo get(String fullyQualifiedName);
+    TypeInfo get(String fullyQualifiedName, SourceSet sourceSetOfRequest);
 
-    default TypeInfo getOrLoad(String fullyQualifiedName) {
-        return get(fullyQualifiedName);
+    default TypeInfo getOrLoad(String fullyQualifiedName, SourceSet sourceSetOfRequest) {
+        return get(fullyQualifiedName, sourceSetOfRequest);
     }
 
     default TypeInfo getOrLoad(Class<?> clazz) {
-        return getOrLoad(clazz.getCanonicalName());
+        return getOrLoad(clazz.getCanonicalName(), null);
     }
 
     default void ensureInspection(TypeInfo typeInfo) {

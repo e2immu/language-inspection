@@ -513,7 +513,7 @@ public class JavaInspectorImpl implements JavaInspector {
             // TODO if there are multiple primary types here, and only one is invalid, we must make sure that
             //   all the descendants of the other must be rewired. This is an edge case.
             if (typeInfos.isEmpty() || typeInfos.stream().anyMatch(ti -> invalidated.apply(ti) == INVALID)) {
-                typeInfos.forEach(ti -> sourceTypeMap.invalidate(ti.fullyQualifiedName()));
+                typeInfos.forEach(ti -> sourceTypeMap.invalidate(ti));
                 //noinspection ALL
                 String sourceCode = loadSource(sf, sourcesByTestProtocolURIString,
                         sf.sourceSet().sourceEncoding(),
@@ -671,13 +671,13 @@ public class JavaInspectorImpl implements JavaInspector {
         for (SourceSet sourceSet : summary.sourceSets()) {
             if (sourceSet.moduleInfo() != null) {
                 for (ModuleInfo.Uses uses : sourceSet.moduleInfo().uses()) {
-                    TypeInfo resolved = sourceTypeMap.get(uses.api());
+                    TypeInfo resolved = sourceTypeMap.get(uses.api(), sourceSet);
                     if (resolved != null) uses.setApiResolved(resolved);
                 }
                 for (ModuleInfo.Provides provides : sourceSet.moduleInfo().provides()) {
-                    TypeInfo r0 = sourceTypeMap.get(provides.api());
+                    TypeInfo r0 = sourceTypeMap.get(provides.api(), sourceSet);
                     if (r0 != null) provides.setApiResolved(r0);
-                    TypeInfo r1 = sourceTypeMap.get(provides.implementation());
+                    TypeInfo r1 = sourceTypeMap.get(provides.implementation(), sourceSet);
                     if (r1 != null) provides.setImplementationResolved(r1);
                 }
             }

@@ -1,6 +1,7 @@
 package org.e2immu.language.inspection.integration;
 
 import org.e2immu.language.cst.api.element.CompilationUnit;
+import org.e2immu.language.cst.api.element.SourceSet;
 import org.e2immu.language.cst.api.info.MethodInfo;
 import org.e2immu.language.cst.api.info.ParameterInfo;
 import org.e2immu.language.cst.api.info.TypeInfo;
@@ -10,21 +11,29 @@ import org.e2immu.language.cst.impl.analysis.PropertyImpl;
 import org.e2immu.language.cst.impl.analysis.ValueImpl;
 import org.e2immu.language.cst.impl.runtime.RuntimeImpl;
 import org.e2immu.language.inspection.api.resource.CompiledTypesManager;
+import org.e2immu.language.inspection.resource.SourceSetImpl;
 
+import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.function.*;
 
 public class RuntimeWithCompiledTypesManager extends RuntimeImpl {
     private final CompiledTypesManager compiledTypesManager;
+    private final SourceSet sourceSetOfInternal;
 
     public RuntimeWithCompiledTypesManager(CompiledTypesManager compiledTypesManager) {
         this.compiledTypesManager = compiledTypesManager;
+        this.sourceSetOfInternal = new SourceSetImpl("_internal_", List.of(),
+                URI.create("file:/"), StandardCharsets.UTF_8, false, true, true,
+                true, true, Set.of(), Set.of());
     }
 
     @Override
     public TypeInfo getFullyQualified(String name, boolean complain) {
-        TypeInfo typeInfo = compiledTypesManager.getOrLoad(name);
+        TypeInfo typeInfo = compiledTypesManager.getOrLoad(name, null);
         if (typeInfo == null && complain) {
             throw new UnsupportedOperationException("Cannot find " + name);
         }
@@ -59,10 +68,12 @@ public class RuntimeWithCompiledTypesManager extends RuntimeImpl {
     private TypeInfo generateSyntheticFunction(int inputParameters, boolean hasReturnValue) {
         String name = hasReturnValue ? SYNTHETIC_FUNCTION : SYNTHETIC_CONSUMER;
         String fqn = "_internal_." + name;
-        TypeInfo get = compiledTypesManager.get(fqn);
+        TypeInfo get = compiledTypesManager.get(fqn, null);
         if (get != null) return get;
 
-        CompilationUnit cu = newCompilationUnitBuilder().setPackageName("_internal_")
+        CompilationUnit cu = newCompilationUnitBuilder()
+                .setSourceSet(sourceSetOfInternal)
+                .setPackageName("_internal_")
                 .setURIString("predefined://java/util/function").build();
         TypeInfo typeInfo = newTypeInfo(cu, name);
         TypeInfo.Builder builder = typeInfo.builder();

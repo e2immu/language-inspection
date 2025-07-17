@@ -8,9 +8,11 @@ import org.e2immu.support.SetOnce;
 import java.net.URI;
 import java.nio.charset.Charset;
 import java.nio.file.Path;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Stream;
 
 public class SourceSetImpl implements SourceSet {
     private final String name;
@@ -157,7 +159,7 @@ public class SourceSetImpl implements SourceSet {
         for (String packageString : restrictToPackages) {
             if (packageString.endsWith(".")) {
                 if (packageName.startsWith(packageString) ||
-                    packageName.equals(packageString.substring(0, packageString.length() - 1))) {
+                        packageName.equals(packageString.substring(0, packageString.length() - 1))) {
                     return true;
                 }
             } else if (packageName.equals(packageString) || packageString.equals(packageName + "." + typeName)) {
@@ -193,5 +195,22 @@ public class SourceSetImpl implements SourceSet {
     @Override
     public ModuleInfo moduleInfo() {
         return moduleInfo.getOrDefaultNull();
+    }
+
+    @Override
+    public Set<SourceSet> recursiveDependenciesSameExternal() {
+        Set<SourceSet> result = new HashSet<>();
+        recursiveDependencies(result, externalLibrary);
+        return result;
+    }
+
+    void recursiveDependencies(Set<SourceSet> result, boolean external) {
+        if (this.externalLibrary == external && result.add(this)) {
+            if (dependencies != null) {
+                for (SourceSet set : dependencies) {
+                    recursiveDependencies(result, external);
+                }
+            }
+        }
     }
 }

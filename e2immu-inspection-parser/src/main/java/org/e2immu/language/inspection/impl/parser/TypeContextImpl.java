@@ -3,6 +3,7 @@ package org.e2immu.language.inspection.impl.parser;
 import org.e2immu.annotation.NotNull;
 import org.e2immu.language.cst.api.element.CompilationUnit;
 import org.e2immu.language.cst.api.element.ImportStatement;
+import org.e2immu.language.cst.api.element.SourceSet;
 import org.e2immu.language.cst.api.info.FieldInfo;
 import org.e2immu.language.cst.api.info.TypeInfo;
 import org.e2immu.language.cst.api.runtime.Runtime;
@@ -143,7 +144,7 @@ public class TypeContextImpl implements TypeContext {
             String packageName = data.compilationUnit.packageName();
             if (!fullyQualified.equals(packageName)) { // would be our own package; they are already there
                 // we either have a type, a subtype, or a package
-                TypeInfo inSourceTypes = data.sourceTypeMap.get(fullyQualified);
+                TypeInfo inSourceTypes = data.sourceTypeMap.get(fullyQualified, sourceSet());
                 if (inSourceTypes == null) {
                     // deal with package
                     for (TypeInfo typeInfo : data.sourceTypeMap.primaryTypesInPackage(fullyQualified)) {
@@ -161,7 +162,7 @@ public class TypeContextImpl implements TypeContext {
                     if (!leaf.contains("$")) {
                         // primary type
                         String simpleName = Resources.stripDotClass(leaf);
-                        SourceFile sourceFile = sourceFiles.get(0);
+                        SourceFile sourceFile = sourceFiles.getFirst();
                         String path = fullyQualified.replace(".", "/") + "/" + simpleName + ".class";
                         TypeInfo newTypeInfo = data.compiledTypesManager.load(sourceFile.withPath(path));
                         if (newTypeInfo != null) {
@@ -174,9 +175,9 @@ public class TypeContextImpl implements TypeContext {
                 });
             }
         } else {
-            TypeInfo inSourceTypes = data.sourceTypeMap.get(importStatement.importString());
+            TypeInfo inSourceTypes = data.sourceTypeMap.get(importStatement.importString(), sourceSet());
             if (inSourceTypes == null) {
-                TypeInfo inCompiledTypes = data.compiledTypesManager.getOrLoad(importStatement.importString());
+                TypeInfo inCompiledTypes = data.compiledTypesManager.getOrLoad(importStatement.importString(), sourceSet());
                 if (inCompiledTypes != null) {
                     addToContext(inCompiledTypes, true);
                 } else {
@@ -190,11 +191,11 @@ public class TypeContextImpl implements TypeContext {
 
 
     private TypeInfo loadTypeDoNotImport(String fqn) {
-        TypeInfo inSourceTypes = data.sourceTypeMap.get(fqn);
+        TypeInfo inSourceTypes = data.sourceTypeMap.get(fqn, sourceSet());
         if (inSourceTypes != null) {
             return inSourceTypes;
         }
-        TypeInfo compiled = data.compiledTypesManager.get(fqn);
+        TypeInfo compiled = data.compiledTypesManager.get(fqn, sourceSet());
         if (compiled != null) {
             if (!compiled.hasBeenInspected()) {
                 data.compiledTypesManager.ensureInspection(compiled);
@@ -224,6 +225,9 @@ public class TypeContextImpl implements TypeContext {
         return data.compilationUnit;
     }
 
+    private SourceSet sourceSet() {
+        return data.compilationUnit.sourceSet();
+    }
     /**
      * Look up a type by FQN. Ensure that the type has been inspected.
      *
@@ -231,11 +235,11 @@ public class TypeContextImpl implements TypeContext {
      * @return the type
      */
     private TypeInfo getFullyQualified(String fullyQualifiedName) {
-        TypeInfo sourceType = data.sourceTypeMap.get(fullyQualifiedName);
+        TypeInfo sourceType = data.sourceTypeMap.get(fullyQualifiedName, sourceSet());
         if (sourceType != null) {
             return sourceType;
         }
-        TypeInfo typeInfo = data.compiledTypesManager.getOrLoad(fullyQualifiedName);
+        TypeInfo typeInfo = data.compiledTypesManager.getOrLoad(fullyQualifiedName, sourceSet());
         if (typeInfo != null) {
             data.compiledTypesManager.ensureInspection(typeInfo);
             return typeInfo;
@@ -304,7 +308,7 @@ public class TypeContextImpl implements TypeContext {
             }
         }
 
-        NamedType javaLang = data.compiledTypesManager.get("java.lang." + name);
+        NamedType javaLang = data.compiledTypesManager.get("java.lang." + name, null);
         if (javaLang != null) return List.of(javaLang);
         if (data.allowCreationOfStubTypes()) {
             return List.of(getOrCreateStubType(name));
@@ -342,7 +346,7 @@ public class TypeContextImpl implements TypeContext {
             }
         }
 
-        NamedType javaLang = data.compiledTypesManager.get("java.lang." + name);
+        NamedType javaLang = data.compiledTypesManager.get("java.lang." + name, null);
         if (javaLang != null) return javaLang;
         if (data.allowCreationOfStubTypes()) {
             return getOrCreateStubType(name);
