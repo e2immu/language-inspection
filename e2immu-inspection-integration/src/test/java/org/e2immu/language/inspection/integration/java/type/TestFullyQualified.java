@@ -210,6 +210,7 @@ public class TestFullyQualified extends CommonTest {
             AnnotationExpression sw = methodInfo.annotations().getFirst();
             assertEquals("a.b.X.Docstring", sw.typeInfo().fullyQualifiedName());
             assertNull(sw.source().detailedSources().associatedObject(sw.typeInfo()));
+            assertNull(sw.source().detailedSources().detail(sw.typeInfo().packageName()));
         }
         {
             MethodInfo methodInfo = typeInfo.findUniqueMethod("method2", 0);
@@ -222,6 +223,7 @@ public class TestFullyQualified extends CommonTest {
             assertEquals("7-6:7-16", sw.source().detailedSources().detail(sw.typeInfo()).compact2());
             assertEquals(1, tis.size());
             assertEquals("TypeInfoSource[typeInfo=a.b.X, source=@7:6-7:6]", tis.getFirst().toString());
+            assertNull(sw.source().detailedSources().detail(sw.typeInfo().packageName()));
         }
         {
             MethodInfo methodInfo = typeInfo.findUniqueMethod("method3", 0);
@@ -234,6 +236,7 @@ public class TestFullyQualified extends CommonTest {
             assertEquals("11-6:11-20", sw.source().detailedSources().detail(sw.typeInfo()).compact2());
             assertEquals(1, tis.size());
             assertEquals("TypeInfoSource[typeInfo=a.b.X, source=@11:6-11:10]", tis.getFirst().toString());
+            assertEquals("11-6:11-8", sw.source().detailedSources().detail(sw.typeInfo().packageName()).compact2());
         }
     }
 
@@ -268,6 +271,7 @@ public class TestFullyQualified extends CommonTest {
             AnnotationExpression sw = methodInfo.annotations().getFirst();
             assertEquals("a.b.X.Docstring", sw.typeInfo().fullyQualifiedName());
             assertNull(sw.source().detailedSources().associatedObject(sw.typeInfo()));
+            assertNull(sw.source().detailedSources().detail(sw.typeInfo().packageName()));
         }
         {
             MethodInfo methodInfo = typeInfo.findUniqueMethod("method2", 0);
@@ -280,6 +284,7 @@ public class TestFullyQualified extends CommonTest {
             assertEquals("7-6:7-16", sw.source().detailedSources().detail(sw.typeInfo()).compact2());
             assertEquals(1, tis.size());
             assertEquals("TypeInfoSource[typeInfo=a.b.X, source=@7:6-7:6]", tis.getFirst().toString());
+            assertNull(sw.source().detailedSources().detail(sw.typeInfo().packageName()));
         }
         {
             MethodInfo methodInfo = typeInfo.findUniqueMethod("method3", 0);
@@ -292,6 +297,7 @@ public class TestFullyQualified extends CommonTest {
             assertEquals("11-6:11-20", sw.source().detailedSources().detail(sw.typeInfo()).compact2());
             assertEquals(1, tis.size());
             assertEquals("TypeInfoSource[typeInfo=a.b.X, source=@11:6-11:10]", tis.getFirst().toString());
+            assertEquals("11-6:11-8", sw.source().detailedSources().detail(sw.typeInfo().packageName()).compact2());
         }
     }
 

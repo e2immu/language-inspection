@@ -2,7 +2,6 @@ package org.e2immu.language.inspection.api.parser;
 
 import org.e2immu.language.cst.api.element.JavaDoc;
 import org.e2immu.language.cst.api.expression.AnnotationExpression;
-import org.e2immu.language.cst.api.expression.Assignment;
 import org.e2immu.language.cst.api.info.FieldInfo;
 import org.e2immu.language.cst.api.info.Info;
 import org.e2immu.language.cst.api.info.MethodInfo;

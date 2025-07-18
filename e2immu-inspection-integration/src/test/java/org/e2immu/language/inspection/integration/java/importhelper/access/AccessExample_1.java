@@ -32,11 +32,13 @@ public class AccessExample_1 {
         static int L = 32; // effective visibility = package-private
         protected static int M = 33; // effective visibility = protected (members of same package only, because static)
 
-        protected int N = 3; // effective visibility = protected (sub-classes and members of same package)
+        protected int N = 3; // effective visibility = protected (subclasses and members of same package)
 
         @Override
         public String toString() { // must be public, overrides public method
-            return "i=" + I1.I + ", j=" + I1.J + ", ik=" + I1.I2.IK + ", jk=" + I1.I2.JK; // all in the same primary type
+            return "i=" + I1.I + ", j=" + I1.J + ", ik=" + I1.I2.IK
+                    + ", jk=" + AccessExample_1.I1.I2.JK
+                    + ", jk=" + org.e2immu.language.inspection.integration.java.importhelper.access.AccessExample_1.I1.I2.JK; // all in the same primary type
         }
     }
 }

@@ -315,44 +315,6 @@ public class TypeContextImpl implements TypeContext {
         return null;
     }
 
-    @Override
-    public NamedType get(String name, boolean complain) {
-        int dot = name.lastIndexOf('.');
-        if (dot < 0) {
-            NamedType simple = getSimpleName(name);
-            if (simple != null) {
-                return simple;
-            }
-        }
-        // name can be fully qualified, or semi qualified; but the package can be empty, too.
-        // try fully qualified first
-        NamedType fullyQualified = getFullyQualified(name);
-        if (fullyQualified != null) return fullyQualified;
-
-        if (dot >= 0) {
-            // it must be semi qualified now... go recursive;
-            String prefix = name.substring(0, dot);
-            NamedType prefixType = get(prefix, complain);
-            if (prefixType instanceof TypeInfo typeInfo) {
-                String tail = name.substring(dot + 1);
-                TypeInfo tailType = subTypeOfRelated(typeInfo, tail);
-                if (tailType != null) {
-                    return tailType;
-                }
-            }
-        }
-
-        NamedType javaLang = data.compiledTypesManager.get("java.lang." + name);
-        if (javaLang != null) return javaLang;
-        if (data.allowCreationOfStubTypes()) {
-            return getOrCreateStubType(name);
-        }
-        if (complain) {
-            throw new UnsupportedOperationException("Cannot find type " + name);
-        }
-        return null;
-    }
-
     private TypeInfo subTypeOfRelated(TypeInfo typeInfo, String name) {
         TypeInfo sub = typeInfo.findSubType(name, false);
         if (sub != null) return sub;
