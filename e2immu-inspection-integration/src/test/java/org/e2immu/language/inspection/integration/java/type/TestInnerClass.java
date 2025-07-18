@@ -85,4 +85,23 @@ public class TestInnerClass extends CommonTest {
         assertEquals("a.b.X.TryStatement.CatchClause.Builder", ccBuilderSetBlock.returnType().fullyQualifiedName());
     }
 
+    @Language("java")
+    public static final String INPUT4 = """
+            package a;
+            import static a.A.B.*;
+            public class A {
+                public enum B {
+                    CONSTANT
+                }
+                public void m() {
+                    System.out.println(CONSTANT);
+                }
+            }
+            """;
+
+    @Test
+    public void test4() {
+        TypeInfo X = javaInspector.parse(INPUT4);
+    }
+
 }

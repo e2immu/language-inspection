@@ -92,7 +92,7 @@ public class TypeContextImpl implements TypeContext {
                                                Set<TypeInfo> visited) {
         // note: we must ignore 'self-references', they are obviously not resolved yet
         if (visited.add(typeInfo) && !compilationUnit.equals(typeInfo.primaryType().compilationUnit())) {
-            if (typeInfo.parentClass() == null && !typeInfo.isJavaLangObject()) {
+            if (typeInfo.hierarchyNotYetDone()) {
                /*
                 this is the situation where we must delay: we need to know the interfaces of this type, but it is
                 possible that because of parsing order, they have not been parsed yet.
@@ -427,7 +427,7 @@ public class TypeContextImpl implements TypeContext {
 
     private boolean recursivelyComputeSuperTypesExcludingJLO(TypeInfo type, Set<TypeInfo> superTypes) {
         ParameterizedType parentPt = type.parentClass();
-        if (parentPt == null) {
+        if (type.hierarchyNotYetDone()) {
             return false;
         }
         TypeInfo parent = parentPt.typeInfo();
