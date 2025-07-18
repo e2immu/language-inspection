@@ -36,9 +36,6 @@ public interface TypeContext {
 
     CompilationUnit compilationUnit();
 
-    // name can be fully qualified
-    NamedType get(String name, boolean complain);
-
     // a.b.X.I.J -> X, I, J
     // X.I.J -> X, I, J
     // J -> J
