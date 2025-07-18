@@ -1001,20 +1001,17 @@ public class MethodResolutionImpl implements MethodResolution {
         }
         Set<TypeParameter> typeParameters = parameterType.extractTypeParameters();
         Map<NamedType, ParameterizedType> outsideMap = outsideContext.initialTypeParameterMap();
-        if (typeParameters.isEmpty() || outsideMap.isEmpty()) {
-            Map<NamedType, ParameterizedType> map = new HashMap<>(extra.map());
-            ParameterizedType returnType = method.getConcreteReturnType(runtime);
+        Map<NamedType, ParameterizedType> map = new HashMap<>(extra.map());
+        ParameterizedType returnType = method.getConcreteReturnType(runtime);
             /* here we test whether the return type of the method is a method type parameter. If so,
                we have and outside type that we can assign to it. See MethodCall_68, assigning B to type parameter T
                See TestParseMethods,6
              */
-            if (returnType.typeParameter() != null) {
-                map.put(returnType.typeParameter(), outsideContext);
-            } // else e.g. TestMethodCall9,4
-            ParameterizedType translated = parameterType.applyTranslation(runtime, map);
-            return new ForwardTypeImpl(translated, false, extra);
-        }
-        Map<NamedType, ParameterizedType> translate = new HashMap<>(extra.map());
+        if (returnType.typeParameter() != null) {
+            map.put(returnType.typeParameter(), outsideContext);
+        } // else e.g. TestMethodCall9,4
+        ParameterizedType translated = parameterType.applyTranslation(runtime, map);
+
         for (TypeParameter typeParameter : typeParameters) {
             // can we match? if both are functional interfaces, we know exactly which parameter to match
 
@@ -1022,31 +1019,30 @@ public class MethodResolutionImpl implements MethodResolution {
             // List.of(E) --> return is List<E>
             ParameterizedType inMap = outsideMap.get(typeParameter);
             if (inMap != null) {
-                translate.put(typeParameter, inMap);
+                map.put(typeParameter, inMap);
             } else if (typeParameter.isMethodTypeParameter()) {
                 // return type is List<E> where E is the method type param; need to match to the type's type param
                 TypeParameter typeTypeParameter = tryToFindTypeTypeParameter(method, typeParameter);
                 if (typeTypeParameter != null) {
                     ParameterizedType inMap2 = outsideMap.get(typeTypeParameter);
                     if (inMap2 != null) {
-                        translate.put(typeParameter, inMap2);
+                        map.put(typeParameter, inMap2);
                     }
                 }
                 ParameterizedType inExtra = extra.map().get(typeParameter);
                 if (inExtra != null) {
                     // see TestMethodCall7,9, from min -> talk.getTimeSlotStart()
-                    translate.merge(typeParameter, inExtra, ParameterizedType::bestDefined);
+                    map.merge(typeParameter, inExtra, ParameterizedType::bestDefined);
                 }
             }
         }
-        if (translate.isEmpty()) {
+        if (map.isEmpty()) {
             // Nothing to translate
             return new ForwardTypeImpl(parameterType, false, extra);
         }
-        ParameterizedType translated = parameterType.applyTranslation(runtime, translate);
+        ParameterizedType translated2 = parameterType.applyTranslation(runtime, map);
         // Translated context and parameter
-        return new ForwardTypeImpl(translated, false, extra);
-
+        return new ForwardTypeImpl(translated2, false, extra);
     }
 
 
