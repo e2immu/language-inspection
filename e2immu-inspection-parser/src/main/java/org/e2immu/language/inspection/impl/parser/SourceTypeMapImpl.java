@@ -76,7 +76,7 @@ public class SourceTypeMapImpl implements SourceTypeMap {
         Map.Entry<String, Object> lower = map.ceilingEntry(packageName);
         while (lower != null && lower.getKey().startsWith(packageName)) {
             for (TypeInfo typeInfo : typesInObject(lower.getValue())) {
-                if (typeInfo.isPrimaryType()) {
+                if (typeInfo.isPrimaryType() && packageName.equals(typeInfo.packageName())) {
                     result.add(typeInfo);
                 }
             }

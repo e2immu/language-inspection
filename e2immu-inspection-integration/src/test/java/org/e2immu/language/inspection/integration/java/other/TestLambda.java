@@ -6,6 +6,7 @@ import org.e2immu.language.cst.api.info.MethodInfo;
 import org.e2immu.language.cst.api.info.ParameterInfo;
 import org.e2immu.language.cst.api.info.TypeInfo;
 import org.e2immu.language.cst.api.statement.LocalVariableCreation;
+import org.e2immu.language.cst.impl.variable.LocalVariableImpl;
 import org.e2immu.language.inspection.integration.java.CommonTest;
 import org.intellij.lang.annotations.Language;
 import org.junit.jupiter.api.DisplayName;
@@ -122,6 +123,98 @@ public class TestLambda extends CommonTest {
         ParameterInfo s = lambda.parameters().getFirst();
         assertEquals("s", s.name());
         assertEquals("5-12:5-12", s.source().compact2());
+    }
+
+
+    @Language("java")
+    private static final String INPUT3b = """
+            package a.b;
+            class C {
+                interface A { void accept(int a, int b) {} }
+                void method1() {
+                    m((s, _)->System.out.println(s + " = ?"));
+                }
+                void m(A a) {
+                    // do sth
+                }
+            }
+            """;
+
+    @Test
+    public void test3b() {
+        TypeInfo typeInfo = javaInspector.parse(INPUT3b);
+        MethodInfo method1 = typeInfo.findUniqueMethod("method1", 0);
+        MethodCall callM = (MethodCall) method1.methodBody().statements().getFirst().expression();
+        Lambda lambda = (Lambda) callM.parameterExpressions().getFirst();
+        ParameterInfo s = lambda.parameters().getFirst();
+        assertEquals("s", s.name());
+        assertEquals("5-12:5-12", s.source().compact2());
+        assertFalse(s.isUnnamed());
+        ParameterInfo t = lambda.parameters().getLast();
+        assertTrue(t.isUnnamed());
+        assertEquals(LocalVariableImpl.UNNAMED, t.name());
+        assertEquals("5-15:5-15", t.source().compact2());
+    }
+
+
+    @Language("java")
+    private static final String INPUT3c = """
+            package a.b;
+            class C {
+                interface A { void accept(int a, int b) {} }
+                void method1() {
+                    m((_, _)->System.out.println("? = ?"));
+                }
+                void m(A a) {
+                    // do sth
+                }
+            }
+            """;
+
+    @Test
+    public void test3c() {
+        TypeInfo typeInfo = javaInspector.parse(INPUT3c);
+        MethodInfo method1 = typeInfo.findUniqueMethod("method1", 0);
+        MethodCall callM = (MethodCall) method1.methodBody().statements().getFirst().expression();
+        Lambda lambda = (Lambda) callM.parameterExpressions().getFirst();
+        ParameterInfo s = lambda.parameters().getFirst();
+        assertEquals("5-12:5-12", s.source().compact2());
+        assertTrue(s.isUnnamed());
+        ParameterInfo t = lambda.parameters().getLast();
+        assertTrue(t.isUnnamed());
+        assertEquals(LocalVariableImpl.UNNAMED, t.name());
+        assertEquals("5-15:5-15", t.source().compact2());
+    }
+
+
+
+    @Language("java")
+    private static final String INPUT3d = """
+            package a.b;
+            class C {
+                interface A { void accept(int a, int b) {} }
+                void method1() {
+                    m((String _, Object _)->System.out.println("? = ?"));
+                }
+                void m(A a) {
+                    // do sth
+                }
+            }
+            """;
+
+    @Test
+    public void test3d() {
+        TypeInfo typeInfo = javaInspector.parse(INPUT3d);
+        MethodInfo method1 = typeInfo.findUniqueMethod("method1", 0);
+        MethodCall callM = (MethodCall) method1.methodBody().statements().getFirst().expression();
+        Lambda lambda = (Lambda) callM.parameterExpressions().getFirst();
+        ParameterInfo s = lambda.parameters().getFirst();
+        assertEquals("5-12:5-19", s.source().compact2());
+        assertTrue(s.isUnnamed());
+        ParameterInfo t = lambda.parameters().getLast();
+        assertTrue(t.isUnnamed());
+        assertEquals(LocalVariableImpl.UNNAMED, t.name());
+        assertEquals("5-22:5-29", t.source().compact2());
     }
 
 
