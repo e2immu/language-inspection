@@ -114,4 +114,37 @@ public class TestTypeParameter extends CommonTest {
         assertEquals("TypeInfoSource[typeInfo=b.C.A, source=@13:14-13:14]", tis.getFirst().toString());
         // Note that there is no b.C are, the qualification is A.
     }
+
+
+    @Language("java")
+    public static final String INPUT3 = """
+            package a.b;
+            class A {
+                public record B<Z extends A>(Z t) {}
+                public record BB<Z extends a.b.A>(Z t) {}
+            }
+            """;
+
+    @Test
+    public void test3() {
+        TypeInfo typeInfo = javaInspector.parse(INPUT3, JavaInspectorImpl.DETAILED_SOURCES);
+        {
+            TypeInfo clazz = typeInfo.findSubType("B");
+            TypeParameter tp = clazz.typeParameters().getFirst();
+            assertEquals("Z=TP#0 in B [Type a.b.A]", tp.toStringWithTypeBounds());
+            assertEquals("3-21:3-31", tp.source().compact2());
+            ParameterizedType bound = tp.typeBounds().getFirst();
+            assertEquals("3-31:3-31", tp.source().detailedSources().detail(bound).compact2());
+        }
+        {
+            TypeInfo clazz = typeInfo.findSubType("BB");
+            TypeParameter tp = clazz.typeParameters().getFirst();
+            assertEquals("Z=TP#0 in BB [Type a.b.A]", tp.toStringWithTypeBounds());
+            assertEquals("4-22:4-36", tp.source().compact2());
+            ParameterizedType bound = tp.typeBounds().getFirst();
+            assertEquals("4-32:4-36", tp.source().detailedSources().detail(bound).compact2());
+            assertEquals("4-32:4-34", tp.source().detailedSources().detail(bound.typeInfo().packageName()).compact2());
+        }
+    }
+
 }
