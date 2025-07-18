@@ -430,6 +430,8 @@ public class TypeContextImpl implements TypeContext {
         if (type.hierarchyNotYetDone()) {
             return false;
         }
+        if (type.isJavaLangObject()) return true;
+        assert parentPt != null;
         TypeInfo parent = parentPt.typeInfo();
         boolean allDefined = true;
         if (!parent.isJavaLangObject() && superTypes.add(parent)) {
