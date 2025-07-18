@@ -63,7 +63,7 @@ public class TypeContextImpl implements TypeContext {
     }
 
     @Override
-    public boolean addToStaticImportMap(ImportStatement importStatement) {
+    public boolean addToStaticImportMap(CompilationUnit currentCompilationUnit, ImportStatement importStatement) {
         assert importStatement.isStatic();
 
         String fqnWithAsterisk = importStatement.importString();
@@ -75,7 +75,7 @@ public class TypeContextImpl implements TypeContext {
             LOGGER.debug("Add import static wildcard {}", typeInfo);
             addImportStaticWildcard(typeInfo);
             typeInfo.subTypes().forEach(st -> addImportStatic(typeInfo, st.simpleName()));
-            return traverseInterfaceHierarchy(typeInfo, new HashSet<>());
+            return traverseInterfaceHierarchy(currentCompilationUnit, typeInfo, new HashSet<>());
         }
 
         int dot = fqn.lastIndexOf('.');
@@ -87,8 +87,11 @@ public class TypeContextImpl implements TypeContext {
         return true;
     }
 
-    private boolean traverseInterfaceHierarchy(TypeInfo typeInfo, Set<TypeInfo> visited) {
-        if (visited.add(typeInfo)) {
+    private boolean traverseInterfaceHierarchy(CompilationUnit compilationUnit,
+                                               TypeInfo typeInfo,
+                                               Set<TypeInfo> visited) {
+        // note: we must ignore 'self-references', they are obviously not resolved yet
+        if (visited.add(typeInfo) && !compilationUnit.equals(typeInfo.primaryType().compilationUnit())) {
             if (typeInfo.parentClass() == null && !typeInfo.isJavaLangObject()) {
                /*
                 this is the situation where we must delay: we need to know the interfaces of this type, but it is
@@ -100,7 +103,7 @@ public class TypeContextImpl implements TypeContext {
             for (ParameterizedType interfaceType : typeInfo.interfacesImplemented()) {
                 interfaceType.typeInfo().subTypes()
                         .forEach(st -> addImportStatic(interfaceType.typeInfo(), st.simpleName()));
-                if (!traverseInterfaceHierarchy(interfaceType.typeInfo(), visited)) {
+                if (!traverseInterfaceHierarchy(compilationUnit, interfaceType.typeInfo(), visited)) {
                     // recursion
                     return false;
                 }
@@ -228,6 +231,7 @@ public class TypeContextImpl implements TypeContext {
     private SourceSet sourceSet() {
         return data.compilationUnit.sourceSet();
     }
+
     /**
      * Look up a type by FQN. Ensure that the type has been inspected.
      *

@@ -22,7 +22,7 @@ public interface TypeContext {
     return true when all types in the hierarchy of a static * import have been resolved,
     or this was not a * import.
      */
-    boolean addToStaticImportMap(ImportStatement importStatement);
+    boolean addToStaticImportMap(CompilationUnit currentCompilationUnit, ImportStatement importStatement);
 
     void addNonStaticImportToContext(ImportStatement importStatement);
 

@@ -99,7 +99,7 @@ public class JavaInspectorImpl implements JavaInspector {
 
     public static final String TEST_PROTOCOL_PREFIX = TEST_PROTOCOL + ":";
     public static final ParseOptions FAIL_FAST = new ParseOptions(true, false,
-            false, typeInfo -> UNCHANGED, false);
+            false, _ -> UNCHANGED, false);
     public static final ParseOptions DETAILED_SOURCES = new ParseOptionsBuilder().setDetailedSources(true).build();
 
     public static class ParseOptionsBuilder implements JavaInspector.ParseOptionsBuilder {
@@ -513,7 +513,7 @@ public class JavaInspectorImpl implements JavaInspector {
             // TODO if there are multiple primary types here, and only one is invalid, we must make sure that
             //   all the descendants of the other must be rewired. This is an edge case.
             if (typeInfos.isEmpty() || typeInfos.stream().anyMatch(ti -> invalidated.apply(ti) == INVALID)) {
-                typeInfos.forEach(ti -> sourceTypeMap.invalidate(ti));
+                typeInfos.forEach(sourceTypeMap::invalidate);
                 //noinspection ALL
                 String sourceCode = loadSource(sf, sourcesByTestProtocolURIString,
                         sf.sourceSet().sourceEncoding(),
@@ -611,6 +611,7 @@ public class JavaInspectorImpl implements JavaInspector {
         while (true) {
             count.set(0);
             iteration.incrementAndGet();
+            if (iteration.get() > 1000) throw new UnsupportedOperationException("Emergency brake");
             Stream<DelayedCU> stream = parseOptions.parallel() ? delayed.parallelStream() : delayed.stream();
             int todo = delayed.size();
             List<DelayedCU> newDelayed = stream.map(delayedCU -> {
