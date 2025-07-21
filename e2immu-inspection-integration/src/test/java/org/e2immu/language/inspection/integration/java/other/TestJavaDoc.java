@@ -168,4 +168,30 @@ public class TestJavaDoc extends CommonTest {
                     link.source().detailedSources().detail(method.typeInfo().packageName()).compact2());
         }
     }
+
+    @Language("java")
+    private static final String INPUT4 = """
+            package a.b;
+            class X {
+                /**
+                 * {@link java.util.LinkedList}
+                 */
+                public void method(){
+                    // empty
+                }
+            }
+            """;
+
+    @Test
+    public void test4() {
+        TypeInfo typeInfo = javaInspector.parse(INPUT4, JavaInspectorImpl.DETAILED_SOURCES);
+        assertNull(typeInfo.javaDoc());
+        MethodInfo methodInfo = typeInfo.findUniqueMethod("method", 0);
+        assertEquals(1, methodInfo.javaDoc().tags().size());
+        JavaDoc.Tag tag = methodInfo.javaDoc().tags().getFirst();
+        assertEquals("java.util.LinkedList", tag.resolvedReference().toString());
+        assertEquals("""
+                [TypeReference[typeInfo=void, explicit=true], TypeReference[typeInfo=java.util.LinkedList, explicit=true]]\
+                """, methodInfo.typesReferenced().toList().toString());
+    }
 }
