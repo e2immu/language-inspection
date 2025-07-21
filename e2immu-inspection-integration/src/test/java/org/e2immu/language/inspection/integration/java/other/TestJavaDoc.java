@@ -3,6 +3,7 @@ package org.e2immu.language.inspection.integration.java.other;
 import org.e2immu.language.cst.api.element.DetailedSources;
 import org.e2immu.language.cst.api.element.Element;
 import org.e2immu.language.cst.api.element.JavaDoc;
+import org.e2immu.language.cst.api.element.Source;
 import org.e2immu.language.cst.api.info.MethodInfo;
 import org.e2immu.language.cst.api.info.TypeInfo;
 import org.e2immu.language.inspection.integration.JavaInspectorImpl;
@@ -193,5 +194,9 @@ public class TestJavaDoc extends CommonTest {
         assertEquals("""
                 [TypeReference[typeInfo=void, explicit=true], TypeReference[typeInfo=java.util.LinkedList, explicit=true]]\
                 """, methodInfo.typesReferenced().toList().toString());
+        DetailedSources detailedSources = tag.source().detailedSources();
+        assertNotNull(detailedSources);
+        assertEquals("4-7:4-26", detailedSources.detail(tag.resolvedReference()).compact2());
+        assertEquals("4-7:4-15", detailedSources.detail(((TypeInfo) tag.resolvedReference()).packageName()).compact2());
     }
 }
