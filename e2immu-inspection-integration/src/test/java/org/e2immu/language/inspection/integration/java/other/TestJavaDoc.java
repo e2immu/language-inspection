@@ -135,7 +135,7 @@ public class TestJavaDoc extends CommonTest {
             assertEquals("A#method(String,int)", link.content());
             MethodInfo method = (MethodInfo) link.resolvedReference();
             assertEquals("a.b.X.A.method(String,int)", method.fullyQualifiedName());
-            assertEquals("5-14:5-42", link.source().compact2());
+            assertEquals("5-15:5-42", link.source().compact2());
             //noinspection ALL
             List<DetailedSources.Builder.TypeInfoSource> tis = (List<DetailedSources.Builder.TypeInfoSource>)
                     link.source().detailedSources().associatedObject(method.typeInfo());
@@ -146,12 +146,12 @@ public class TestJavaDoc extends CommonTest {
             assertEquals("X.A#method(String,int)", link.content());
             MethodInfo method = (MethodInfo) link.resolvedReference();
             assertEquals("a.b.X.A.method(String,int)", method.fullyQualifiedName());
-            assertEquals("6-14:6-44", link.source().compact2());
+            assertEquals("6-15:6-44", link.source().compact2());
             //noinspection ALL
             List<DetailedSources.Builder.TypeInfoSource> tis = (List<DetailedSources.Builder.TypeInfoSource>)
                     link.source().detailedSources().associatedObject(method.typeInfo());
             assertEquals(1, tis.size());
-            assertEquals("6-14:6-14", tis.getFirst().source().compact2());
+            assertEquals("6-22:6-22", tis.getFirst().source().compact2());
             assertNull(link.source().detailedSources().detail(method.typeInfo().packageName()));
         }
         {
@@ -159,13 +159,13 @@ public class TestJavaDoc extends CommonTest {
             assertEquals("a.b.X.A#method(String,int)", link.content());
             MethodInfo method = (MethodInfo) link.resolvedReference();
             assertEquals("a.b.X.A.method(String,int)", method.fullyQualifiedName());
-            assertEquals("7-14:7-48", link.source().compact2());
+            assertEquals("7-15:7-48", link.source().compact2());
             //noinspection ALL
             List<DetailedSources.Builder.TypeInfoSource> tis = (List<DetailedSources.Builder.TypeInfoSource>)
                     link.source().detailedSources().associatedObject(method.typeInfo());
             assertEquals(1, tis.size());
-            assertEquals("7-14:7-18", tis.getFirst().source().compact2());
-            assertEquals("7-14:7-16",
+            assertEquals("7-22:7-26", tis.getFirst().source().compact2());
+            assertEquals("7-22:7-24",
                     link.source().detailedSources().detail(method.typeInfo().packageName()).compact2());
         }
     }
@@ -196,7 +196,7 @@ public class TestJavaDoc extends CommonTest {
                 """, methodInfo.typesReferenced().toList().toString());
         DetailedSources detailedSources = tag.source().detailedSources();
         assertNotNull(detailedSources);
-        assertEquals("4-7:4-26", detailedSources.detail(tag.resolvedReference()).compact2());
-        assertEquals("4-7:4-15", detailedSources.detail(((TypeInfo) tag.resolvedReference()).packageName()).compact2());
+        assertEquals("4-15:4-34", detailedSources.detail(tag.resolvedReference()).compact2());
+        assertEquals("4-15:4-23", detailedSources.detail(((TypeInfo) tag.resolvedReference()).packageName()).compact2());
     }
 }

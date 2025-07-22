@@ -39,17 +39,43 @@ public class TestJavaDoc2 extends CommonTest2 {
             }
             """;
 
+
+    // do not touch the spacing here!
+    @Language("java")
+    String bB2 = """
+            package b;
+            import a.A;
+                /**
+                 * See {@link  a.A}
+                 */
+            public class B2  {
+                // empty
+            }
+            """;
+
     @Test
     public void test() throws IOException {
-        Map<String, String> sourcesByFqn = Map.of("a.A", aA, "b.B", bB);
+        Map<String, String> sourcesByFqn = Map.of("a.A", aA, "b.B", bB, "b.B2", bB2);
         ParseResult pr1 = init(sourcesByFqn);
-        TypeInfo B = pr1.findType("b.B");
-        JavaDoc.Tag tag = B.javaDoc().tags().getFirst();
-        assertEquals("a.A", tag.resolvedReference().toString());
-        DetailedSources detailedSources = tag.source().detailedSources();
-        assertNotNull(detailedSources);
-        assertEquals("4-7:4-9", detailedSources.detail(tag.resolvedReference()).compact2());
-        assertNull(detailedSources.associatedObject(tag.resolvedReference()));
-        assertEquals("4-7:4-7", detailedSources.detail(((TypeInfo) tag.resolvedReference()).packageName()).compact2());
+        {
+            TypeInfo B = pr1.findType("b.B");
+            JavaDoc.Tag tag = B.javaDoc().tags().getFirst();
+            assertEquals("a.A", tag.resolvedReference().toString());
+            DetailedSources detailedSources = tag.source().detailedSources();
+            assertNotNull(detailedSources);
+            assertEquals("4-15:4-17", detailedSources.detail(tag.resolvedReference()).compact2());
+            assertNull(detailedSources.associatedObject(tag.resolvedReference()));
+            assertEquals("4-15:4-15", detailedSources.detail(((TypeInfo) tag.resolvedReference()).packageName()).compact2());
+        }
+        {
+            TypeInfo B2 = pr1.findType("b.B2");
+            JavaDoc.Tag tag = B2.javaDoc().tags().getFirst();
+            assertEquals("a.A", tag.resolvedReference().toString());
+            DetailedSources detailedSources = tag.source().detailedSources();
+            assertNotNull(detailedSources);
+            assertEquals("4-20:4-22", detailedSources.detail(tag.resolvedReference()).compact2());
+            assertNull(detailedSources.associatedObject(tag.resolvedReference()));
+            assertEquals("4-20:4-20", detailedSources.detail(((TypeInfo) tag.resolvedReference()).packageName()).compact2());
+        }
     }
 }
