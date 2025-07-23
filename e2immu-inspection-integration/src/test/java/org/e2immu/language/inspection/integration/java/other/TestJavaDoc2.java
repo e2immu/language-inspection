@@ -78,4 +78,61 @@ public class TestJavaDoc2 extends CommonTest2 {
             assertEquals("4-20:4-20", detailedSources.detail(((TypeInfo) tag.resolvedReference()).packageName()).compact2());
         }
     }
+
+    @Language("java")
+    String aA3 = """
+            package a;
+            import b.B;
+            public class A {
+                  /**
+                   * @param <T>  the type parameter
+                   */
+                  private static <T> void m(B<T> b) {}
+            }
+            """;
+
+    @Language("java")
+    String aA4 = """
+            package a;
+            import b.B;
+            /**
+             * link to {@link #m}
+             */
+            public class A4 {
+                private static <T> void m(B<T> b) {}
+            }
+            """;
+
+    @Language("java")
+    String bB3 = """
+            package b;
+            public class B<T>  {
+                // empty
+            }
+            """;
+
+    @Test
+    public void test3() throws IOException {
+        Map<String, String> sourcesByFqn = Map.of("a.A", aA3, "a.A4", aA4, "b.B", bB3);
+        ParseResult pr1 = init(sourcesByFqn);
+        {
+            TypeInfo A = pr1.findType("a.A");
+            assertEquals("""
+                    [TypeReference[typeInfo=void, explicit=true], TypeReference[typeInfo=b.B, explicit=true]]\
+                    """, A.typesReferenced().toList().toString());
+
+            MethodInfo m = A.findUniqueMethod("m", 1);
+            JavaDoc.Tag tag = m.javaDoc().tags().getFirst();
+            assertEquals("T=TP#0 in A.m", tag.resolvedReference().toString());
+        }
+        {
+            TypeInfo A4 = pr1.findType("a.A4");
+            assertEquals("""
+                    [TypeReference[typeInfo=void, explicit=true], TypeReference[typeInfo=b.B, explicit=true]]\
+                    """, A4.typesReferenced().toList().toString());
+            JavaDoc.Tag tag = A4.javaDoc().tags().getFirst();
+            assertTrue(A4.javaDoc().typesReferenced().toList().isEmpty());
+            assertEquals("a.A4.m(b.B<T>)", tag.resolvedReference().toString());
+        }
+    }
 }

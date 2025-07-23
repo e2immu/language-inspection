@@ -242,9 +242,10 @@ public class ListMethodAndConstructorCandidates {
                             detailedSourcesBuilder.addAll(expression.source().detailedSources());
                         }
                     }
-
+                    ParameterizedType pt = expression == null ? exact.asParameterizedType()
+                            : expression.parameterizedType();
                     return runtime.newTypeExpressionBuilder()
-                            .setParameterizedType(exact.asParameterizedType())
+                            .setParameterizedType(pt)
                             .setDiamond(runtime.diamondNo())
                             .setSource(detailedSourcesBuilder == null || unparsedScopeSource == null
                                     ? unparsedScopeSource
