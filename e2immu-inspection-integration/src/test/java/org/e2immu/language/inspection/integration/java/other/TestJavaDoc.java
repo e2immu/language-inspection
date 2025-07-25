@@ -4,6 +4,7 @@ import org.e2immu.language.cst.api.element.DetailedSources;
 import org.e2immu.language.cst.api.element.Element;
 import org.e2immu.language.cst.api.element.JavaDoc;
 import org.e2immu.language.cst.api.element.Source;
+import org.e2immu.language.cst.api.info.FieldInfo;
 import org.e2immu.language.cst.api.info.MethodInfo;
 import org.e2immu.language.cst.api.info.TypeInfo;
 import org.e2immu.language.inspection.integration.JavaInspectorImpl;
@@ -198,5 +199,108 @@ public class TestJavaDoc extends CommonTest {
         assertNotNull(detailedSources);
         assertEquals("4-15:4-34", detailedSources.detail(tag.resolvedReference()).compact2());
         assertEquals("4-15:4-23", detailedSources.detail(((TypeInfo) tag.resolvedReference()).packageName()).compact2());
+    }
+
+
+    @Language("java")
+    private static final String INPUT5 = """
+            package a.b;
+            class Y {
+                /**
+                 * reference to {@link #method}
+                 * reference to {@link Y#method}
+                 * reference to {@link a.b.Y#method(String)}
+                 * @param s
+                 * @return
+                 */
+                @Override
+                int method(String s) {
+                   return s.length() + 10;
+                }
+            }
+            """;
+
+    @Test
+    public void test5() {
+        TypeInfo typeInfo = javaInspector.parse(INPUT5, JavaInspectorImpl.DETAILED_SOURCES);
+        assertNull(typeInfo.javaDoc());
+        MethodInfo methodInfo = typeInfo.findUniqueMethod("method", 1);
+        assertEquals(5, methodInfo.javaDoc().tags().size());
+        {
+            JavaDoc.Tag tag = methodInfo.javaDoc().tags().getFirst();
+            MethodInfo object = (MethodInfo) tag.resolvedReference();
+            assertEquals("a.b.Y.method(String)", object.toString());
+            // 7 chars inclusive
+            assertEquals("4-28:4-34", tag.sourceOfReference().compact2());
+            DetailedSources detailedSources = tag.source().detailedSources();
+            assertNotNull(detailedSources);
+            assertEquals("4-29:4-34", detailedSources.detail(object).compact2());
+            assertEquals("4-29:4-34", detailedSources.detail(object.name()).compact2());
+        }
+        {
+            JavaDoc.Tag tag = methodInfo.javaDoc().tags().get(1);
+            MethodInfo object = (MethodInfo) tag.resolvedReference();
+            assertEquals("a.b.Y.method(String)", object.toString());
+            assertEquals("5-28:5-35", tag.sourceOfReference().compact2());
+            DetailedSources detailedSources = tag.source().detailedSources();
+            assertNotNull(detailedSources);
+            assertEquals("5-30:5-35", detailedSources.detail(object).compact2());
+            assertEquals("5-30:5-35", detailedSources.detail(object.name()).compact2());
+        }
+        {
+            JavaDoc.Tag tag = methodInfo.javaDoc().tags().get(2);
+            MethodInfo element = (MethodInfo) tag.resolvedReference();
+            assertEquals("a.b.Y.method(String)", element.toString());
+            assertEquals("6-28:6-47", tag.sourceOfReference().compact2());
+            DetailedSources detailedSources = tag.source().detailedSources();
+            assertNotNull(detailedSources);
+            assertEquals("6-28:6-32", detailedSources.detail(methodInfo.typeInfo()).compact2());
+            assertEquals("6-34:6-47", detailedSources.detail(element).compact2());
+            assertEquals("6-34:6-39", detailedSources.detail(element.name()).compact2());
+        }
+    }
+
+
+    @Language("java")
+    private static final String INPUT6 = """
+            package a.b;
+            class Y {
+                /**
+                 * reference to {@link #field}
+                 * reference to {@link Y#field}
+                 */
+                int field = 3;
+            }
+            """;
+
+    @Test
+    public void test6() {
+        TypeInfo typeInfo = javaInspector.parse(INPUT6, JavaInspectorImpl.DETAILED_SOURCES);
+        assertNull(typeInfo.javaDoc());
+        FieldInfo field = typeInfo.getFieldByName("field", true);
+        assertEquals(1, field.comments().size());
+        assertNotNull(field.javaDoc());
+        assertEquals(2, field.javaDoc().tags().size());
+        {
+            JavaDoc.Tag tag = field.javaDoc().tags().getFirst();
+            FieldInfo object = (FieldInfo) tag.resolvedReference();
+            assertEquals("a.b.Y.field", object.toString());
+            // 7 chars inclusive
+            assertEquals("4-28:4-33", tag.sourceOfReference().compact2());
+            DetailedSources detailedSources = tag.source().detailedSources();
+            assertNotNull(detailedSources);
+            assertEquals("4-29:4-33", detailedSources.detail(object).compact2());
+            assertEquals("4-29:4-33", detailedSources.detail(object.name()).compact2());
+        }
+        {
+            JavaDoc.Tag tag = field.javaDoc().tags().get(1);
+            FieldInfo object = (FieldInfo) tag.resolvedReference();
+            assertEquals("a.b.Y.field", object.toString());
+            assertEquals("5-28:5-34", tag.sourceOfReference().compact2());
+            DetailedSources detailedSources = tag.source().detailedSources();
+            assertNotNull(detailedSources);
+            assertEquals("5-30:5-34", detailedSources.detail(object).compact2());
+            assertEquals("5-30:5-34", detailedSources.detail(object.name()).compact2());
+        }
     }
 }
