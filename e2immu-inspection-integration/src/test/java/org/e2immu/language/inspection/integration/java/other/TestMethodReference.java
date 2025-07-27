@@ -45,7 +45,7 @@ public class TestMethodReference extends CommonTest {
     @DisplayName("concrete type of MR from forward; constructor")
     @Test
     public void test1() {
-        TypeInfo typeInfo = javaInspector.parse(INPUT1, new JavaInspectorImpl.ParseOptionsBuilder().setDetailedSources(true).build());
+        TypeInfo typeInfo = javaInspector.parse(INPUT1, JavaInspectorImpl.DETAILED_SOURCES);
         MethodInfo methodInfo = typeInfo.findUniqueMethod("method", 0);
         LocalVariableCreation lvc0 = (LocalVariableCreation) methodInfo.methodBody().statements().getFirst();
         MethodCall mc = (MethodCall) lvc0.localVariable().assignmentExpression();
@@ -110,7 +110,7 @@ public class TestMethodReference extends CommonTest {
     @Test
     @DisplayName("concrete type of MR from method")
     public void test1B() {
-        TypeInfo typeInfo = javaInspector.parse(INPUT1B, new JavaInspectorImpl.ParseOptionsBuilder().setDetailedSources(true).build());
+        TypeInfo typeInfo = javaInspector.parse(INPUT1B, JavaInspectorImpl.DETAILED_SOURCES);
         MethodInfo methodInfo = typeInfo.findUniqueMethod("m7", 1);
         ReturnStatement rs = (ReturnStatement) methodInfo.methodBody().statements().getFirst();
         MethodCall mc = (MethodCall) rs.expression();

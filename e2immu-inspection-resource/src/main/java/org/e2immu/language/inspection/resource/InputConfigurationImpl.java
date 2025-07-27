@@ -75,9 +75,9 @@ public record InputConfigurationImpl(Path workingDirectory,
     @Override
     public String toString() {
         return "InputConfiguration:" +
-               NL_TAB + "sourcesSets=" + sourceSets +
-               NL_TAB + "classPathParts=" + classPathParts +
-               NL_TAB + "alternativeJREDirectory=" + (alternativeJREDirectory == null ? "<default>"
+                NL_TAB + "sourcesSets=" + sourceSets +
+                NL_TAB + "classPathParts=" + classPathParts +
+                NL_TAB + "alternativeJREDirectory=" + (alternativeJREDirectory == null ? "<default>"
                 : alternativeJREDirectory);
     }
 
@@ -121,14 +121,18 @@ public record InputConfigurationImpl(Path workingDirectory,
             for (String sourceDir : sourceDirs) {
                 Set<SourceSet> allDependencies = Stream.concat(classPathParts.stream(),
                         sourceSets.stream()).collect(Collectors.toUnmodifiableSet());
-                sourceSets.add(new SourceSetImpl(sourceDir, List.of(Path.of(sourceDir)), createURI(sourceDir), sourceCharset,
+                URI uri = createURI(sourceDir);
+                List<Path> list = uri.getScheme().equals("file") ? List.of(Path.of(sourceDir)) : List.of();
+                sourceSets.add(new SourceSetImpl(sourceDir, list, uri, sourceCharset,
                         false, false, false, false, false,
                         restrictSourceToPackages, allDependencies));
             }
             for (String sourceDir : testSourceDirs) {
                 Set<SourceSet> allDependencies = Stream.concat(classPathParts.stream(),
                         sourceSets.stream()).collect(Collectors.toUnmodifiableSet());
-                sourceSets.add(new SourceSetImpl(sourceDir, List.of(Path.of(sourceDir)), createURI(sourceDir), sourceCharset,
+                URI uri = createURI(sourceDir);
+                List<Path> list = uri.getScheme().equals("file") ? List.of(Path.of(sourceDir)) : List.of();
+                sourceSets.add(new SourceSetImpl(sourceDir, list, uri, sourceCharset,
                         true, false, false, false, false,
                         restrictTestSourceToPackages, allDependencies));
             }

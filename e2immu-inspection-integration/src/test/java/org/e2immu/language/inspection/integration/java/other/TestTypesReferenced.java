@@ -24,9 +24,7 @@ public class TestTypesReferenced extends CommonTest {
     public void test1() {
         TypeInfo typeInfo = javaInspector.parse(INPUT1);
         assertEquals("""
-                [TypeReference[typeInfo=java.lang.Object, explicit=true], \
-                TypeReference[typeInfo=java.lang.Object, explicit=true], \
-                TypeReference[typeInfo=java.lang.annotation.Annotation, explicit=true], \
+                [TypeReference[typeInfo=java.lang.annotation.Annotation, explicit=true], \
                 TypeReference[typeInfo=java.lang.annotation.Annotation, explicit=true]]\
                 """, typeInfo.typesReferenced().toList().toString());
         // FIXME PRINT space in front of {A

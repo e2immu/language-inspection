@@ -260,7 +260,7 @@ public class TestMethodCall6 extends CommonTest {
     @Test
     public void test9() {
         TypeInfo typeInfo = javaInspector.parse(INPUT9,
-                new JavaInspectorImpl.ParseOptionsBuilder().setDetailedSources(true).build());
+                JavaInspectorImpl.DETAILED_SOURCES);
         MethodInfo addAll = typeInfo.findUniqueMethod("addAll", 2);
         assertEquals(2, addAll.parameters().size());
         ParameterInfo p0 = addAll.parameters().getFirst();

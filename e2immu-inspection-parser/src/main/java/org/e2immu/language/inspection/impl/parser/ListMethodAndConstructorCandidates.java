@@ -44,7 +44,7 @@ public class ListMethodAndConstructorCandidates {
 
         return typeInfo.constructors().stream()
                 .filter(methodInspection -> parametersPresented == IGNORE_PARAMETER_NUMBERS ||
-                                            compatibleNumberOfParameters(methodInspection, parametersPresented))
+                        compatibleNumberOfParameters(methodInspection, parametersPresented))
                 .map(mi -> new MethodTypeParameterMapImpl(mi, typeMap))
                 .collect(Collectors.toMap(mt -> mt, mt -> 1));
     }
@@ -86,7 +86,7 @@ public class ListMethodAndConstructorCandidates {
         // if the method is static, we must be talking about the same type (See Import_10).
         for (TypeInfo typeInfo : staticImportMap.staticAsterisk()) {
             if (!visited.contains(typeInfo) && !visitedStatic.contains(typeInfo)
-                && (scopeNature != ScopeNature.STATIC || typeInfo == typeOfObject.bestTypeInfo())) {
+                    && (scopeNature != ScopeNature.STATIC || typeInfo == typeOfObject.bestTypeInfo())) {
                 visitedStatic.add(typeInfo);
                 resolveOverloadedMethodsSingleType(typeInfo, true, scopeNature, methodName,
                         parametersPresented, decrementWhenNotStatic, typeMap, result, visited, visitedStatic,
@@ -120,8 +120,8 @@ public class ListMethodAndConstructorCandidates {
                 .filter(m -> m.name().equals(methodName))
                 .filter(m -> !staticOnly || m.isStatic())
                 .filter(m -> parametersPresented == IGNORE_PARAMETER_NUMBERS ||
-                             compatibleNumberOfParameters(m, parametersPresented +
-                                                             (!m.isStatic() && decrementWhenNotStatic ? -1 : 0)))
+                        compatibleNumberOfParameters(m, parametersPresented +
+                                (!m.isStatic() && decrementWhenNotStatic ? -1 : 0)))
                 .forEach(m -> {
                     MethodTypeParameterMap mt = new MethodTypeParameterMapImpl(m, typeMap);
                     int score = distance + (m.isStatic() && scopeNature == ScopeNature.INSTANCE ? 100 : 0);
@@ -133,29 +133,26 @@ public class ListMethodAndConstructorCandidates {
         boolean isJLO = typeInfo.isJavaLangObject();
         assert isJLO || parentClass != null :
                 "Parent class of " + typeInfo.fullyQualifiedName() + " is null";
-        int numInterfaces = typeInfo.interfacesImplemented().size();
         if (!isJLO) {
             recursivelyResolveOverloadedMethods(parentClass, methodName, parametersPresented, decrementWhenNotStatic,
                     joinMaps(typeMap, parentClass), result, visited, visitedStatic, staticOnly, scopeNature,
-                    distance + numInterfaces + 1);
+                    distance + 1);
         }
-        int count = 0;
         for (ParameterizedType interfaceImplemented : typeInfo.interfacesImplemented()) {
             recursivelyResolveOverloadedMethods(interfaceImplemented, methodName, parametersPresented,
                     decrementWhenNotStatic, joinMaps(typeMap, interfaceImplemented), result, visited, visitedStatic,
-                    staticOnly, scopeNature, distance + count);
-            ++count;
+                    staticOnly, scopeNature, distance + 2);
         }
         // See UtilityClass_2 for an example where we should go to the static methods of the enclosing type
         if (typeInfo.compilationUnitOrEnclosingType().isRight()) {
             // if I'm in a static subtype, I can only access the static methods of the enclosing type
             boolean onlyStatic = staticOnly || typeInfo.isStatic();
             if (onlyStatic && scopeNature != ScopeNature.INSTANCE ||
-                !onlyStatic && scopeNature != ScopeNature.STATIC) {
+                    !onlyStatic && scopeNature != ScopeNature.STATIC) {
                 ParameterizedType enclosingType = typeInfo.compilationUnitOrEnclosingType().getRight().asParameterizedType();
                 recursivelyResolveOverloadedMethods(enclosingType, methodName, parametersPresented, decrementWhenNotStatic,
                         joinMaps(typeMap, enclosingType), result, visited, visitedStatic,
-                        onlyStatic, scopeNature, distance + numInterfaces);
+                        onlyStatic, scopeNature, distance + 1);
             }
         }
     }
@@ -237,11 +234,18 @@ public class ListMethodAndConstructorCandidates {
                 if (methodInfo.isStatic()) {
                     // every TypeExpression should have its TypeInfo in the detailed sources, if required.
                     DetailedSources.Builder detailedSourcesBuilder = context.newDetailedSourcesBuilder();
-                    if (unparsedScopeSource != null && detailedSourcesBuilder != null) {
-                        detailedSourcesBuilder.put(exact, unparsedScopeSource);
+                    if (detailedSourcesBuilder != null) {
+                        if (unparsedScopeSource != null) {
+                            detailedSourcesBuilder.put(exact, unparsedScopeSource);
+                        }
+                        if (expression != null && expression.source().detailedSources() != null) {
+                            detailedSourcesBuilder.addAll(expression.source().detailedSources());
+                        }
                     }
+                    ParameterizedType pt = expression == null ? exact.asParameterizedType()
+                            : expression.parameterizedType();
                     return runtime.newTypeExpressionBuilder()
-                            .setParameterizedType(exact.asParameterizedType())
+                            .setParameterizedType(pt)
                             .setDiamond(runtime.diamondNo())
                             .setSource(detailedSourcesBuilder == null || unparsedScopeSource == null
                                     ? unparsedScopeSource

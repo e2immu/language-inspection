@@ -35,7 +35,7 @@ public class TestTypeParameter2 extends CommonTest {
 
     @Test
     public void test1() {
-        TypeInfo X = javaInspector.parse(INPUT1, new JavaInspectorImpl.ParseOptionsBuilder().setDetailedSources(true).build());
+        TypeInfo X = javaInspector.parse(INPUT1, JavaInspectorImpl.DETAILED_SOURCES);
         FieldInfo sam = X.getFieldByName("stringArrayMap", true);
         assertEquals("Type a.X.MyMap<String[]>", sam.type().toString());
         MethodInfo method = X.findUniqueMethod("method", 2);
@@ -66,7 +66,7 @@ public class TestTypeParameter2 extends CommonTest {
 
     @Test
     public void test2() {
-        TypeInfo X = javaInspector.parse(INPUT2, new JavaInspectorImpl.ParseOptionsBuilder().setDetailedSources(true).build());
+        TypeInfo X = javaInspector.parse(INPUT2, JavaInspectorImpl.DETAILED_SOURCES);
 
     }
 }

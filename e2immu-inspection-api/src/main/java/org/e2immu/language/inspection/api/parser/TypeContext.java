@@ -18,7 +18,11 @@ public interface TypeContext {
      */
     boolean addSubTypesOfHierarchyReturnAllDefined(TypeInfo typeInfo);
 
-    void addToStaticImportMap(ImportStatement importStatement);
+    /*
+    return true when all types in the hierarchy of a static * import have been resolved,
+    or this was not a * import.
+     */
+    boolean addToStaticImportMap(CompilationUnit currentCompilationUnit, ImportStatement importStatement);
 
     void addNonStaticImportToContext(ImportStatement importStatement);
 
@@ -32,8 +36,11 @@ public interface TypeContext {
 
     CompilationUnit compilationUnit();
 
-    // name can be fully qualified
-    NamedType get(String name, boolean complain);
+    // a.b.X.I.J -> X, I, J
+    // X.I.J -> X, I, J
+    // J -> J
+    // I.J -> I, J,
+    List<? extends NamedType> getWithQualification(String name, boolean complain);
 
     void addToContext(@NotNull NamedType namedType);
 

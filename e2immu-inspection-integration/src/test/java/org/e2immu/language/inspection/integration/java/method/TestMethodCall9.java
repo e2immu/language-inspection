@@ -11,6 +11,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.io.Serializable;
+import java.util.function.Consumer;
+import java.util.function.Function;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -161,7 +163,7 @@ public class TestMethodCall9 extends CommonTest {
 
     @Test
     public void test4b() {
-       TypeInfo X = javaInspector.parse(INPUT4b, new JavaInspectorImpl.ParseOptionsBuilder().setDetailedSources(true).build());
+       TypeInfo X = javaInspector.parse(INPUT4b, JavaInspectorImpl.DETAILED_SOURCES);
         MethodInfo methodInfo = X.findUniqueMethod("method2", 1);
         MethodCall mc2 = (MethodCall) methodInfo.methodBody().lastStatement().expression();
         assertEquals(1, mc2.typeArguments().size());
@@ -212,6 +214,41 @@ public class TestMethodCall9 extends CommonTest {
     }
 
 
+
+    @Language("java")
+    private static final String INPUT5b = """
+            package a.b;
+            
+            import java.io.Serializable;
+            
+            class X {
+                static abstract class H implements Serializable { }
+                static abstract class H1 extends H { int special() { return 3;} }
+                static final class H2 extends H1 { }
+        
+                interface J extends Serializable { H getHeader(); }
+                interface K extends Serializable { H1 getHeader(); }
+
+                static abstract class A implements J, K {
+                }
+                static abstract class B implements K, J {
+                }
+                int method(A a) {
+                    return a.getHeader().special();
+                }
+                int method(B b) {
+                    return b.getHeader().special();
+                }
+            }
+            """;
+    
+    @DisplayName("overrides and covariance, 2: most specific return type wins")
+    @Test
+    public void test5b() {
+        TypeInfo X = javaInspector.parse(INPUT5b);
+    }
+
+
     @Language("java")
     private static final String INPUT6 = """
             package a.b;
@@ -227,11 +264,69 @@ public class TestMethodCall9 extends CommonTest {
             }
             """;
 
-    @DisplayName("overrides and covariance, 2")
+
     @Test
     public void test6() {
         TypeInfo X = javaInspector.parse(INPUT6);
 
+    }
+
+
+    @Language("java")
+    private static final String INPUT7 = """
+            package a.b;
+            import java.util.function.Consumer;
+            import java.util.function.Function;
+            class A<X> {
+                void m(X x, Consumer<String> c) {}
+                void m(X x, Function<String, X> c) {}
+                void method(A<String> a) {
+                    a.m("test", string -> {});
+                }
+            }
+            """;
+
+
+    @Test
+    public void test7() {
+        TypeInfo A = javaInspector.parse(INPUT7);
+        MethodInfo method = A.findUniqueMethod("method", 1);
+        MethodCall methodCall = (MethodCall) method.methodBody().lastStatement().expression();
+        assertEquals("a.b.A.m(X,java.util.function.Consumer<String>)", methodCall.methodInfo().fullyQualifiedName());
+    }
+
+
+    @Language("java")
+    private static final String INPUT8 = """
+            package a.b;
+            import java.util.function.Consumer;
+            import java.util.function.Function;
+            class A {
+                void m(String s, Consumer<String> c) {}
+                <X> X m(String s, Function<String, X> c) { return c.apply(s); }
+                void method(A a) {
+                    a.m("test", string -> {});
+                }
+                int method2(A a) {
+                    return a.m("test", String::length);
+                }
+            }
+            """;
+
+    @Test
+    public void test8() {
+        TypeInfo A = javaInspector.parse(INPUT8);
+        {
+            MethodInfo method = A.findUniqueMethod("method", 1);
+            MethodCall methodCall = (MethodCall) method.methodBody().lastStatement().expression();
+            assertEquals("a.b.A.m(String,java.util.function.Consumer<String>)", methodCall.methodInfo().fullyQualifiedName());
+        }
+        {
+            MethodInfo method = A.findUniqueMethod("method2", 1);
+            MethodCall methodCall = (MethodCall) method.methodBody().lastStatement().expression();
+            assertEquals("a.b.A.m(String,java.util.function.Function<String,X>)",
+                    methodCall.methodInfo().fullyQualifiedName());
+        }
     }
 
 }

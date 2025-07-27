@@ -40,7 +40,8 @@ public class TestByteCode extends CommonTest {
 
     @Test
     public void testThrows2() {
-        TypeInfo typeInfo = javaInspector.compiledTypesManager().getOrLoad("java.lang.ScopedValue");
+        TypeInfo typeInfo = javaInspector.compiledTypesManager().getOrLoad("java.lang.ScopedValue",
+                null);
         TypeInfo carrier = typeInfo.findSubType("Carrier");
         MethodInfo close = carrier.findUniqueMethod("call", 1);
         assertEquals("java.lang.ScopedValue.Carrier.call(CallableOp<? extends R,X extends Throwable>)",

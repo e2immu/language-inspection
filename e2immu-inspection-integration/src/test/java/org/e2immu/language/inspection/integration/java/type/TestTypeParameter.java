@@ -1,14 +1,19 @@
 package org.e2immu.language.inspection.integration.java.type;
 
+import org.e2immu.language.cst.api.element.DetailedSources;
 import org.e2immu.language.cst.api.expression.Assignment;
 import org.e2immu.language.cst.api.expression.Expression;
 import org.e2immu.language.cst.api.info.MethodInfo;
 import org.e2immu.language.cst.api.info.TypeInfo;
 import org.e2immu.language.cst.api.statement.LocalVariableCreation;
+import org.e2immu.language.cst.api.type.ParameterizedType;
 import org.e2immu.language.cst.api.type.TypeParameter;
+import org.e2immu.language.inspection.integration.JavaInspectorImpl;
 import org.e2immu.language.inspection.integration.java.CommonTest;
 import org.intellij.lang.annotations.Language;
 import org.junit.jupiter.api.Test;
+
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -74,54 +79,72 @@ public class TestTypeParameter extends CommonTest {
 
     @Language("java")
     public static final String INPUT2 = """
-            package a.b;
+            package b;
             
-            import java.util.ArrayList;
-            import java.util.List;import java.util.concurrent.atomic.AtomicBoolean;
+            import java.util.List;
             
-            class X {
-              int method() {
-                 return new ArrayList<AtomicBoolean>().size();
-              }
-              int method2() {
-                 return new ArrayList<>().size();
-              }
-              int method3() {
-                 List<AtomicBoolean> list = new ArrayList<>();
-                 return list.size();
-              }
-              int method4() {
-                List<AtomicBoolean> list = new ArrayList();
-                return list.size();
-              }
+            class C {
+                interface D { }
+                interface A {
+                    interface B<T> { }
+                    List<B<D>> get();
+                }
+            
+                void m(A a) {
+                    List<A.B<D>> x = a.get();
+                }
             }
             """;
 
     @Test
     public void test2() {
-        TypeInfo typeInfo = javaInspector.parse(INPUT2);
-        MethodInfo method = typeInfo.findUniqueMethod("method", 0);
-        assertEquals("""
-                [TypeReference[typeInfo=int, explicit=true], \
-                TypeReference[typeInfo=java.util.concurrent.atomic.AtomicBoolean, explicit=true], \
-                TypeReference[typeInfo=java.util.ArrayList, explicit=true]]\
-                """, method.typesReferenced(true).toList().toString());
-        MethodInfo method2 = typeInfo.findUniqueMethod("method2", 0);
-        assertEquals("""
-                [TypeReference[typeInfo=int, explicit=true], \
-                TypeReference[typeInfo=java.util.ArrayList, explicit=true]]\
-                """, method2.typesReferenced(true).toList().toString());
-        MethodInfo method3 = typeInfo.findUniqueMethod("method3", 0);
-        LocalVariableCreation lvc3 = (LocalVariableCreation) method3.methodBody().statements().getFirst();
-        assertEquals("""
-                [TypeReference[typeInfo=java.util.concurrent.atomic.AtomicBoolean, explicit=false], \
-                TypeReference[typeInfo=java.util.ArrayList, explicit=true]]\
-                """, lvc3.localVariable().assignmentExpression().typesReferenced().toList().toString());
-        MethodInfo method4 = typeInfo.findUniqueMethod("method4", 0);
-        LocalVariableCreation lvc4 = (LocalVariableCreation) method4.methodBody().statements().getFirst();
-        assertEquals("""
-               [TypeReference[typeInfo=java.util.ArrayList, explicit=true]]\
-                """, lvc4.localVariable().assignmentExpression().typesReferenced().toList().toString());
+        TypeInfo typeInfo = javaInspector.parse(INPUT2, JavaInspectorImpl.DETAILED_SOURCES);
+        MethodInfo m = typeInfo.findUniqueMethod("m", 1);
+        LocalVariableCreation lvc = (LocalVariableCreation) m.methodBody().lastStatement();
+        ParameterizedType list = lvc.localVariable().parameterizedType();
+        assertEquals("java.util.List<b.C.A.B<b.C.D>>", list.fullyQualifiedName());
+        ParameterizedType pt = list.parameters().getFirst();
+        assertEquals("13-14:13-19", lvc.source().detailedSources().detail(pt).compact2());
+
+        //noinspection ALL
+        List<DetailedSources.Builder.TypeInfoSource> tis = (List<DetailedSources.Builder.TypeInfoSource>)
+                lvc.source().detailedSources().associatedObject(pt.typeInfo());
+        assertEquals("13-14:13-16", lvc.source().detailedSources().detail(pt.typeInfo()).compact2());
+        assertEquals(1, tis.size());
+        assertEquals("TypeInfoSource[typeInfo=b.C.A, source=@13:14-13:14]", tis.getFirst().toString());
+        // Note that there is no b.C are, the qualification is A.
+    }
+
+
+    @Language("java")
+    public static final String INPUT3 = """
+            package a.b;
+            class A {
+                public record B<Z extends A>(Z t) {}
+                public record BB<Z extends a.b.A>(Z t) {}
+            }
+            """;
+
+    @Test
+    public void test3() {
+        TypeInfo typeInfo = javaInspector.parse(INPUT3, JavaInspectorImpl.DETAILED_SOURCES);
+        {
+            TypeInfo clazz = typeInfo.findSubType("B");
+            TypeParameter tp = clazz.typeParameters().getFirst();
+            assertEquals("Z=TP#0 in B [Type a.b.A]", tp.toStringWithTypeBounds());
+            assertEquals("3-21:3-31", tp.source().compact2());
+            ParameterizedType bound = tp.typeBounds().getFirst();
+            assertEquals("3-31:3-31", tp.source().detailedSources().detail(bound).compact2());
+        }
+        {
+            TypeInfo clazz = typeInfo.findSubType("BB");
+            TypeParameter tp = clazz.typeParameters().getFirst();
+            assertEquals("Z=TP#0 in BB [Type a.b.A]", tp.toStringWithTypeBounds());
+            assertEquals("4-22:4-36", tp.source().compact2());
+            ParameterizedType bound = tp.typeBounds().getFirst();
+            assertEquals("4-32:4-36", tp.source().detailedSources().detail(bound).compact2());
+            assertEquals("4-32:4-34", tp.source().detailedSources().detail(bound.typeInfo().packageName()).compact2());
+        }
     }
 
 }

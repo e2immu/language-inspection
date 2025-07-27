@@ -1,5 +1,6 @@
 package org.e2immu.language.inspection.resource;
 
+import org.e2immu.language.cst.api.element.SourceSet;
 import org.e2immu.language.cst.api.info.TypeInfo;
 import org.e2immu.language.inspection.api.resource.ByteCodeInspector;
 import org.e2immu.language.inspection.api.resource.CompiledTypesManager;
@@ -51,7 +52,7 @@ public class CompiledTypesManagerImpl implements CompiledTypesManager {
     }
 
     @Override
-    public TypeInfo get(String fullyQualifiedName) {
+    public TypeInfo get(String fullyQualifiedName, SourceSet sourceSetOfRequest) {
         typeMapLock.readLock().lock();
         try {
             return typeMap.get(fullyQualifiedName);
@@ -61,7 +62,7 @@ public class CompiledTypesManagerImpl implements CompiledTypesManager {
     }
 
     @Override
-    public TypeInfo getOrLoad(String fullyQualifiedName) {
+    public TypeInfo getOrLoad(String fullyQualifiedName, SourceSet sourceSetOfRequest) {
         typeMapLock.readLock().lock();
         try {
             TypeInfo typeInfo = typeMap.get(fullyQualifiedName);

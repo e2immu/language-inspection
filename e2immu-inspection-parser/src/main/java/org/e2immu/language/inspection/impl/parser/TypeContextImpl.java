@@ -3,6 +3,7 @@ package org.e2immu.language.inspection.impl.parser;
 import org.e2immu.annotation.NotNull;
 import org.e2immu.language.cst.api.element.CompilationUnit;
 import org.e2immu.language.cst.api.element.ImportStatement;
+import org.e2immu.language.cst.api.element.SourceSet;
 import org.e2immu.language.cst.api.info.FieldInfo;
 import org.e2immu.language.cst.api.info.TypeInfo;
 import org.e2immu.language.cst.api.runtime.Runtime;
@@ -62,7 +63,7 @@ public class TypeContextImpl implements TypeContext {
     }
 
     @Override
-    public void addToStaticImportMap(ImportStatement importStatement) {
+    public boolean addToStaticImportMap(CompilationUnit currentCompilationUnit, ImportStatement importStatement) {
         assert importStatement.isStatic();
 
         String fqnWithAsterisk = importStatement.importString();
@@ -73,14 +74,42 @@ public class TypeContextImpl implements TypeContext {
             TypeInfo typeInfo = loadTypeDoNotImport(fqn);
             LOGGER.debug("Add import static wildcard {}", typeInfo);
             addImportStaticWildcard(typeInfo);
-        } else {
-            int dot = fqn.lastIndexOf('.');
-            String typeOrSubTypeName = fqn.substring(0, dot);
-            String member = fqn.substring(dot + 1);
-            TypeInfo typeInfo = loadTypeDoNotImport(typeOrSubTypeName);
-            LOGGER.debug("Add import static, type {}, member {}", typeInfo, member);
-            addImportStatic(typeInfo, member);
+            typeInfo.subTypes().forEach(st -> addImportStatic(typeInfo, st.simpleName()));
+            return traverseInterfaceHierarchy(currentCompilationUnit, typeInfo, new HashSet<>());
         }
+
+        int dot = fqn.lastIndexOf('.');
+        String typeOrSubTypeName = fqn.substring(0, dot);
+        String member = fqn.substring(dot + 1);
+        TypeInfo typeInfo = loadTypeDoNotImport(typeOrSubTypeName);
+        LOGGER.debug("Add import static, type {}, member {}", typeInfo, member);
+        addImportStatic(typeInfo, member);
+        return true;
+    }
+
+    private boolean traverseInterfaceHierarchy(CompilationUnit compilationUnit,
+                                               TypeInfo typeInfo,
+                                               Set<TypeInfo> visited) {
+        // note: we must ignore 'self-references', they are obviously not resolved yet
+        if (visited.add(typeInfo) && !compilationUnit.equals(typeInfo.primaryType().compilationUnit())) {
+            if (typeInfo.hierarchyNotYetDone()) {
+               /*
+                this is the situation where we must delay: we need to know the interfaces of this type, but it is
+                possible that because of parsing order, they have not been parsed yet.
+                */
+                return false;
+            }
+            // see Import4, TestImport4 and variants
+            for (ParameterizedType interfaceType : typeInfo.interfacesImplemented()) {
+                interfaceType.typeInfo().subTypes()
+                        .forEach(st -> addImportStatic(interfaceType.typeInfo(), st.simpleName()));
+                if (!traverseInterfaceHierarchy(compilationUnit, interfaceType.typeInfo(), visited)) {
+                    // recursion
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 
     /*
@@ -118,7 +147,7 @@ public class TypeContextImpl implements TypeContext {
             String packageName = data.compilationUnit.packageName();
             if (!fullyQualified.equals(packageName)) { // would be our own package; they are already there
                 // we either have a type, a subtype, or a package
-                TypeInfo inSourceTypes = data.sourceTypeMap.get(fullyQualified);
+                TypeInfo inSourceTypes = data.sourceTypeMap.get(fullyQualified, sourceSet());
                 if (inSourceTypes == null) {
                     // deal with package
                     for (TypeInfo typeInfo : data.sourceTypeMap.primaryTypesInPackage(fullyQualified)) {
@@ -136,7 +165,7 @@ public class TypeContextImpl implements TypeContext {
                     if (!leaf.contains("$")) {
                         // primary type
                         String simpleName = Resources.stripDotClass(leaf);
-                        SourceFile sourceFile = sourceFiles.get(0);
+                        SourceFile sourceFile = sourceFiles.getFirst();
                         String path = fullyQualified.replace(".", "/") + "/" + simpleName + ".class";
                         TypeInfo newTypeInfo = data.compiledTypesManager.load(sourceFile.withPath(path));
                         if (newTypeInfo != null) {
@@ -149,9 +178,9 @@ public class TypeContextImpl implements TypeContext {
                 });
             }
         } else {
-            TypeInfo inSourceTypes = data.sourceTypeMap.get(importStatement.importString());
+            TypeInfo inSourceTypes = data.sourceTypeMap.get(importStatement.importString(), sourceSet());
             if (inSourceTypes == null) {
-                TypeInfo inCompiledTypes = data.compiledTypesManager.getOrLoad(importStatement.importString());
+                TypeInfo inCompiledTypes = data.compiledTypesManager.getOrLoad(importStatement.importString(), sourceSet());
                 if (inCompiledTypes != null) {
                     addToContext(inCompiledTypes, true);
                 } else {
@@ -165,11 +194,11 @@ public class TypeContextImpl implements TypeContext {
 
 
     private TypeInfo loadTypeDoNotImport(String fqn) {
-        TypeInfo inSourceTypes = data.sourceTypeMap.get(fqn);
+        TypeInfo inSourceTypes = data.sourceTypeMap.get(fqn, sourceSet());
         if (inSourceTypes != null) {
             return inSourceTypes;
         }
-        TypeInfo compiled = data.compiledTypesManager.get(fqn);
+        TypeInfo compiled = data.compiledTypesManager.get(fqn, sourceSet());
         if (compiled != null) {
             if (!compiled.hasBeenInspected()) {
                 data.compiledTypesManager.ensureInspection(compiled);
@@ -199,6 +228,10 @@ public class TypeContextImpl implements TypeContext {
         return data.compilationUnit;
     }
 
+    private SourceSet sourceSet() {
+        return data.compilationUnit.sourceSet();
+    }
+
     /**
      * Look up a type by FQN. Ensure that the type has been inspected.
      *
@@ -206,11 +239,11 @@ public class TypeContextImpl implements TypeContext {
      * @return the type
      */
     private TypeInfo getFullyQualified(String fullyQualifiedName) {
-        TypeInfo sourceType = data.sourceTypeMap.get(fullyQualifiedName);
+        TypeInfo sourceType = data.sourceTypeMap.get(fullyQualifiedName, sourceSet());
         if (sourceType != null) {
             return sourceType;
         }
-        TypeInfo typeInfo = data.compiledTypesManager.getOrLoad(fullyQualifiedName);
+        TypeInfo typeInfo = data.compiledTypesManager.getOrLoad(fullyQualifiedName, sourceSet());
         if (typeInfo != null) {
             data.compiledTypesManager.ensureInspection(typeInfo);
             return typeInfo;
@@ -248,37 +281,41 @@ public class TypeContextImpl implements TypeContext {
                 });
     }
 
+
+    // pretty similar to get(), but we keep track of the qualification
     @Override
-    public NamedType get(String name, boolean complain) {
+    public List<? extends NamedType> getWithQualification(String name, boolean complain) {
         int dot = name.lastIndexOf('.');
         if (dot < 0) {
             NamedType simple = getSimpleName(name);
             if (simple != null) {
-                return simple;
+                return List.of(simple);
             }
         }
         // name can be fully qualified, or semi qualified; but the package can be empty, too.
         // try fully qualified first
         NamedType fullyQualified = getFullyQualified(name);
-        if (fullyQualified != null) return fullyQualified;
+        if (fullyQualified instanceof TypeInfo typeInfo) {
+            return typeInfo.enclosingTypeStream().toList().reversed();
+        }
 
         if (dot >= 0) {
             // it must be semi qualified now... go recursive;
             String prefix = name.substring(0, dot);
-            NamedType prefixType = get(prefix, complain);
-            if (prefixType instanceof TypeInfo typeInfo) {
+            List<? extends NamedType> prefixTypes = getWithQualification(prefix, complain);
+            if (prefixTypes != null) {
                 String tail = name.substring(dot + 1);
-                TypeInfo tailType = subTypeOfRelated(typeInfo, tail);
+                TypeInfo tailType = subTypeOfRelated((TypeInfo) prefixTypes.getLast(), tail);
                 if (tailType != null) {
-                    return tailType;
+                    return Stream.concat(prefixTypes.stream(), Stream.of(tailType)).toList();
                 }
             }
         }
 
-        NamedType javaLang = data.compiledTypesManager.get("java.lang." + name);
-        if (javaLang != null) return javaLang;
+        NamedType javaLang = data.compiledTypesManager.get("java.lang." + name, null);
+        if (javaLang != null) return List.of(javaLang);
         if (data.allowCreationOfStubTypes()) {
-            return getOrCreateStubType(name);
+            return List.of(getOrCreateStubType(name));
         }
         if (complain) {
             throw new UnsupportedOperationException("Cannot find type " + name);
@@ -302,7 +339,6 @@ public class TypeContextImpl implements TypeContext {
         return null;
     }
 
-
     private NamedType getSimpleName(String name) {
         NamedType namedType = map.get(name);
         if (namedType != null) {
@@ -323,8 +359,7 @@ public class TypeContextImpl implements TypeContext {
          */
         TypeInfo parent = data.staticImportMap.getStaticMemberToTypeInfo(name);
         if (parent != null) {
-            TypeInfo subType = parent.recursiveSubTypeStream()
-                    .filter(st -> name.equals(st.simpleName())).findFirst().orElse(null);
+            TypeInfo subType = parent.findSubType(name, false);
             if (subType != null) {
                 map.put(name, subType);
                 return subType;
@@ -392,9 +427,11 @@ public class TypeContextImpl implements TypeContext {
 
     private boolean recursivelyComputeSuperTypesExcludingJLO(TypeInfo type, Set<TypeInfo> superTypes) {
         ParameterizedType parentPt = type.parentClass();
-        if (parentPt == null) {
+        if (type.hierarchyNotYetDone()) {
             return false;
         }
+        if (type.isJavaLangObject()) return true;
+        assert parentPt != null;
         TypeInfo parent = parentPt.typeInfo();
         boolean allDefined = true;
         if (!parent.isJavaLangObject() && superTypes.add(parent)) {

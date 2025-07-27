@@ -24,8 +24,8 @@ repositories {
 }
 
 java {
-    sourceCompatibility = JavaVersion.VERSION_21
-    targetCompatibility = JavaVersion.VERSION_21
+    sourceCompatibility = JavaVersion.VERSION_24
+    targetCompatibility = JavaVersion.VERSION_24
 }
 
 val slf4jVersion = project.findProperty("slf4jVersion") as String
@@ -40,6 +40,9 @@ dependencies {
     implementation("org.e2immu:e2immu-internal-util:$version")
     implementation("org.e2immu:e2immu-internal-graph:$version")
     implementation("org.slf4j:slf4j-api:$slf4jVersion")
+
+    testImplementation("org.e2immu:e2immu-cst-impl:$version")
+    testImplementation("org.e2immu:e2immu-inspection-resource:$version")
 
     testImplementation("org.junit.jupiter:junit-jupiter-api:$jupiterApiVersion")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:$jupiterEngineVersion")
