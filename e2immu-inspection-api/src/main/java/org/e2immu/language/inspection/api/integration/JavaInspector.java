@@ -30,8 +30,7 @@ public interface JavaInspector {
 
     Invalidated INVALIDATED_ALL = t -> InvalidationState.INVALID;
 
-    record ParseOptions(boolean failFast, boolean detailedSources, boolean allowCreationOfStubTypes,
-                        Invalidated invalidated, boolean parallel) {
+    record ParseOptions(boolean failFast, boolean detailedSources, Invalidated invalidated, boolean parallel) {
     }
 
     /*
@@ -50,8 +49,6 @@ public interface JavaInspector {
         ParseOptionsBuilder setParallel(boolean parallel);
 
         ParseOptionsBuilder setDetailedSources(boolean detailedSources);
-
-        ParseOptionsBuilder setAllowCreationOfStubTypes(boolean allowCreationOfStubTypes);
 
         ParseOptionsBuilder setInvalidated(Invalidated invalidated);
 
@@ -95,7 +92,8 @@ public interface JavaInspector {
 
     Set<SourceFile> sourceFiles();
 
-    record ReloadResult(List<InitializationProblem> problems, Set<TypeInfo> sourceHasChanged) {}
+    record ReloadResult(List<InitializationProblem> problems, Set<TypeInfo> sourceHasChanged) {
+    }
 
     ReloadResult reloadSources(InputConfiguration inputConfiguration, Map<String, String> sourcesByTestProtocolURIString) throws IOException;
 }

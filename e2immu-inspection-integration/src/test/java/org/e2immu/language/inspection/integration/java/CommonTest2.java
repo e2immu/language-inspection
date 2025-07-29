@@ -34,7 +34,7 @@ public abstract class CommonTest2 {
     public ParseResult init(Map<String, String> sourcesByFqn) throws IOException {
         Map<String, String> sourcesByURIString = sourcesByURIString(sourcesByFqn);
         InputConfiguration inputConfiguration = makeInputConfiguration(sourcesByURIString);
-        javaInspector = new JavaInspectorImpl(true);
+        javaInspector = new JavaInspectorImpl(true, false);
         javaInspector.initialize(inputConfiguration);
         return javaInspector.parse(sourcesByURIString,
                         new JavaInspectorImpl.ParseOptionsBuilder().setFailFast(true).setDetailedSources(true).build())

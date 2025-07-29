@@ -74,13 +74,15 @@ public class JavaInspectorImpl implements JavaInspector {
     private final SourceTypeMapImpl sourceTypeMap = new SourceTypeMapImpl();
     private CompiledTypesManager compiledTypesManager;
     private final boolean computeFingerPrints;
+    private final boolean allowCreationOfStubTypes;
 
     public JavaInspectorImpl() {
-        this(false);
+        this(false, false);
     }
 
-    public JavaInspectorImpl(boolean computeFingerPrints) {
+    public JavaInspectorImpl(boolean computeFingerPrints, boolean allowCreationOfStubTypes) {
         this.computeFingerPrints = computeFingerPrints;
+        this.allowCreationOfStubTypes = allowCreationOfStubTypes;
     }
 
     /**
@@ -99,13 +101,12 @@ public class JavaInspectorImpl implements JavaInspector {
 
     public static final String TEST_PROTOCOL_PREFIX = TEST_PROTOCOL + ":";
     public static final ParseOptions FAIL_FAST = new ParseOptions(true, false,
-            false, _ -> UNCHANGED, false);
+            _ -> UNCHANGED, false);
     public static final ParseOptions DETAILED_SOURCES = new ParseOptionsBuilder().setDetailedSources(true).build();
 
     public static class ParseOptionsBuilder implements JavaInspector.ParseOptionsBuilder {
         private boolean failFast;
         private boolean detailedSources;
-        private boolean allowCreationOfStubTypes;
         private boolean parallel;
         private Invalidated invalidated;
 
@@ -128,12 +129,6 @@ public class JavaInspectorImpl implements JavaInspector {
         }
 
         @Override
-        public ParseOptionsBuilder setAllowCreationOfStubTypes(boolean allowCreationOfStubTypes) {
-            this.allowCreationOfStubTypes = allowCreationOfStubTypes;
-            return this;
-        }
-
-        @Override
         public ParseOptionsBuilder setParallel(boolean parallel) {
             this.parallel = parallel;
             return this;
@@ -141,7 +136,7 @@ public class JavaInspectorImpl implements JavaInspector {
 
         @Override
         public ParseOptions build() {
-            return new ParseOptions(failFast, detailedSources, allowCreationOfStubTypes, invalidated, parallel);
+            return new ParseOptions(failFast, detailedSources, invalidated, parallel);
         }
     }
 
@@ -155,7 +150,8 @@ public class JavaInspectorImpl implements JavaInspector {
                     initializationProblems);
             CompiledTypesManagerImpl ctm = new CompiledTypesManagerImpl(classPath);
             runtime = new RuntimeWithCompiledTypesManager(ctm);
-            ByteCodeInspector byteCodeInspector = new ByteCodeInspectorImpl(runtime, ctm, computeFingerPrints);
+            ByteCodeInspector byteCodeInspector = new ByteCodeInspectorImpl(runtime, ctm, computeFingerPrints,
+                    allowCreationOfStubTypes);
             ctm.setByteCodeInspector(byteCodeInspector);
             this.compiledTypesManager = ctm;
 
@@ -431,7 +427,8 @@ public class JavaInspectorImpl implements JavaInspector {
         Resolver resolver = new ResolverImpl(runtime.computeMethodOverrides(), new ParseHelperImpl(runtime),
                 parseOptions.parallel());
         TypeContextImpl typeContext = new TypeContextImpl(runtime, compiledTypesManager, sourceTypeMap,
-                parseOptions.allowCreationOfStubTypes());
+                false);
+        //TODO  allowCreationOfStubTypes); code in TypeContextImpl needs improving
         Context rootContext = ContextImpl.create(runtime, summary, resolver, typeContext,
                 parseOptions.detailedSources());
         ScanCompilationUnit scanCompilationUnit = new ScanCompilationUnit(summary, runtime);
@@ -491,7 +488,8 @@ public class JavaInspectorImpl implements JavaInspector {
                 parseOptions.parallel());
 
         TypeContextImpl typeContext = new TypeContextImpl(runtime, compiledTypesManager, sourceTypeMap,
-                parseOptions.allowCreationOfStubTypes());
+                false);
+        // TODO allowCreationOfStubTypes); would be better, but code in type context is not ready
         Context rootContext = ContextImpl.create(runtime, summary, resolver, typeContext,
                 parseOptions.detailedSources());
 

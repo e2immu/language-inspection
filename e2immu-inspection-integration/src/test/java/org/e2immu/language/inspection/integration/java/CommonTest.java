@@ -17,6 +17,15 @@ import static org.e2immu.language.inspection.integration.JavaInspectorImpl.JAR_W
 
 public abstract class CommonTest {
     protected JavaInspector javaInspector;
+    protected final boolean allowCreationOfStubTypes;
+
+    protected CommonTest() {
+        this(false);
+    }
+
+    protected CommonTest(boolean allowCreationOfStubTypes) {
+        this.allowCreationOfStubTypes = allowCreationOfStubTypes;
+    }
 
     @BeforeAll
     public static void beforeAll() {
@@ -25,7 +34,7 @@ public abstract class CommonTest {
 
     @BeforeEach
     public void beforeEach() throws IOException {
-        javaInspector = new JavaInspectorImpl();
+        javaInspector = new JavaInspectorImpl(false, allowCreationOfStubTypes);
         InputConfiguration inputConfiguration = new InputConfigurationImpl.Builder()
                 .addSources(InputConfigurationImpl.MAVEN_TEST)
                 .addRestrictSourceToPackages("org.e2immu.language.inspection.integration.java.importhelper.")

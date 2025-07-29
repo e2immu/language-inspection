@@ -1,9 +1,7 @@
 package org.e2immu.language.inspection.integration.java.other;
 
 import org.e2immu.language.cst.api.element.DetailedSources;
-import org.e2immu.language.cst.api.element.Element;
 import org.e2immu.language.cst.api.element.JavaDoc;
-import org.e2immu.language.cst.api.element.Source;
 import org.e2immu.language.cst.api.info.FieldInfo;
 import org.e2immu.language.cst.api.info.MethodInfo;
 import org.e2immu.language.cst.api.info.TypeInfo;
@@ -303,4 +301,50 @@ public class TestJavaDoc extends CommonTest {
             assertEquals("5-30:5-34", detailedSources.detail(object.name()).compact2());
         }
     }
+
+    @Language("java")
+    private static final String INPUT7 = """
+            package a.b;
+            class X {
+                /**
+                 * @see java.util.LinkedList
+                 * @link #field
+                 */
+                public void method(){
+                    // empty
+                }
+                int field;
+            }
+            """;
+
+    @Test
+    public void test7() {
+        TypeInfo typeInfo = javaInspector.parse(INPUT7, JavaInspectorImpl.DETAILED_SOURCES);
+        assertNull(typeInfo.javaDoc());
+        MethodInfo methodInfo = typeInfo.findUniqueMethod("method", 0);
+        assertEquals(2, methodInfo.javaDoc().tags().size());
+        {
+            JavaDoc.Tag tag = methodInfo.javaDoc().tags().getFirst();
+            assertSame(JavaDoc.TagIdentifier.SEE, tag.identifier());
+            assertEquals("java.util.LinkedList", tag.content());
+            assertEquals("java.util.LinkedList", tag.resolvedReference().toString());
+            assertEquals("""
+                    [TypeReference[typeInfo=void, explicit=true], TypeReference[typeInfo=java.util.LinkedList, explicit=true]]\
+                    """, methodInfo.typesReferenced().toList().toString());
+            DetailedSources detailedSources = tag.source().detailedSources();
+            assertNotNull(detailedSources);
+            assertEquals("4-13:4-32", detailedSources.detail(tag.resolvedReference()).compact2());
+            assertEquals("4-13:4-21", detailedSources.detail(((TypeInfo) tag.resolvedReference()).packageName()).compact2());
+        }
+        {
+            JavaDoc.Tag tag = methodInfo.javaDoc().tags().getLast();
+            assertSame(JavaDoc.TagIdentifier.LINK, tag.identifier());
+            assertEquals("#field", tag.content());
+            assertEquals("a.b.X.field", tag.resolvedReference().toString());
+            DetailedSources detailedSources = tag.source().detailedSources();
+            assertNotNull(detailedSources);
+            assertEquals("5-15:5-19", detailedSources.detail(tag.resolvedReference()).compact2());
+        }
+    }
+
 }
