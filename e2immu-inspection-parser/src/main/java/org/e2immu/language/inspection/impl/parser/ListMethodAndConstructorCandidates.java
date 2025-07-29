@@ -40,13 +40,13 @@ public class ListMethodAndConstructorCandidates {
                                                                    Map<NamedType, ParameterizedType> typeMap) {
         List<TypeInfo> types = extractTypeInfo(concreteType != null ? concreteType : formalType, typeMap);
         // there's only one situation where we can have multiple types; that's multiple type bounds; only the first one can be a class
-        TypeInfo typeInfo = types.get(0);
+        TypeInfo typeInfo = types.getFirst();
 
         return typeInfo.constructors().stream()
                 .filter(methodInspection -> parametersPresented == IGNORE_PARAMETER_NUMBERS ||
-                        compatibleNumberOfParameters(methodInspection, parametersPresented))
+                                            compatibleNumberOfParameters(methodInspection, parametersPresented))
                 .map(mi -> new MethodTypeParameterMapImpl(mi, typeMap))
-                .collect(Collectors.toMap(mt -> mt, mt -> 1));
+                .collect(Collectors.toMap(mt -> mt, _ -> 1));
     }
 
     public void recursivelyResolveOverloadedMethods(ParameterizedType typeOfObject,
@@ -86,7 +86,7 @@ public class ListMethodAndConstructorCandidates {
         // if the method is static, we must be talking about the same type (See Import_10).
         for (TypeInfo typeInfo : staticImportMap.staticAsterisk()) {
             if (!visited.contains(typeInfo) && !visitedStatic.contains(typeInfo)
-                    && (scopeNature != ScopeNature.STATIC || typeInfo == typeOfObject.bestTypeInfo())) {
+                && (scopeNature != ScopeNature.STATIC || typeInfo == typeOfObject.bestTypeInfo())) {
                 visitedStatic.add(typeInfo);
                 resolveOverloadedMethodsSingleType(typeInfo, true, scopeNature, methodName,
                         parametersPresented, decrementWhenNotStatic, typeMap, result, visited, visitedStatic,
@@ -120,8 +120,8 @@ public class ListMethodAndConstructorCandidates {
                 .filter(m -> m.name().equals(methodName))
                 .filter(m -> !staticOnly || m.isStatic())
                 .filter(m -> parametersPresented == IGNORE_PARAMETER_NUMBERS ||
-                        compatibleNumberOfParameters(m, parametersPresented +
-                                (!m.isStatic() && decrementWhenNotStatic ? -1 : 0)))
+                             compatibleNumberOfParameters(m, parametersPresented +
+                                                             (!m.isStatic() && decrementWhenNotStatic ? -1 : 0)))
                 .forEach(m -> {
                     MethodTypeParameterMap mt = new MethodTypeParameterMapImpl(m, typeMap);
                     int score = distance + (m.isStatic() && scopeNature == ScopeNature.INSTANCE ? 100 : 0);
@@ -148,7 +148,7 @@ public class ListMethodAndConstructorCandidates {
             // if I'm in a static subtype, I can only access the static methods of the enclosing type
             boolean onlyStatic = staticOnly || typeInfo.isStatic();
             if (onlyStatic && scopeNature != ScopeNature.INSTANCE ||
-                    !onlyStatic && scopeNature != ScopeNature.STATIC) {
+                !onlyStatic && scopeNature != ScopeNature.STATIC) {
                 ParameterizedType enclosingType = typeInfo.compilationUnitOrEnclosingType().getRight().asParameterizedType();
                 recursivelyResolveOverloadedMethods(enclosingType, methodName, parametersPresented, decrementWhenNotStatic,
                         joinMaps(typeMap, enclosingType), result, visited, visitedStatic,
@@ -161,7 +161,8 @@ public class ListMethodAndConstructorCandidates {
     private Map<NamedType, ParameterizedType> joinMaps(Map<NamedType, ParameterizedType> previous,
                                                        ParameterizedType target) {
         HashMap<NamedType, ParameterizedType> res = new HashMap<>(previous);
-        res.putAll(target.initialTypeParameterMap());
+        Map<NamedType, ParameterizedType> initialTypeParameterMap = target.initialTypeParameterMap();
+        if (initialTypeParameterMap != null) res.putAll(initialTypeParameterMap);
         return res;
     }
 
