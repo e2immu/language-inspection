@@ -37,11 +37,13 @@ public interface Summary {
         }
 
         public ParseException(Context context, Object where, String msg, Throwable throwable) {
-            this(context.enclosingType() == null ? null : context.enclosingType().compilationUnit().uri(), where, msg, throwable);
+            this(context.enclosingType() == null ? null : context.enclosingType().compilationUnit().uri(), where, msg,
+                    throwable);
         }
 
         public ParseException(Context context, String msg) {
-            this(context.enclosingType().compilationUnit().uri(), context.info(), msg, null);
+            this(context.enclosingType() == null ? null : context.enclosingType().compilationUnit().uri(),
+                    context.info(), msg, null);
         }
 
         public ParseException(CompilationUnit compilationUnit, Object where, String msg, Throwable throwable) {
