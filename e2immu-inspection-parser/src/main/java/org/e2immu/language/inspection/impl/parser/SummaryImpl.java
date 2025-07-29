@@ -51,7 +51,7 @@ public class SummaryImpl implements Summary {
 
     @Override
     public synchronized void addParseException(ParseException parseException) {
-        LOGGER.error("Register parser error", parseException);
+        //LOGGER.error("Register parser error", parseException);
         if (failFast) {
             throw new Summary.FailFastException(parseException);
         }

@@ -17,6 +17,7 @@ import java.io.IOException;
 import static org.junit.jupiter.api.Assertions.*;
 
 public class TestCompilationProblem {
+    private static final org.slf4j.Logger LOGGER = LoggerFactory.getLogger(TestCompilationProblem.class);
 
     protected JavaInspector javaInspector;
 
@@ -39,6 +40,7 @@ public class TestCompilationProblem {
             javaInspector.parse(new JavaInspectorImpl.ParseOptionsBuilder().setFailFast(true).setDetailedSources(true).build());
         } catch (Summary.FailFastException ff) {
             Summary.ParseException e = (Summary.ParseException) ff.getCause();
+            LOGGER.error("Parse exception", e.getCause() == null ? e : e.getCause());
             assertTrue(e.uri().toString().endsWith("compilationError/a/Faulty.java"));
             assertTrue(e.getMessage().contains("\nEncountered an error at (or somewhere around) input:4:33"));
             assertInstanceOf(ParseException.class, e.throwable());
