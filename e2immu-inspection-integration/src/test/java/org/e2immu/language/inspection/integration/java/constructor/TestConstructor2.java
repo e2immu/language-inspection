@@ -4,6 +4,7 @@ import org.e2immu.language.cst.api.expression.ConstructorCall;
 import org.e2immu.language.cst.api.info.MethodInfo;
 import org.e2immu.language.cst.api.info.TypeInfo;
 import org.e2immu.language.cst.api.statement.ExplicitConstructorInvocation;
+import org.e2immu.language.cst.api.statement.Statement;
 import org.e2immu.language.inspection.integration.java.CommonTest;
 import org.intellij.lang.annotations.Language;
 import org.junit.jupiter.api.Test;
@@ -157,5 +158,62 @@ public class TestConstructor2 extends CommonTest {
         assertEquals("k", c1.parameters().getFirst().name());
         // and assignments are added in the background
         assertEquals(2, c1.methodBody().statements().size());
+    }
+
+
+
+    @Language("java")
+    private static final String INPUT6 = """
+            package a.b;
+            class X {
+                    static class Data {
+                        long v1;
+                        long v2;
+                        long v3;
+                        long v4;
+                        long v5;
+                    }
+                    private final Data data;
+                	public X(String[] tokens) {
+                		super();
+                		if (tokens.length != 8) {
+                			throw new RuntimeException();
+                		}
+                		if (Long.parseLong(tokens[0]) != 8) {
+                			throw new RuntimeException();
+                		}
+                		this.data = new Data();
+                		int i = 1;
+                		if (tokens[i].length() > 0) {
+                			this.data.v1 = Long.parseLong(tokens[i]);
+                		}
+                		i++;
+                		if (tokens[i].length() > 0) {
+                			this.data.v2 = Double.parseDouble(tokens[i]);
+                		}
+                		i++;
+                		if (tokens[i].length() > 0) {
+                			this.data.v3 = Long.parseLong(tokens[i]);
+                		}
+                		i++;
+                		if (tokens[i].length() > 0) { 
+                			this.data.v4 = Double.parseDouble(tokens[i]);
+                		}
+                		i++;
+                		if (tokens[i].length() > 0) { 
+                			this.data.v5 = Double.parseDouble(tokens[i]);
+                		}
+                		i++;
+                		
+                	}
+            }
+            """;
+
+    @Test
+    public void test6() {
+        TypeInfo X = javaInspector.parse(INPUT6);
+        MethodInfo method = X.findConstructor(1);
+        Statement s0 = method.methodBody().statements().getFirst();
+        assertEquals("00@11:9-42:9", s0.source().toString());
     }
 }
