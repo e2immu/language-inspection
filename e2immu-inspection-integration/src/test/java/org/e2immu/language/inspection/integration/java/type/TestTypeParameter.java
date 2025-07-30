@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class TestTypeParameter extends CommonTest {
 
@@ -147,4 +148,54 @@ public class TestTypeParameter extends CommonTest {
         }
     }
 
+    @Language("java")
+    public static final String INPUT4 = """
+            package a.b;
+            class X {
+                interface SofPolicy { }
+                abstract class ZA { }
+                abstract class ZB { }
+                abstract class ZC { }
+                abstract class ZD { }
+                abstract class ZE { }
+                abstract class ZF { }
+                abstract class ZG<A extends ZA> { }
+            
+                interface ZH<
+                			E extends ZG<A>,
+                			A extends ZA,
+                			R extends ZB,
+                			F extends ZC,
+                			Y extends ZD,
+                			H extends ZE>
+                		extends SofPolicy {
+                }
+                class ZI<E extends ZG<A>, A extends ZA> { }
+                abstract class ZJ<
+                            T extends ZI<E, A>,
+                			E extends ZG<A>,
+                			A extends ZA,
+                			R extends ZB,
+                			F extends ZC,
+                			Y extends ZD,
+                			H extends ZE>
+                	extends ZH<E, A, R, F, Y, H> {
+                }
+            }
+            """;
+
+    @Test
+    public void test4() {
+        TypeInfo typeInfo = javaInspector.parse(INPUT4);
+
+        for (TypeInfo sub : typeInfo.subTypes()) {
+            for (TypeParameter tp : sub.typeParameters()) {
+                assertTrue(tp.typeBoundsAreSet());
+            }
+        }
+        TypeInfo request = typeInfo.findSubType("ZJ");
+        TypeParameter tp1 = request.typeParameters().get(1);
+        assertEquals("E", tp1.simpleName());
+        assertEquals("[Type ZG<A extends a.b.X.ZA>]", tp1.typeBounds().toString());
+    }
 }
