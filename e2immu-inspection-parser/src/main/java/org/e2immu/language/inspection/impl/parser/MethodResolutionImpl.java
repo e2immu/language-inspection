@@ -67,14 +67,14 @@ public class MethodResolutionImpl implements MethodResolution {
 
         if (methodCandidates.isEmpty()) {
             throw new RuntimeException("Have no method candidates remaining in erasure mode for "
-                    + methodName + ", " + numArguments);
+                                       + methodName + ", " + numArguments);
         }
 
         Set<ParameterizedType> types;
         if (scope.expression() != null
-                && !(scope.expression() instanceof ErasedExpression)
-                && scope.expression().parameterizedType().arrays() > 0
-                && "clone".equals(methodName)) {
+            && !(scope.expression() instanceof ErasedExpression)
+            && scope.expression().parameterizedType().arrays() > 0
+            && "clone".equals(methodName)) {
             /* this condition is hyper-specialized (see MethodCall_54; but the alternative would be to return JLO,
                and that causes problems along the way
              */
@@ -139,7 +139,7 @@ public class MethodResolutionImpl implements MethodResolution {
         if (candidate == null) {
             if (complain) {
                 throw new UnsupportedOperationException("No candidate for constructor, "
-                        + unparsedArguments.size() + " args, formal type " + formalType);
+                                                        + unparsedArguments.size() + " args, formal type " + formalType);
             }
             return null;
         }
@@ -222,7 +222,7 @@ public class MethodResolutionImpl implements MethodResolution {
             mapAll.putAll(map);
             map.forEach((namedType, pt) -> {
                 if (namedType instanceof TypeParameter tp &&
-                        tp.getOwner().isLeft() && formalType.typeInfo().equals(tp.getOwner().getLeft())) {
+                    tp.getOwner().isLeft() && formalType.typeInfo().equals(tp.getOwner().getLeft())) {
                     ParameterizedType original = formalType.parameters().get(tp.getIndex());
                     if (original.typeParameter() != null) {
                         mapAll.put(original.typeParameter(), pt);
@@ -338,7 +338,7 @@ public class MethodResolutionImpl implements MethodResolution {
                 scope.nature());
         if (methodCandidates.isEmpty()) {
             throw new RuntimeException("No candidates at all for method name " + methodName + ", "
-                    + numArguments + " args in type " + scope.type().detailedString());
+                                       + numArguments + " args in type " + scope.type().detailedString());
         }
         return methodCandidates;
     }
@@ -460,13 +460,13 @@ public class MethodResolutionImpl implements MethodResolution {
             int score = computeScoreForReevaluationOfErasedParameterExpressions(context, index, unparsedArguments,
                     evaluatedExpressions, method, erased, outsideContext, extra);
             scores.put(method, score);
-            if (score < bestScore) bestScore = score;
+            if (score >= 0 && score < bestScore) bestScore = score;
         }
         LOGGER.debug("Best score is {}", bestScore);
         if (bestScore != Integer.MAX_VALUE) {
             int finalBestScore = bestScore;
             scores.forEach((method, score) -> {
-                if (score > finalBestScore) methodCandidates.remove(method);
+                if (score < 0 || score > finalBestScore) methodCandidates.remove(method);
             });
             LOGGER.debug("Remaining: {}", methodCandidates.size());
         }
@@ -531,7 +531,7 @@ public class MethodResolutionImpl implements MethodResolution {
             if (formalParameters.size() - 1 == i && formalParameter.isVarArgs()) {
                 formalParameterType = formalParameter.parameterizedType().copyWithOneFewerArrays();
                 if (newParameterExpressions.size() > formalParameters.size()
-                        || formalParameterType.arrays() == expression.parameterizedType().arrays()) {
+                    || formalParameterType.arrays() == expression.parameterizedType().arrays()) {
                     concreteParameterType = expression.parameterizedType();
                 } else {
                     concreteParameterType = expression.parameterizedType().copyWithOneFewerArrays();
@@ -872,7 +872,7 @@ public class MethodResolutionImpl implements MethodResolution {
                             }
 
                             if (compatible >= 0 && (bestCompatible == Integer.MIN_VALUE
-                                    || (compatible + penaltyForReturnType) < bestCompatible)) {
+                                                    || (compatible + penaltyForReturnType) < bestCompatible)) {
                                 bestCompatible = compatible + penaltyForReturnType;
                                 bestAcceptedType = actualType;
                             }
@@ -927,8 +927,8 @@ public class MethodResolutionImpl implements MethodResolution {
 
     private boolean isUnboundMethodTypeParameter(ParameterizedType actualType) {
         return actualType.typeParameter() != null
-                && actualType.typeParameter().isMethodTypeParameter()
-                && actualType.typeParameter().typeBounds().isEmpty();
+               && actualType.typeParameter().isMethodTypeParameter()
+               && actualType.typeParameter().typeBounds().isEmpty();
     }
 
     private FilterResult filterMethodCandidatesInErasureMode(Context context,
@@ -1457,7 +1457,7 @@ public class MethodResolutionImpl implements MethodResolution {
         }
         if (methodCandidates.isEmpty()) {
             throw new UnsupportedOperationException("Cannot find a candidate for " +
-                    (constructor ? "constructor" : methodName) + " at " + source);
+                                                    (constructor ? "constructor" : methodName) + " at " + source);
         }
         Set<Count> erasures = new HashSet<>();
         for (MethodTypeParameterMap mt : methodCandidates.keySet()) {
