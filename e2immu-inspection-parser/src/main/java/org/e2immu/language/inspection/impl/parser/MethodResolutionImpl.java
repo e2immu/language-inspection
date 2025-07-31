@@ -134,7 +134,7 @@ public class MethodResolutionImpl implements MethodResolution {
         TypeParameterMap typeParameterMap = new TypeParameterMap(typeMap);
         Map<MethodTypeParameterMap, Integer> candidates = list.resolveConstructor(formalType, expectedConcreteType,
                 unparsedArguments.size(), typeMap);
-        Candidate candidate = chooseCandidateAndEvaluateCall(context, index, "<init>",
+        Candidate candidate = chooseCandidateAndEvaluateCall(context, index, MethodInfo.CONSTRUCTOR_NAME,
                 methodTypeArguments, candidates, unparsedArguments, formalType, typeParameterMap, complain);
         if (candidate == null) {
             if (complain) {

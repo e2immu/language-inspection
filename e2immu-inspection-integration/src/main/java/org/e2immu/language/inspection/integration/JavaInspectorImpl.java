@@ -5,9 +5,7 @@ import org.e2immu.language.cst.api.element.CompilationUnit;
 import org.e2immu.language.cst.api.element.FingerPrint;
 import org.e2immu.language.cst.api.element.ModuleInfo;
 import org.e2immu.language.cst.api.element.SourceSet;
-import org.e2immu.language.cst.api.info.ImportComputer;
-import org.e2immu.language.cst.api.info.InfoMap;
-import org.e2immu.language.cst.api.info.TypeInfo;
+import org.e2immu.language.cst.api.info.*;
 import org.e2immu.language.cst.api.output.Formatter;
 import org.e2immu.language.cst.api.output.OutputBuilder;
 import org.e2immu.language.cst.api.output.Qualification;
@@ -444,6 +442,7 @@ public class JavaInspectorImpl implements JavaInspector {
         ParseCompilationUnit parseCompilationUnit = new ParseCompilationUnit(rootContext);
         List<Either<TypeInfo, ParseTypeDeclaration.DelayedParsingInformation>> types
                 = parseCompilationUnit.parse(cu, parser.get().CompilationUnit());
+        computeSingleAbstractMethods(sr.sourceTypes().values(), parseOptions.parallel());
         rootContext.resolver().resolve(true);
         return types.stream().map(Either::getLeft).toList();
     }
@@ -586,7 +585,6 @@ public class JavaInspectorImpl implements JavaInspector {
                     if (either.isLeft()) {
                         TypeInfo ti = either.getLeft();
                         summary.addType(ti);
-                        if (infoMap != null) infoMap.put(ti);
                     } else {
                         if (delayedCU == null) delayedCU = new DelayedCU(sfCu, new LinkedList<>());
                         delayedCU.delayed.add(either.getRight());
@@ -626,7 +624,6 @@ public class JavaInspectorImpl implements JavaInspector {
                     } else {
                         TypeInfo ti = again.getLeft();
                         summary.addType(ti);
-                        if (infoMap != null) infoMap.put(ti);
                         successful.add(ti);
                     }
                 }
@@ -642,6 +639,8 @@ public class JavaInspectorImpl implements JavaInspector {
             delayed = newDelayed;
         }
 
+        computeSingleAbstractMethods(summary.types(), parseOptions.parallel());
+
         resolveModuleInfo(summary);
 
         if (infoMap != null) {
@@ -654,6 +653,21 @@ public class JavaInspectorImpl implements JavaInspector {
 
         rootContext.resolver().resolve(true);
         return summary;
+    }
+
+    private void computeSingleAbstractMethods(Collection<TypeInfo> types, boolean parallel) {
+        AtomicInteger count = new AtomicInteger();
+        ComputeMethodOverrides cmo = runtime.computeMethodOverrides();
+        int todo3c = types.size();
+        Stream<TypeInfo> typeInfoStream = parallel ? types.parallelStream() : types.stream();
+        typeInfoStream.flatMap(TypeInfo::recursiveSubTypeStream).forEach(ti -> {
+            if (!ti.hasBeenInspected()) {
+                MethodInfo sam = cmo.computeFunctionalInterface(ti);
+                ti.builder().setSingleAbstractMethod(sam);
+            } // else: package-info
+            TIMED_LOGGER.info("Phase 3c, setting single abstract method, done {} of {}", count, todo3c);
+            count.incrementAndGet();
+        });
     }
 
     private final Object sourceFilesLock = new Object();
