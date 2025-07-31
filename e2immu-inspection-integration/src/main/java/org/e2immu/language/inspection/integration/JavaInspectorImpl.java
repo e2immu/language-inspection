@@ -12,7 +12,6 @@ import org.e2immu.language.cst.api.output.Formatter;
 import org.e2immu.language.cst.api.output.OutputBuilder;
 import org.e2immu.language.cst.api.output.Qualification;
 import org.e2immu.language.cst.api.runtime.Runtime;
-import org.e2immu.language.cst.impl.info.InfoMapImpl;
 import org.e2immu.language.cst.print.FormattingOptionsImpl;
 import org.e2immu.language.cst.print.formatter2.Formatter2Impl;
 import org.e2immu.language.inspection.api.integration.JavaInspector;
@@ -569,7 +568,7 @@ public class JavaInspectorImpl implements JavaInspector {
 
         // PHASE 3: actual parsing of types, methods, fields
         count.set(0);
-        InfoMap infoMap = new InfoMapImpl(typesToRewire.keySet());
+        InfoMap infoMap = invalidated == null ? null : runtime.newInfoMap(typesToRewire.keySet());
         Stream<SourceFileCompilationUnit> stream3;
         if (parseOptions.parallel()) {
             stream3 = list.parallelStream();
@@ -587,7 +586,7 @@ public class JavaInspectorImpl implements JavaInspector {
                     if (either.isLeft()) {
                         TypeInfo ti = either.getLeft();
                         summary.addType(ti);
-                        infoMap.put(ti);
+                        if (infoMap != null) infoMap.put(ti);
                     } else {
                         if (delayedCU == null) delayedCU = new DelayedCU(sfCu, new LinkedList<>());
                         delayedCU.delayed.add(either.getRight());
@@ -627,7 +626,7 @@ public class JavaInspectorImpl implements JavaInspector {
                     } else {
                         TypeInfo ti = again.getLeft();
                         summary.addType(ti);
-                        infoMap.put(ti);
+                        if (infoMap != null) infoMap.put(ti);
                         successful.add(ti);
                     }
                 }
@@ -645,10 +644,10 @@ public class JavaInspectorImpl implements JavaInspector {
 
         resolveModuleInfo(summary);
 
-        for (TypeInfo typeInfo : typesToRewire.keySet()) {
-            TypeInfo rewired = infoMap.typeInfoRecurseAllPhases(typeInfo);
-            sourceTypeMap.put(rewired);
-            summary.addType(rewired);
+        if (infoMap != null) {
+            Set<TypeInfo> rewired = infoMap.rewireAll();
+            rewired.forEach(sourceTypeMap::put);
+            rewired.forEach(summary::addType);
         }
 
         // PHASE 3: resolving: content of methods, field initializers
