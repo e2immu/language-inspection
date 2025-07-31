@@ -200,18 +200,21 @@ public class JavaInspectorImpl implements JavaInspector {
                 List<TypeInfo> current = this.sourceFiles.get(sf);
                 if (current != null) {
                     removed.remove(sf);
-                    FingerPrint currentFingerprint = current.getFirst().compilationUnit().fingerPrintOrNull();
-                    String sourceCode = loadSource(sf, sourcesByTestProtocolURIString,
-                            sf.sourceSet().sourceEncoding(),
-                            e -> initializationProblems.add(new InitializationProblem("parsing", e)));
-                    FingerPrint newFingerprint = sourceCode == null ? MD5FingerPrint.NO_FINGERPRINT : MD5FingerPrint.compute(sourceCode);
-                    assert currentFingerprint != null && currentFingerprint != MD5FingerPrint.NO_FINGERPRINT;
-                    if (!currentFingerprint.equals(newFingerprint)) {
-                        // CHANGE
-                        this.sourceFiles.put(sf, List.of());
-                        changed.addAll(current);
-                        sourceFilesChanged.incrementAndGet();
-                    } // else: UNCHANGED
+                    if (!current.isEmpty()) {
+                        TypeInfo typeInfo = current.getFirst();
+                        FingerPrint currentFingerprint = typeInfo.compilationUnit().fingerPrintOrNull();
+                        String sourceCode = loadSource(sf, sourcesByTestProtocolURIString,
+                                sf.sourceSet().sourceEncoding(),
+                                e -> initializationProblems.add(new InitializationProblem("parsing", e)));
+                        FingerPrint newFingerprint = sourceCode == null ? MD5FingerPrint.NO_FINGERPRINT : MD5FingerPrint.compute(sourceCode);
+                        assert currentFingerprint != null && currentFingerprint != MD5FingerPrint.NO_FINGERPRINT;
+                        if (!currentFingerprint.equals(newFingerprint)) {
+                            // CHANGE
+                            this.sourceFiles.put(sf, List.of());
+                            changed.addAll(current);
+                            sourceFilesChanged.incrementAndGet();
+                        } // else: UNCHANGED
+                    }
                 } else {
                     // NEW
                     this.sourceFiles.put(sf, List.of());
