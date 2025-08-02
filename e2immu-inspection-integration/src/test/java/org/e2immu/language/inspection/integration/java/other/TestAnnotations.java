@@ -9,6 +9,7 @@ import org.e2immu.language.cst.api.info.MethodInfo;
 import org.e2immu.language.cst.api.info.TypeInfo;
 import org.e2immu.language.cst.api.statement.Statement;
 import org.e2immu.language.cst.api.statement.TryStatement;
+import org.e2immu.language.inspection.integration.JavaInspectorImpl;
 import org.e2immu.language.inspection.integration.java.CommonTest;
 import org.intellij.lang.annotations.Language;
 import org.junit.jupiter.api.Test;
@@ -360,6 +361,57 @@ public class TestAnnotations extends CommonTest {
             String valueForTarget = target.keyValuePairs().stream().filter(kv -> kv.key().equals("value"))
                     .map(kv -> kv.value().toString()).findFirst().orElseThrow();
             assertEquals("{ElementType.TYPE,ElementType.FIELD,ElementType.METHOD}", valueForTarget);
+        }
+    }
+
+
+    @Language("java")
+    private static final String INPUT11 = """
+            package a.b;
+            
+            import static java.lang.annotation.RetentionPolicy.RUNTIME;
+            import static java.lang.annotation.ElementType.*;
+            
+            import java.lang.annotation.ElementType;
+            import java.lang.annotation.Retention;
+            import java.lang.annotation.RetentionPolicy;
+            import java.lang.annotation.Target;
+            
+            public @interface Resource {
+                @Target({TYPE, FIELD, METHOD})
+                int value();
+
+                @Retention(RUNTIME)
+                public char character();
+            }
+            """;
+
+    @Test
+    public void test11() {
+        TypeInfo resource = javaInspector.parse(INPUT11, JavaInspectorImpl.DETAILED_SOURCES);
+        {
+            MethodInfo value = resource.findUniqueMethod("value", 0);
+            assertEquals("12-5:13-16", value.source().compact2());
+            assertEquals("13-9:13-13", value.source().detailedSources().detail(value.name()).compact2());
+
+            AnnotationExpression target = value.annotations().stream()
+                    .filter(ae -> "Target".equals(ae.typeInfo().simpleName()))
+                    .findFirst().orElseThrow();
+            String valueForTarget = target.keyValuePairs().stream().filter(kv -> kv.key().equals("value"))
+                    .map(kv -> kv.value().toString()).findFirst().orElseThrow();
+            assertEquals("{ElementType.TYPE,ElementType.FIELD,ElementType.METHOD}", valueForTarget);
+        }
+        {
+            MethodInfo character = resource.findUniqueMethod("character", 0);
+            assertEquals("15-5:16-28", character.source().compact2());
+            assertEquals("16-17:16-25", character.source().detailedSources().detail(character.name()).compact2());
+
+            AnnotationExpression retention = character.annotations().stream()
+                    .filter(ae -> "Retention".equals(ae.typeInfo().simpleName()))
+                    .findFirst().orElseThrow();
+            String valueForRetention = retention.keyValuePairs().stream().filter(kv -> kv.key().equals("value"))
+                    .map(kv -> kv.value().toString()).findFirst().orElseThrow();
+            assertEquals("RetentionPolicy.RUNTIME", valueForRetention);
         }
     }
 }
