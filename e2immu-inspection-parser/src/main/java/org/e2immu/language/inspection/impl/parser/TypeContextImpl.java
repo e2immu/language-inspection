@@ -410,7 +410,7 @@ public class TypeContextImpl implements TypeContext {
     @Override
     public List<TypeInfo> typesInSamePackage(String packageName) {
         List<TypeInfo> list1 = data.sourceTypeMap().primaryTypesInPackage(packageName);
-        Collection<TypeInfo> list2 = data.compiledTypesManager.primaryTypesInPackage(packageName);
+        Collection<TypeInfo> list2 = data.compiledTypesManager.primaryTypesInPackageEnsureLoaded(packageName);
         return Stream.concat(list1.stream(), list2.stream()).toList();
     }
 

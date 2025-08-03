@@ -43,7 +43,7 @@ public abstract class CommonTest2 {
 
     public static InputConfiguration makeInputConfiguration(Map<String, String> sourcesByURIString) {
         InputConfiguration.Builder inputConfigurationBuilder = new InputConfigurationImpl.Builder()
-                .addClassPath(InputConfigurationImpl.GRADLE_DEFAULT)
+                .addClassPath(InputConfigurationImpl.DEFAULT_MODULES)
                 // NOTE: no access to ToolChain here; this is rather exceptional
                 .addClassPath(JAR_WITH_PATH_PREFIX + "org/junit/jupiter/api")
                 .addClassPath(JAR_WITH_PATH_PREFIX + "org/apiguardian/api")

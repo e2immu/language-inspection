@@ -23,6 +23,8 @@ public class CompiledTypesManagerImpl implements CompiledTypesManager {
     private final Map<String, TypeInfo> typeMap = new HashMap<>();
     private final ReentrantReadWriteLock typeMapLock = new ReentrantReadWriteLock();
     private final Trie<TypeInfo> typeTrie = new Trie<>();
+    private final Set<String> allTypesInThisPackageHaveBeenLoaded = new HashSet<>();
+    private final ReentrantReadWriteLock allTypesLock = new ReentrantReadWriteLock();
 
     public CompiledTypesManagerImpl(Resources classPath) {
         this.classPath = classPath;
@@ -103,8 +105,13 @@ public class CompiledTypesManagerImpl implements CompiledTypesManager {
     @Override
     public void preload(String thePackage) {
         LOGGER.info("Start pre-loading {}", thePackage);
+        int inspected = loadAllTypesInPackage(thePackage);
+        LOGGER.info("... inspected {} paths", inspected);
+    }
+
+    private int loadAllTypesInPackage(String thePackage) {
         AtomicInteger inspected = new AtomicInteger();
-        classPath.expandLeaves(thePackage, ".class", (expansion, list) -> {
+        classPath.expandLeaves(thePackage, ".class", (expansion, _) -> {
             // we'll loop over the primary types only
             if (!expansion[expansion.length - 1].contains("$")) {
                 String fqn = fqnOfClassFile(thePackage, expansion);
@@ -127,7 +134,7 @@ public class CompiledTypesManagerImpl implements CompiledTypesManager {
                 }
             }
         });
-        LOGGER.info("... inspected {} paths", inspected);
+        return inspected.get();
     }
 
     private String fqnOfClassFile(String prefix, String[] suffixes) {
@@ -149,17 +156,41 @@ public class CompiledTypesManagerImpl implements CompiledTypesManager {
     }
 
     @Override
-    public Collection<TypeInfo> primaryTypesInPackage(String packageName) {
+    public Collection<TypeInfo> primaryTypesInPackageEnsureLoaded(String packageName) {
+        ensureAllTypesInThisPackageHaveBeenLoaded(packageName);
         String[] packages = packageName.split("\\.");
         List<TypeInfo> result = new ArrayList<>();
         typeMapLock.readLock().lock();
         try {
-            typeTrie.visit(packages, (array, list) -> list.stream()
+            typeTrie.visit(packages, (_, list) -> list.stream()
                     .filter(ti -> ti.isPrimaryType() && packageName.equals(ti.packageName()))
                     .forEach(result::add));
             return List.copyOf(result);
         } finally {
             typeMapLock.readLock().unlock();
+        }
+    }
+
+    private void ensureAllTypesInThisPackageHaveBeenLoaded(String packageName) {
+        allTypesLock.readLock().lock();
+        try {
+            if (!allTypesInThisPackageHaveBeenLoaded.contains(packageName)) {
+                allTypesLock.readLock().unlock();
+                allTypesLock.writeLock().lock();
+                try {
+                    try {
+                        if (allTypesInThisPackageHaveBeenLoaded.add(packageName)) {
+                            loadAllTypesInPackage(packageName);
+                        }
+                    } finally {
+                        allTypesLock.readLock().lock();
+                    }
+                } finally {
+                    allTypesLock.writeLock().unlock();
+                }
+            }
+        } finally {
+            allTypesLock.readLock().unlock();
         }
     }
 }

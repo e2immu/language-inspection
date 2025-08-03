@@ -21,7 +21,6 @@ public record InputConfigurationImpl(Path workingDirectory,
 
     public static final String MAVEN_MAIN = "src/main/java";
     public static final String MAVEN_TEST = "src/test/java";
-    public static final String GRADLE_BUIlD = "build/classes/java/main";
 
     public static final String[] DEFAULT_MODULES = {
             "jmod:java.base",
@@ -32,9 +31,6 @@ public record InputConfigurationImpl(Path workingDirectory,
             "jmod:java.sql",
             "jmod:java.xml",
     };
-
-    public static final String[] GRADLE_DEFAULT = Stream.concat(Stream.of(GRADLE_BUIlD),
-            Arrays.stream(DEFAULT_MODULES)).toArray(String[]::new);
 
     static final String NL_TAB = "\n    ";
 

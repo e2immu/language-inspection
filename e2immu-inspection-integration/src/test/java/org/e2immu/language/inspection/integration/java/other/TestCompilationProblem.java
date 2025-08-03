@@ -32,7 +32,7 @@ public class TestCompilationProblem {
         InputConfiguration inputConfiguration = new InputConfigurationImpl.Builder()
                 .addSources("src/test/resources/compilationError")
                 .addRestrictSourceToPackages("a.")
-                .addClassPath(InputConfigurationImpl.GRADLE_DEFAULT)
+                .addClassPath(InputConfigurationImpl.DEFAULT_MODULES)
                 .addClassPath(JavaInspectorImpl.E2IMMU_SUPPORT)
                 .build();
         javaInspector.initialize(inputConfiguration);
@@ -55,7 +55,7 @@ public class TestCompilationProblem {
         InputConfiguration inputConfiguration = new InputConfigurationImpl.Builder()
                 .addSources("src/test/resources/compilationError")
                 .addRestrictSourceToPackages("a.")
-                .addClassPath(InputConfigurationImpl.GRADLE_DEFAULT)
+                .addClassPath(InputConfigurationImpl.DEFAULT_MODULES)
                 .addClassPath(JavaInspectorImpl.E2IMMU_SUPPORT)
                 .build();
         javaInspector.initialize(inputConfiguration);

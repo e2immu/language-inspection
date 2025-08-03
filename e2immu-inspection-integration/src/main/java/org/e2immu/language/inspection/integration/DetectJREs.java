@@ -114,8 +114,9 @@ public class DetectJREs {
 
                 Process process = new ProcessBuilder().command("/usr/libexec/java_home", "-X").start();
                 Collect collect = new Collect(process.getInputStream());
-                ExecutorService executor = Executors.newFixedThreadPool(1);
-                executor.submit(collect);
+                try (ExecutorService executor = Executors.newFixedThreadPool(1)) {
+                    executor.submit(collect);
+                }
                 int exitCode = process.waitFor();
                 if (exitCode != 0) throw new UnsupportedOperationException();
                 xmlString = collect.stringBuilder.toString();

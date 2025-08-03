@@ -52,7 +52,7 @@ public interface CompiledTypesManager {
         throw new UnsupportedOperationException();
     }
 
-    default Collection<TypeInfo> primaryTypesInPackage(String packageName) { throw new UnsupportedOperationException(); }
+    default Collection<TypeInfo> primaryTypesInPackageEnsureLoaded(String packageName) { throw new UnsupportedOperationException(); }
 
     default boolean acceptFQN(String fqn) {
         return !fqn.startsWith("jdk.internal.");

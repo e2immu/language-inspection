@@ -252,6 +252,19 @@ public class ResourcesImpl implements Resources {
         return null;
     }
 
+    static String replaceSlashDollar(String in) {
+        StringBuilder sb = new StringBuilder(in.length());
+        char[] charArray = in.toCharArray();
+        for (char c : charArray) {
+            if ((c == '$' || c == '/') && !sb.isEmpty() && sb.charAt(sb.length() - 1) != '.') {
+                sb.append('.');
+            } else {
+                sb.append(c);
+            }
+        }
+        return sb.toString();
+    }
+
     // could have been static, but allows for overrides
     @Override
     public String pathToFqn(String path) {
@@ -270,7 +283,7 @@ public class ResourcesImpl implements Resources {
             String random = Integer.toString(Math.abs(stripDotClass.hashCode()));
             return stripDotClass.substring(0, anon).replaceAll("[/$]", ".") + "." + random;
         }
-        return stripDotClass.replaceAll("[/$]", ".");
+        return replaceSlashDollar(stripDotClass);
     }
 
     @Override

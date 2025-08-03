@@ -198,4 +198,33 @@ public class TestTypeParameter extends CommonTest {
         assertEquals("E", tp1.simpleName());
         assertEquals("[Type ZG<A extends a.b.X.ZA>]", tp1.typeBounds().toString());
     }
+
+
+    @Language("java")
+    public static final String INPUT6 = """
+            package a.b;
+            import org.springframework.lang.Nullable;
+            import java.util.AbstractMap;
+            import java.util.concurrent.ConcurrentMap;
+            import java.util.concurrent.locks.ReentrantLock;
+            class X {
+                static class ConcurrentReferenceHashMap<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V> {
+                    protected final class Segment extends ReentrantLock {
+                        public <T> @Nullable T doTask(final int hash, final @Nullable Object key, final Task<T> task) {
+                            
+                        }
+                    }
+                }
+                    private abstract class Task<T> {
+                        // not really relevant for this test
+                    }
+                
+            }
+            """;
+
+    @Test
+    public void test6() {
+        TypeInfo typeInfo = javaInspector.parse(INPUT6);
+
+    }
 }

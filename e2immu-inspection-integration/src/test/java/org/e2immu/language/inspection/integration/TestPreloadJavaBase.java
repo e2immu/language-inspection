@@ -22,7 +22,7 @@ public class TestPreloadJavaBase {
     @Test
     public void testPreload() throws IOException {
         InputConfiguration inputConfiguration = new InputConfigurationImpl.Builder()
-                .addClassPath(InputConfigurationImpl.GRADLE_DEFAULT)
+                .addClassPath(InputConfigurationImpl.DEFAULT_MODULES)
                 .build();
         JavaInspector javaInspector = new JavaInspectorImpl();
         javaInspector.initialize(inputConfiguration);
@@ -76,7 +76,7 @@ public class TestPreloadJavaBase {
     @Test
     public void testPreloadJavaUtilStream() throws IOException {
         InputConfiguration inputConfiguration = new InputConfigurationImpl.Builder()
-                .addClassPath(InputConfigurationImpl.GRADLE_DEFAULT)
+                .addClassPath(InputConfigurationImpl.DEFAULT_MODULES)
                 .build();
         JavaInspector javaInspector = new JavaInspectorImpl();
         javaInspector.initialize(inputConfiguration);
@@ -100,7 +100,7 @@ public class TestPreloadJavaBase {
     @Test
     public void testPreloadJavaNet() throws IOException {
         InputConfiguration inputConfiguration = new InputConfigurationImpl.Builder()
-                .addClassPath(InputConfigurationImpl.GRADLE_DEFAULT)
+                .addClassPath(InputConfigurationImpl.DEFAULT_MODULES)
                 .build();
         JavaInspector javaInspector = new JavaInspectorImpl();
         javaInspector.initialize(inputConfiguration);

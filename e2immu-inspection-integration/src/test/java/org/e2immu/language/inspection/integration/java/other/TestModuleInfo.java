@@ -60,7 +60,7 @@ public class TestModuleInfo {
         InputConfiguration inputConfiguration = new InputConfigurationImpl.Builder()
                 .addSources(InputConfigurationImpl.MAVEN_MAIN)
                 .addRestrictSourceToPackages(".")
-                .addClassPath(InputConfigurationImpl.GRADLE_DEFAULT)
+                .addClassPath(InputConfigurationImpl.DEFAULT_MODULES)
                 .build();
         JavaInspectorImpl javaInspector = new JavaInspectorImpl();
         javaInspector.initialize(inputConfiguration);
@@ -114,7 +114,7 @@ public class TestModuleInfo {
         InputConfiguration inputConfiguration = new InputConfigurationImpl.Builder()
                 .addSources(InputConfigurationImpl.MAVEN_MAIN)
                 .addRestrictSourceToPackages(".")
-                .addClassPath(InputConfigurationImpl.GRADLE_DEFAULT)
+                .addClassPath(InputConfigurationImpl.DEFAULT_MODULES)
                 .build();
         JavaInspector javaInspector = new JavaInspectorImpl();
         javaInspector.initialize(inputConfiguration);

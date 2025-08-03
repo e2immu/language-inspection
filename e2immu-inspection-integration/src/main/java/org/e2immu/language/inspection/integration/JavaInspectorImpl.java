@@ -362,7 +362,7 @@ public class JavaInspectorImpl implements JavaInspector {
 
     private File toAbsoluteFile(Path workingDirectory, String path) {
         File file = new File(path);
-        if (file.exists() && file.isAbsolute()) return file;
+        if (file.isAbsolute()) return file;
         return new File(workingDirectory.toFile(), path);
     }
 
@@ -377,13 +377,18 @@ public class JavaInspectorImpl implements JavaInspector {
 
     private FingerPrint makeFingerPrint(URL jarUrl) throws URISyntaxException, IOException {
         if (computeFingerPrints) {
-            Matcher m = JAR_URL_PATTERN.matcher(jarUrl.toString());
-            if (m.matches()) {
-                Path path = Path.of(new URI(m.group(1)));
-                byte[] bytes = Files.readAllBytes(path);
-                return MD5FingerPrint.compute(bytes);
-            } else {
-                throw new UnsupportedOperationException("? " + jarUrl);
+            try {
+                Matcher m = JAR_URL_PATTERN.matcher(jarUrl.toString());
+                if (m.matches()) {
+                    Path path = Path.of(new URI(m.group(1)));
+                    byte[] bytes = Files.readAllBytes(path);
+                    return MD5FingerPrint.compute(bytes);
+                } else {
+                    throw new UnsupportedOperationException("? " + jarUrl);
+                }
+            } catch (RuntimeException re) {
+                LOGGER.error("Caught exception trying to compute fingerprint of {}", jarUrl);
+                throw re;
             }
         }
         return MD5FingerPrint.NO_FINGERPRINT;
@@ -769,7 +774,7 @@ public class JavaInspectorImpl implements JavaInspector {
         return runtime.newImportComputer(minStar, packageName -> {
             List<TypeInfo> st = sourceTypeMap.primaryTypesInPackage(packageName);
             if (!st.isEmpty()) return st;
-            return compiledTypesManager.primaryTypesInPackage(packageName);
+            return compiledTypesManager.primaryTypesInPackageEnsureLoaded(packageName);
         });
     }
 

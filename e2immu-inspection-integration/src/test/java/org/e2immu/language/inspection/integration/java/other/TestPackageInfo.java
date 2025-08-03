@@ -19,7 +19,7 @@ public class TestPackageInfo {
         InputConfiguration inputConfiguration = new InputConfigurationImpl.Builder()
                 .addSources(InputConfigurationImpl.MAVEN_TEST)
                 .addRestrictSourceToPackages("org.e2immu.language.inspection.integration.java.importhelper.")
-                .addClassPath(InputConfigurationImpl.GRADLE_DEFAULT)
+                .addClassPath(InputConfigurationImpl.DEFAULT_MODULES)
                 .addClassPath(ToolChain.CLASSPATH_JUNIT)
                 .addClassPath(ToolChain.CLASSPATH_INTELLIJ_LANG)
                 .build();
