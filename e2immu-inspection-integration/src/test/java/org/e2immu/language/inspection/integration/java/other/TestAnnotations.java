@@ -380,7 +380,7 @@ public class TestAnnotations extends CommonTest {
             public @interface Resource {
                 @Target({TYPE, FIELD, METHOD})
                 int value();
-
+            
                 @Retention(RUNTIME)
                 public char character();
             }
@@ -413,5 +413,45 @@ public class TestAnnotations extends CommonTest {
                     .map(kv -> kv.value().toString()).findFirst().orElseThrow();
             assertEquals("RetentionPolicy.RUNTIME", valueForRetention);
         }
+    }
+
+
+    @Language("java")
+    private static final String INPUT12 = """
+            package a.b;
+            import org.springframework.core.annotation.AliasFor;
+            import java.lang.annotation.ElementType;
+            import java.lang.annotation.Retention;
+            import java.lang.annotation.RetentionPolicy;
+            import java.lang.annotation.Target;
+            class X {
+            
+                @Target(ElementType.ANNOTATION_TYPE)
+                @Retention(RetentionPolicy.RUNTIME)
+                public @interface NestedAnnotation {
+                	String name() default "";
+                }
+            
+                @Retention(RetentionPolicy.RUNTIME)
+                public @interface EnclosingAnnotation {
+                	@AliasFor("nested2")
+                	NestedAnnotation nested1() default @NestedAnnotation;
+            
+                	@AliasFor("nested1")
+                	NestedAnnotation nested2() default @NestedAnnotation;
+                }
+            
+                @EnclosingAnnotation(nested2 = @NestedAnnotation)
+                public class AnnotatedComponent {
+                }
+            }
+            """;
+
+    @Test
+    public void test12() {
+        TypeInfo X = javaInspector.parse(INPUT12, JavaInspectorImpl.DETAILED_SOURCES);
+        TypeInfo enclosingAnnot = X.findSubType("EnclosingAnnotation");
+        assertEquals("java.lang.annotation.Annotation",
+                enclosingAnnot.interfacesImplemented().getFirst().typeInfo().fullyQualifiedName());
     }
 }
