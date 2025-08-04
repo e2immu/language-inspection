@@ -130,7 +130,7 @@ public class DetectJREs {
         }
     }
 
-    private static List<ToolChain.JRE> parseMacOsXml(String xmlString) throws IOException, ParserConfigurationException, SAXException {
+    static List<ToolChain.JRE> parseMacOsXml(String xmlString) throws IOException, ParserConfigurationException, SAXException {
         SAXParserFactory factory = SAXParserFactory.newInstance();
         factory.setValidating(false);
         SAXParser saxParser = factory.newSAXParser();
@@ -157,7 +157,14 @@ public class DetectJREs {
         @Override
         public void endElement(String uri, String localName, String qName) throws SAXException {
             if ("dict".equals(qName)) {
-                int mainVersion = Integer.parseInt(version.substring(0, version.indexOf('.')));
+                int dot = version.indexOf('.');
+                String substring;
+                if (dot >= 0) {
+                    substring = version.substring(0, dot);
+                } else {
+                    substring = version;
+                }
+                int mainVersion = Integer.parseInt(substring);
                 String shortName = vendor.replaceAll("[\\s.,-]", "") + "-" + version;
                 jreList.add(new ToolChain.JRE(mainVersion, version, vendor, path, shortName));
                 return;

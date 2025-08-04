@@ -485,4 +485,29 @@ public class TestTypeParameter extends CommonTest {
         assertTrue(ds.details(A).isEmpty());
     }
 
+
+
+    @Language("java")
+    public static final String INPUT10 = """
+            package a;
+            class X {
+                interface A { char getCode(); }
+                interface B { String getComment(); }
+                class C<T extends A & B> {
+                    T t;
+                    String method() {
+                        return t.getCode() + " = " + t.getComment();
+                    }
+                }
+            }
+            """;
+
+    @Test
+    public void test10() {
+        TypeInfo X = javaInspector.parse(INPUT10, JavaInspectorImpl.DETAILED_SOURCES);
+        TypeInfo C = X.findSubType("C");
+        TypeParameter T = C.typeParameters().getFirst();
+        assertEquals("T=TP#0 in C [Type a.X.A, Type a.X.B]", T.toStringWithTypeBounds());
+    }
+
 }

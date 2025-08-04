@@ -7,11 +7,11 @@ import org.e2immu.language.cst.api.expression.*;
 import org.e2immu.language.cst.api.info.MethodInfo;
 import org.e2immu.language.cst.api.info.ParameterInfo;
 import org.e2immu.language.cst.api.info.TypeInfo;
+import org.e2immu.language.cst.api.info.TypeParameter;
 import org.e2immu.language.cst.api.runtime.Runtime;
 import org.e2immu.language.cst.api.type.Diamond;
 import org.e2immu.language.cst.api.type.NamedType;
 import org.e2immu.language.cst.api.type.ParameterizedType;
-import org.e2immu.language.cst.api.info.TypeParameter;
 import org.e2immu.language.cst.api.variable.This;
 import org.e2immu.language.cst.api.variable.Variable;
 import org.e2immu.language.inspection.api.parser.*;
@@ -1374,9 +1374,15 @@ public class MethodResolutionImpl implements MethodResolution {
             Map<NamedType, ParameterizedType> map1 = genericsHelper
                     .translateMap(middle.typeInfo().asParameterizedType(), middle, true);
             // one of the two has the best type parameters
-            Map<NamedType, ParameterizedType> map2 = genericsHelper
-                    .mapInTermsOfParametersOfSubType(pt.bestTypeInfo(), middle);
-            Map<NamedType, ParameterizedType> map = genericsHelper.combineMaps(map1, map2);
+
+            Map<NamedType, ParameterizedType> map;
+            if (pt.bestTypeInfo() != middle.typeInfo()) {
+                Map<NamedType, ParameterizedType> map2 = genericsHelper
+                        .mapInTermsOfParametersOfSubType(pt.bestTypeInfo(), middle);
+                map = genericsHelper.combineMaps(map1, map2);
+            } else {
+                map = map1;
+            }
 
             // can we derive type parameters from middle? or are our own best?
             return pt.typeInfo().asParameterizedType().applyTranslation(runtime, map);
