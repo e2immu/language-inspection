@@ -21,33 +21,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 public class TestTypeParameter extends CommonTest {
 
     @Language("java")
-    public static final String INPUT5 = """
-            package a.b;
-            import org.e2immu.annotation.Container;
-            import org.e2immu.annotation.Independent;
-            class X {
-              class Class$<@Independent @Container T> {
-            
-              }
-            }
-            """;
-
-    @Test
-    public void test5() {
-        TypeInfo typeInfo = javaInspector.parse(INPUT5);
-        TypeInfo clazz = typeInfo.findSubType("Class$");
-        TypeParameter tp = clazz.typeParameters().getFirst();
-        assertEquals(2, tp.annotations().size());
-        assertEquals("""
-                package a.b;
-                import org.e2immu.annotation.Container;
-                import org.e2immu.annotation.Independent;
-                class X { class Class$<@Independent @Container T> { } }
-                """, javaInspector.print2(typeInfo));
-    }
-
-
-    @Language("java")
     public static final String INPUT1 = """
             package a.b;
             
@@ -197,6 +170,61 @@ public class TestTypeParameter extends CommonTest {
         TypeParameter tp1 = request.typeParameters().get(1);
         assertEquals("E", tp1.simpleName());
         assertEquals("[Type ZG<A extends a.b.X.ZA>]", tp1.typeBounds().toString());
+    }
+
+    @Language("java")
+    public static final String INPUT5 = """
+            package a.b;
+            import org.e2immu.annotation.Container;
+            import org.e2immu.annotation.Independent;
+            class X {
+              class Class$<@Independent @Container T> {
+            
+              }
+            }
+            """;
+
+    @Test
+    public void test5() {
+        TypeInfo typeInfo = javaInspector.parse(INPUT5);
+        TypeInfo clazz = typeInfo.findSubType("Class$");
+        TypeParameter tp = clazz.typeParameters().getFirst();
+        assertTrue(tp.hasBeenInspected());
+        assertEquals(2, tp.annotations().size());
+        assertEquals("""
+                package a.b;
+                import org.e2immu.annotation.Container;
+                import org.e2immu.annotation.Independent;
+                class X { class Class$<@Independent @Container T> { } }
+                """, javaInspector.print2(typeInfo));
+    }
+
+    @Language("java")
+    public static final String INPUT5b = """
+            package a.b;
+            import org.e2immu.annotation.Container;
+            import org.e2immu.annotation.Independent;
+            class X {
+              class Class$<@Independent @Container(comment = X.COMMENT) T> {
+            
+              }
+              private static final String COMMENT = "comment";
+            }
+            """;
+
+    @Test
+    public void test5b() {
+        TypeInfo typeInfo = javaInspector.parse(INPUT5b);
+        TypeInfo clazz = typeInfo.findSubType("Class$");
+        TypeParameter tp = clazz.typeParameters().getFirst();
+        assertTrue(tp.hasBeenInspected());
+        assertEquals(2, tp.annotations().size());
+        assertEquals("""
+                package a.b;
+                import org.e2immu.annotation.Container;
+                import org.e2immu.annotation.Independent;
+                class X { private static final String COMMENT = "comment"; class Class$<@Independent@Container(comment = COMMENT) T> { } }
+                """, javaInspector.print2(typeInfo));
     }
 
 

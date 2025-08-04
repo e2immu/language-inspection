@@ -6,14 +6,15 @@ import org.e2immu.language.cst.api.expression.AnnotationExpression;
 import org.e2immu.language.cst.api.expression.Expression;
 import org.e2immu.language.cst.api.info.*;
 import org.e2immu.language.cst.api.statement.Statement;
-import org.e2immu.language.cst.api.info.TypeParameter;
 import org.e2immu.language.inspection.api.parser.*;
 import org.e2immu.util.internal.graph.util.TimedLogger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
 
@@ -55,6 +56,7 @@ public class ResolverImpl implements Resolver {
     private final List<MethodInfo> recordAccessors = new LinkedList<>();
     private final List<FieldInfo> recordFields = new LinkedList<>();
     private final List<JavaDocToDo> javaDocs = new LinkedList<>();
+    private final Set<TypeParameter.Builder> typeParameterBuildersToCommit = new HashSet<>();
     private final boolean parallel;
 
     @Override
@@ -85,6 +87,9 @@ public class ResolverImpl implements Resolver {
                                   Object annotation, Context context) {
         synchronized (annotationTodos) {
             annotationTodos.add(new AnnotationTodo(infoBuilder, annotationType, ab, indexInAnnotationList, annotation, context));
+            if (infoBuilder instanceof TypeParameter.Builder b) {
+                typeParameterBuildersToCommit.add(b);
+            }
         }
     }
 
@@ -164,6 +169,9 @@ public class ResolverImpl implements Resolver {
             TIMED_LOGGER.info("Phase 4: parsing bodies {} of {} methods/field initializers", done, todos.size());
         });
 
+        for (TypeParameter.Builder typeParameterBuilder : typeParameterBuildersToCommit) {
+            typeParameterBuilder.commit();
+        }
         for (FieldInfo recordField : recordFields) {
             recordField.builder().commit();
         }
