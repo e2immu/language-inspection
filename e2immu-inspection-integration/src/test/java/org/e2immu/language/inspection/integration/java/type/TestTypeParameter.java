@@ -7,7 +7,7 @@ import org.e2immu.language.cst.api.info.MethodInfo;
 import org.e2immu.language.cst.api.info.TypeInfo;
 import org.e2immu.language.cst.api.statement.LocalVariableCreation;
 import org.e2immu.language.cst.api.type.ParameterizedType;
-import org.e2immu.language.cst.api.type.TypeParameter;
+import org.e2immu.language.cst.api.info.TypeParameter;
 import org.e2immu.language.inspection.integration.JavaInspectorImpl;
 import org.e2immu.language.inspection.integration.java.CommonTest;
 import org.intellij.lang.annotations.Language;
@@ -211,20 +211,23 @@ public class TestTypeParameter extends CommonTest {
                 static class ConcurrentReferenceHashMap<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V> {
                     protected final class Segment extends ReentrantLock {
                         public <T> @Nullable T doTask(final int hash, final @Nullable Object key, final Task<T> task) {
-                            
+            
                         }
                     }
-                }
+            
                     private abstract class Task<T> {
                         // not really relevant for this test
                     }
-                
+                }
             }
             """;
 
     @Test
     public void test6() {
         TypeInfo typeInfo = javaInspector.parse(INPUT6);
-
+        TypeInfo map = typeInfo.findSubType("ConcurrentReferenceHashMap");
+        TypeInfo task = map.findSubType("Task");
+        assertEquals(1, task.typeParameters().size());
+        assertEquals("T=TP#0 in Task []", task.typeParameters().getFirst().toStringWithTypeBounds());
     }
 }

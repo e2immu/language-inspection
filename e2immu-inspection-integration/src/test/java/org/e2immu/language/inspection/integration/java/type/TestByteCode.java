@@ -2,7 +2,7 @@ package org.e2immu.language.inspection.integration.java.type;
 
 import org.e2immu.language.cst.api.info.MethodInfo;
 import org.e2immu.language.cst.api.info.TypeInfo;
-import org.e2immu.language.cst.api.type.TypeParameter;
+import org.e2immu.language.cst.api.info.TypeParameter;
 import org.e2immu.language.inspection.integration.java.CommonTest;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.web.servlet.setup.AbstractMockMvcBuilder;

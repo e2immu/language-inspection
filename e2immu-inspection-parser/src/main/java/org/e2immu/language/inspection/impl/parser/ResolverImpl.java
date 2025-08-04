@@ -3,11 +3,10 @@ package org.e2immu.language.inspection.impl.parser;
 
 import org.e2immu.language.cst.api.element.JavaDoc;
 import org.e2immu.language.cst.api.expression.AnnotationExpression;
-import org.e2immu.language.cst.api.expression.Assignment;
 import org.e2immu.language.cst.api.expression.Expression;
 import org.e2immu.language.cst.api.info.*;
 import org.e2immu.language.cst.api.statement.Statement;
-import org.e2immu.language.cst.api.type.TypeParameter;
+import org.e2immu.language.cst.api.info.TypeParameter;
 import org.e2immu.language.inspection.api.parser.*;
 import org.e2immu.util.internal.graph.util.TimedLogger;
 import org.slf4j.Logger;
