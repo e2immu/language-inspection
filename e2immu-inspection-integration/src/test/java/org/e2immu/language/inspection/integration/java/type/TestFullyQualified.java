@@ -21,6 +21,7 @@ public class TestFullyQualified extends CommonTest {
     @Language("java")
     public static final String INPUT1 = """
             package a.b;
+            import a.b.X.Y.Z;
             class X {
                 void method() {
                    java.lang.System.out.println("?");
@@ -54,7 +55,7 @@ public class TestFullyQualified extends CommonTest {
             TypeExpression typeExpression = (TypeExpression) fr.scope();
             ParameterizedType pt = typeExpression.parameterizedType();
             assertEquals("System", pt.detailedString());
-            assertEquals("4-8:4-23", typeExpression.source().detailedSources().detail(pt).compact2());
+            assertEquals("5-8:5-23", typeExpression.source().detailedSources().detail(pt).compact2());
             assertNull(typeExpression.source().detailedSources().associatedObject(pt.typeInfo()));
         } else fail();
         {
@@ -65,10 +66,10 @@ public class TestFullyQualified extends CommonTest {
             //noinspection ALL
             List<DetailedSources.Builder.TypeInfoSource> tis = (List<DetailedSources.Builder.TypeInfoSource>)
                     cc.source().detailedSources().associatedObject(pt.typeInfo());
-            assertEquals("12-20:12-24", cc.source().detailedSources().detail(pt.typeInfo()).compact2());
+            assertEquals("13-20:13-24", cc.source().detailedSources().detail(pt.typeInfo()).compact2());
             assertEquals(2, tis.size());
-            assertEquals("TypeInfoSource[typeInfo=a.b.X.Y, source=@12:20-12:22]", tis.getFirst().toString());
-            assertEquals("TypeInfoSource[typeInfo=a.b.X, source=@12:20-12:20]", tis.getLast().toString());
+            assertEquals("TypeInfoSource[typeInfo=a.b.X.Y, source=@13:20-13:22]", tis.getFirst().toString());
+            assertEquals("TypeInfoSource[typeInfo=a.b.X, source=@13:20-13:20]", tis.getLast().toString());
         }
         {
             MethodInfo make2 = typeInfo.findUniqueMethod("make2", 0);
@@ -78,9 +79,9 @@ public class TestFullyQualified extends CommonTest {
             //noinspection ALL
             List<DetailedSources.Builder.TypeInfoSource> tis = (List<DetailedSources.Builder.TypeInfoSource>)
                     cc.source().detailedSources().associatedObject(pt.typeInfo());
-            assertEquals("15-20:15-22", cc.source().detailedSources().detail(pt.typeInfo()).compact2());
+            assertEquals("16-20:16-22", cc.source().detailedSources().detail(pt.typeInfo()).compact2());
             assertEquals(1, tis.size());
-            assertEquals("TypeInfoSource[typeInfo=a.b.X.Y, source=@15:20-15:20]", tis.getFirst().toString());
+            assertEquals("TypeInfoSource[typeInfo=a.b.X.Y, source=@16:20-16:20]", tis.getFirst().toString());
         }
         {
             MethodInfo make3 = typeInfo.findUniqueMethod("make3", 0);
@@ -97,10 +98,10 @@ public class TestFullyQualified extends CommonTest {
             //noinspection ALL
             List<DetailedSources.Builder.TypeInfoSource> tis = (List<DetailedSources.Builder.TypeInfoSource>)
                     cc.source().detailedSources().associatedObject(pt.typeInfo());
-            assertEquals("21-20:21-28", cc.source().detailedSources().detail(pt.typeInfo()).compact2());
+            assertEquals("22-20:22-28", cc.source().detailedSources().detail(pt.typeInfo()).compact2());
             assertEquals(2, tis.size());
-            assertEquals("TypeInfoSource[typeInfo=a.b.X.Y, source=@21:20-21:26]", tis.getFirst().toString());
-            assertEquals("TypeInfoSource[typeInfo=a.b.X, source=@21:20-21:24]", tis.getLast().toString());
+            assertEquals("TypeInfoSource[typeInfo=a.b.X.Y, source=@22:20-22:26]", tis.getFirst().toString());
+            assertEquals("TypeInfoSource[typeInfo=a.b.X, source=@22:20-22:24]", tis.getLast().toString());
         }
     }
 
@@ -108,6 +109,7 @@ public class TestFullyQualified extends CommonTest {
     @Language("java")
     public static final String INPUT2 = """
             package a.b;
+            import a.b.X.Y.Z;
             class X {
                 static class Y {
                     static class Z<T> {
@@ -139,10 +141,10 @@ public class TestFullyQualified extends CommonTest {
             //noinspection ALL
             List<DetailedSources.Builder.TypeInfoSource> tis = (List<DetailedSources.Builder.TypeInfoSource>)
                     cc.source().detailedSources().associatedObject(pt.typeInfo());
-            assertEquals("8-20:8-24", cc.source().detailedSources().detail(pt.typeInfo()).compact2());
+            assertEquals("9-20:9-24", cc.source().detailedSources().detail(pt.typeInfo()).compact2());
             assertEquals(2, tis.size());
-            assertEquals("TypeInfoSource[typeInfo=a.b.X.Y, source=@8:20-8:22]", tis.getFirst().toString());
-            assertEquals("TypeInfoSource[typeInfo=a.b.X, source=@8:20-8:20]", tis.getLast().toString());
+            assertEquals("TypeInfoSource[typeInfo=a.b.X.Y, source=@9:20-9:22]", tis.getFirst().toString());
+            assertEquals("TypeInfoSource[typeInfo=a.b.X, source=@9:20-9:20]", tis.getLast().toString());
         }
         {
             MethodInfo make2 = typeInfo.findUniqueMethod("make2", 0);
@@ -152,9 +154,9 @@ public class TestFullyQualified extends CommonTest {
             //noinspection ALL
             List<DetailedSources.Builder.TypeInfoSource> tis = (List<DetailedSources.Builder.TypeInfoSource>)
                     cc.source().detailedSources().associatedObject(pt.typeInfo());
-            assertEquals("11-20:11-22", cc.source().detailedSources().detail(pt.typeInfo()).compact2());
+            assertEquals("12-20:12-22", cc.source().detailedSources().detail(pt.typeInfo()).compact2());
             assertEquals(1, tis.size());
-            assertEquals("TypeInfoSource[typeInfo=a.b.X.Y, source=@11:20-11:20]", tis.getFirst().toString());
+            assertEquals("TypeInfoSource[typeInfo=a.b.X.Y, source=@12:20-12:20]", tis.getFirst().toString());
         }
         {
             MethodInfo make3 = typeInfo.findUniqueMethod("make3", 0);
@@ -171,10 +173,10 @@ public class TestFullyQualified extends CommonTest {
             //noinspection ALL
             List<DetailedSources.Builder.TypeInfoSource> tis = (List<DetailedSources.Builder.TypeInfoSource>)
                     cc.source().detailedSources().associatedObject(pt.typeInfo());
-            assertEquals("17-20:17-28", cc.source().detailedSources().detail(pt.typeInfo()).compact2());
+            assertEquals("18-20:18-28", cc.source().detailedSources().detail(pt.typeInfo()).compact2());
             assertEquals(2, tis.size());
-            assertEquals("TypeInfoSource[typeInfo=a.b.X.Y, source=@17:20-17:26]", tis.getFirst().toString());
-            assertEquals("TypeInfoSource[typeInfo=a.b.X, source=@17:20-17:24]", tis.getLast().toString());
+            assertEquals("TypeInfoSource[typeInfo=a.b.X.Y, source=@18:20-18:26]", tis.getFirst().toString());
+            assertEquals("TypeInfoSource[typeInfo=a.b.X, source=@18:20-18:24]", tis.getLast().toString());
         }
     }
 

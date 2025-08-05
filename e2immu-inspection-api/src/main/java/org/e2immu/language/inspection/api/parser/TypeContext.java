@@ -13,10 +13,23 @@ import java.util.List;
 NOT to be used by byte code inspection: exclusive to parser system!
  */
 public interface TypeContext {
+    int CURRENT_TYPE_PRIORITY = 20;
+    int TYPE_PARAMETER_PRIORITY = 19;
+    int SUBTYPE_PRIORITY = 17;
+    int IMPORT_PRIORITY = 10;
+    int STATIC_IMPORT_PRIORITY = 9; // on-demand
+    int SAME_PACKAGE_PRIORITY = 6;
+    int IMPORT_ASTERISK_PACKAGE_PRIORITY = 5;
+    int IMPORT_ASTERISK_SUBTYPE_PRIORITY = 5;
+    int SUBTYPE_HIERARCHY_PRIORITY = 4;
+    int SUBTYPE_HIERARCHY_IN_CONSTRUCTOR_PRIORITY = 4;
+    int SUBTYPE_HIERARCHY_ANONYMOUS = 3;
+    int IMPORT_ENCLOSING_PRIORITY = 2;
+
     /*
     return true when all types in the hierarchy have been resolved
      */
-    boolean addSubTypesOfHierarchyReturnAllDefined(TypeInfo typeInfo);
+    boolean addSubTypesOfHierarchyReturnAllDefined(TypeInfo typeInfo, int priority);
 
     /*
     return true when all types in the hierarchy of a static * import have been resolved,
@@ -42,11 +55,7 @@ public interface TypeContext {
     // I.J -> I, J,
     List<? extends NamedType> getWithQualification(String name, boolean complain);
 
-    void addToContext(@NotNull NamedType namedType);
-
-    void addToContext(@NotNull NamedType namedType, boolean allowOverwrite);
-
-    void addToContext(String altName, @NotNull NamedType namedType, boolean allowOverwrite);
+    void addToContext(@NotNull NamedType namedType, int priority);
 
     TypeContext newTypeContext();
 

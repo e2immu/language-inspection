@@ -31,7 +31,7 @@ public class TestDetectJREs {
 
     @Test
     public void test2() throws IOException, ParserConfigurationException, SAXException {
-       String xml = Files.readString(Path.of("src/test/resources/e2immu.java_home_piet.xml"));
+       String xml = Files.readString(Path.of("src/test/resources/e2immu.java_home_example.xml"));
        List<ToolChain.JRE> jres = DetectJREs.parseMacOsXml(xml);
        assertEquals(6, jres.size());
     }

@@ -46,7 +46,11 @@ public class TypeContextImpl implements TypeContext {
 
     private final TypeContextImpl parentContext;
     private final Data data;
-    private final Map<String, NamedType> map = new HashMap<>();
+
+    private record NamedTypePriority(NamedType namedType, int priority) {
+    }
+
+    private final Map<String, NamedTypePriority> map = new HashMap<>();
 
     /*
     the packageInfo should already contain all the types of the current package
@@ -152,12 +156,12 @@ public class TypeContextImpl implements TypeContext {
                     // deal with package
                     for (TypeInfo typeInfo : data.sourceTypeMap.primaryTypesInPackage(fullyQualified)) {
                         if (typeInfo.fullyQualifiedName().equals(fullyQualified + "." + typeInfo.simpleName())) {
-                            addToContext(typeInfo, false);
+                            addToContext(typeInfo, IMPORT_ASTERISK_PACKAGE_PRIORITY);
                         }
                     }
                 } else {
                     // we must import all subtypes
-                    inSourceTypes.subTypes().forEach(st -> map.putIfAbsent(st.simpleName(), st));
+                    inSourceTypes.subTypes().forEach(st -> addToContext(st, IMPORT_ASTERISK_SUBTYPE_PRIORITY));
                 }
                 // TODO this should be java-specific (call to data.compiledTypesManager.XXX)
                 data.compiledTypesManager.classPath().expandLeaves(fullyQualified, ".class", (expansion, sourceFiles) -> {
@@ -170,7 +174,7 @@ public class TypeContextImpl implements TypeContext {
                         TypeInfo newTypeInfo = data.compiledTypesManager.load(sourceFile.withPath(path));
                         if (newTypeInfo != null) {
                             LOGGER.debug("Registering inspection handler for {}", newTypeInfo);
-                            addToContext(newTypeInfo, false);
+                            addToContext(newTypeInfo, IMPORT_ASTERISK_PACKAGE_PRIORITY);
                         } else {
                             LOGGER.error("Could not load {}, URI {}", path, sourceFile.uri());
                         }
@@ -182,12 +186,12 @@ public class TypeContextImpl implements TypeContext {
             if (inSourceTypes == null) {
                 TypeInfo inCompiledTypes = data.compiledTypesManager.getOrLoad(importStatement.importString(), sourceSet());
                 if (inCompiledTypes != null) {
-                    addToContext(inCompiledTypes, true);
+                    addToContext(inCompiledTypes, IMPORT_PRIORITY);
                 } else {
                     LOGGER.error("Cannot handle import {}", importStatement.importString());
                 }
             } else {
-                addToContext(inSourceTypes, true);
+                addToContext(inSourceTypes, IMPORT_PRIORITY);
             }
         }
     }
@@ -340,9 +344,9 @@ public class TypeContextImpl implements TypeContext {
     }
 
     private NamedType getSimpleName(String name) {
-        NamedType namedType = map.get(name);
-        if (namedType != null) {
-            return namedType;
+        NamedTypePriority namedTypePriority = map.get(name);
+        if (namedTypePriority != null) {
+            return namedTypePriority.namedType;
         }
 
         // Same package, and * imports (in that order!)
@@ -361,30 +365,24 @@ public class TypeContextImpl implements TypeContext {
         if (parent != null) {
             TypeInfo subType = parent.findSubType(name, false);
             if (subType != null) {
-                map.put(name, subType);
+                addToContext(subType, STATIC_IMPORT_PRIORITY);
                 return subType;
             }
         }
         return parent;
     }
 
-    @Override
-    public void addToContext(@NotNull NamedType namedType) {
-        addToContext(namedType, true);
-    }
 
     @Override
-    public void addToContext(@NotNull NamedType namedType, boolean allowOverwrite) {
+    public void addToContext(@NotNull NamedType namedType, int priority) {
         String simpleName = namedType.simpleName();
-        if (allowOverwrite || !map.containsKey(simpleName)) {
-            map.put(simpleName, namedType);
+        NamedTypePriority ntp = map.get(simpleName);
+        if (ntp == null || ntp.priority < priority) {
+            map.put(simpleName, new NamedTypePriority(namedType, priority));
         }
-    }
-
-    @Override
-    public void addToContext(String altName, @NotNull NamedType namedType, boolean allowOverwrite) {
-        if (allowOverwrite || !map.containsKey(altName)) {
-            map.put(altName, namedType);
+        if (namedType instanceof TypeInfo ti && ti.compilationUnitOrEnclosingType().isRight()) {
+            // ensure that enclosing types are present, but with lower priority
+            addToContext(ti.compilationUnitOrEnclosingType().getRight(), IMPORT_ENCLOSING_PRIORITY);
         }
     }
 
@@ -403,8 +401,9 @@ public class TypeContextImpl implements TypeContext {
 
     @Override
     public TypeContext newAnonymousClassBody(TypeInfo baseType) {
-        addSubTypesOfHierarchyReturnAllDefined(baseType);
-        return new TypeContextImpl(this, data);
+        TypeContext tc = new TypeContextImpl(this, data);
+        tc.addSubTypesOfHierarchyReturnAllDefined(baseType, SUBTYPE_HIERARCHY_ANONYMOUS);
+        return tc;
     }
 
     @Override
@@ -415,13 +414,13 @@ public class TypeContextImpl implements TypeContext {
     }
 
     @Override
-    public boolean addSubTypesOfHierarchyReturnAllDefined(TypeInfo typeInfo) {
+    public boolean addSubTypesOfHierarchyReturnAllDefined(TypeInfo typeInfo, int priority) {
         Set<TypeInfo> superTypes = new HashSet<>();
         boolean allDefined = recursivelyComputeSuperTypesExcludingJLO(typeInfo, superTypes);
         Stream.concat(Stream.of(typeInfo), superTypes.stream())
                 .forEach(superType -> superType.subTypes()
                         // not checking accessibility here
-                        .forEach(this::addToContext));
+                        .forEach(ti -> addToContext(ti, priority)));
         return allDefined;
     }
 

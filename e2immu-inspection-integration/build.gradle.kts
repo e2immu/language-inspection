@@ -67,6 +67,7 @@ dependencies {
 
 tasks.test {
     useJUnitPlatform()
+    maxParallelForks = 4
 }
 
 publishing {

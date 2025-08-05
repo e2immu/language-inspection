@@ -24,6 +24,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.IntFunction;
 import java.util.stream.Collectors;
 
+import static org.e2immu.language.inspection.api.parser.TypeContext.SUBTYPE_HIERARCHY_IN_CONSTRUCTOR_PRIORITY;
 import static org.e2immu.language.inspection.impl.parser.ListMethodAndConstructorCandidates.IGNORE_PARAMETER_NUMBERS;
 
 public class MethodResolutionImpl implements MethodResolution {
@@ -100,7 +101,7 @@ public class MethodResolutionImpl implements MethodResolution {
             TypeInfo bestType = scope.parameterizedType().bestTypeInfo();
             if (bestType != null) {
                 for (TypeInfo sub : bestType.subTypes()) {
-                    newContext.typeContext().addToContext(sub);
+                    newContext.typeContext().addToContext(sub, SUBTYPE_HIERARCHY_IN_CONSTRUCTOR_PRIORITY);
                 }
                 // TODO are there other things we should add to this context??
             }
@@ -545,25 +546,17 @@ public class MethodResolutionImpl implements MethodResolution {
                     concreteParameterType, true);
             ParameterizedType concreteTypeInMethod = method.getConcreteTypeOfParameter(runtime, i);
 
-            translated.forEach((k, v) -> {
-                // we can go in two directions here.
-                // either the type parameter gets a proper value by the concreteParameterType, or the concreteParameter type should
-                // agree with the concrete types map in the method candidate. It is quite possible that concreteParameterType == ParameterizedType.NULL,
-                // and then the value in the map should prevail
-                ParameterizedType valueToAdd;
-                if (betterDefinedThan(concreteTypeInMethod, v)) {
-                    valueToAdd = concreteTypeInMethod;
-                } else {
-                    valueToAdd = v;
+            if (concreteTypeInMethod.typeInfo() != null
+                && concreteParameterType.typeInfo() == concreteTypeInMethod.typeInfo()) {
+                // the following code should run at the level of the respective type parameters... See TestTranslate,1
+                // FIXME should we make this recursive? what if the type parameters only start another level down?
+                for (int j = 0; j < formalParameterType.parameters().size(); ++j) {
+                    ParameterizedType ctim = concreteTypeInMethod.parameters().get(j);
+                    translate(translated, ctim, mapExpansion);
                 }
-                /* Example: Ecoll -> String, in case the formal parameter was Collection<E>, and the concrete Set<String>
-                Now if Ecoll is a method parameter, it needs linking to the
-
-                 */
-                if (!mapExpansion.containsKey(k)) {
-                    mapExpansion.put(k, valueToAdd);
-                }
-            });
+            } else {
+                translate(translated, concreteTypeInMethod, mapExpansion);
+            }
             i++;
             if (i >= formalParameters.size()) break; // varargs... we have more than there are
         }
@@ -578,6 +571,28 @@ public class MethodResolutionImpl implements MethodResolution {
         }
 
         return mapExpansion;
+    }
+
+    private static void translate(Map<NamedType, ParameterizedType> translated,
+                                  ParameterizedType concreteTypeInMethod,
+                                  Map<NamedType, ParameterizedType> mapExpansion) {
+        translated.forEach((k, v) -> {
+            // we can go in two directions here.
+            // either the type parameter gets a proper value by the concreteParameterType, or the concreteParameter type should
+            // agree with the concrete types map in the method candidate.
+            // It is quite possible that concreteParameterType == ParameterizedType.NULL,
+            // and then the value in the map should prevail
+            ParameterizedType valueToAdd;
+            if (betterDefinedThan(concreteTypeInMethod, v)) {
+                valueToAdd = concreteTypeInMethod;
+            } else {
+                valueToAdd = v;
+            }
+            // Example: Ecoll -> String, in case the formal parameter was Collection<E>, and the concrete Set<String>
+            if (!mapExpansion.containsKey(k)) {
+                mapExpansion.put(k, valueToAdd);
+            }
+        });
     }
 
     private static boolean betterDefinedThan(ParameterizedType pt1, ParameterizedType pt2) {
