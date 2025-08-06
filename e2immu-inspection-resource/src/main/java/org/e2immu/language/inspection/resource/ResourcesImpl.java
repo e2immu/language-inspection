@@ -23,6 +23,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
+import static org.e2immu.util.internal.util.StringUtil.replaceSlashDollar;
+
 public class ResourcesImpl implements Resources {
     private static final Logger LOGGER = LoggerFactory.getLogger(ResourcesImpl.class);
 
@@ -250,19 +252,6 @@ public class ResourcesImpl implements Resources {
         }
         LOGGER.debug("Cannot find {} with extension {} in classpath", fqn, extension);
         return null;
-    }
-
-    static String replaceSlashDollar(String in) {
-        StringBuilder sb = new StringBuilder(in.length());
-        char[] charArray = in.toCharArray();
-        for (char c : charArray) {
-            if ((c == '$' || c == '/') && !sb.isEmpty() && sb.charAt(sb.length() - 1) != '.') {
-                sb.append('.');
-            } else {
-                sb.append(c);
-            }
-        }
-        return sb.toString();
     }
 
     // could have been static, but allows for overrides
