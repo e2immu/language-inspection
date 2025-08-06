@@ -64,8 +64,7 @@ public class TestMethodCall11 extends CommonTest {
                     void onNext(T t);
                 }
                 interface Publisher<T> {
-                     //void subscribe(Subscriber<? super T> subscriber);
-                     T get();
+                     void subscribe(Subscriber<? super T> subscriber);
                 }
                 interface Flux<R> { }
                 static class Mono<T> {

@@ -207,6 +207,20 @@ public record GenericsHelperImpl(Runtime runtime) implements GenericsHelper {
                 res.put(formalMapped.typeParameter(), concreteTypeParameter);
             }
         }
+        if(!res.isEmpty() && !methodTypeParameterMap.concreteTypes().isEmpty()) {
+            // See TestMethodCall11,2
+            // in res: T in pub -> ResourceRegion
+            // in concreteTypes: T in pub -> T in Mono
+            // we need T in Mono -> ResourceRegion
+            Map<NamedType, ParameterizedType> addToRes = new HashMap<>();
+            for(Map.Entry<NamedType, ParameterizedType> entry: res.entrySet()) {
+                ParameterizedType pt = methodTypeParameterMap.concreteTypes().get(entry.getKey());
+                if(pt != null && pt.isTypeParameter()) { // FIXME and check: type parameter that we're interested in
+                    addToRes.put(pt.typeParameter(), entry.getValue());
+                }
+            }
+            res.putAll(addToRes);
+        }
         // and now the return type
         ParameterizedType myReturnType = methodTypeParameterMap.getConcreteReturnType(runtime);
         ParameterizedType concreteReturnType = concreteTypeMap.getConcreteReturnType(runtime);
