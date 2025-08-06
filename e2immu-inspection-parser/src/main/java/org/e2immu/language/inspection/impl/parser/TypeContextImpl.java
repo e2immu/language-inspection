@@ -163,23 +163,18 @@ public class TypeContextImpl implements TypeContext {
                     // we must import all subtypes
                     inSourceTypes.subTypes().forEach(st -> addToContext(st, IMPORT_ASTERISK_SUBTYPE_PRIORITY));
                 }
-                // TODO this should be java-specific (call to data.compiledTypesManager.XXX)
-                data.compiledTypesManager.classPath().expandLeaves(fullyQualified, ".class", (expansion, sourceFiles) -> {
-                    String leaf = expansion[expansion.length - 1];
-                    if (!leaf.contains("$")) {
-                        // primary type
-                        String simpleName = Resources.stripDotClass(leaf);
-                        SourceFile sourceFile = sourceFiles.getFirst();
-                        String path = fullyQualified.replace(".", "/") + "/" + simpleName + ".class";
-                        TypeInfo newTypeInfo = data.compiledTypesManager.load(sourceFile.withPath(path));
-                        if (newTypeInfo != null) {
-                            LOGGER.debug("Registering inspection handler for {}", newTypeInfo);
-                            addToContext(newTypeInfo, IMPORT_ASTERISK_PACKAGE_PRIORITY);
-                        } else {
-                            LOGGER.error("Could not load {}, URI {}", path, sourceFile.uri());
-                        }
+                TypeInfo inCompiledTypes = data.compiledTypesManager.getOrLoad(fullyQualified, sourceSet());
+                if (inCompiledTypes != null) {
+                    // we must add all the subtypes
+                    for (TypeInfo sub : inCompiledTypes.subTypes()) {
+                        addToContext(sub, IMPORT_ASTERISK_PACKAGE_PRIORITY);
                     }
-                });
+                } else {
+                    // all types in a package
+                    data.compiledTypesManager.classPath().expandLeaves(fullyQualified, ".class",
+                            (expansion, sourceFiles) ->
+                                    expanded(expansion, sourceFiles, fullyQualified));
+                }
             }
         } else {
             TypeInfo inSourceTypes = data.sourceTypeMap.get(importStatement.importString(), sourceSet());
@@ -196,6 +191,22 @@ public class TypeContextImpl implements TypeContext {
         }
     }
 
+    private void expanded(String[] expansion, List<SourceFile> sourceFiles, String fullyQualified) {
+        String leaf = expansion[expansion.length - 1];
+        if (!leaf.contains("$")) {
+            // primary type
+            String simpleName = Resources.stripDotClass(leaf);
+            SourceFile sourceFile = sourceFiles.getFirst();
+            String path = fullyQualified.replace(".", "/") + "/" + simpleName + ".class";
+            TypeInfo newTypeInfo = data.compiledTypesManager.load(sourceFile.withPath(path));
+            if (newTypeInfo != null) {
+                LOGGER.debug("Registering inspection handler for {}", newTypeInfo);
+                addToContext(newTypeInfo, IMPORT_ASTERISK_PACKAGE_PRIORITY);
+            } else {
+                LOGGER.error("Could not load {}, URI {}", path, sourceFile.uri());
+            }
+        }
+    }
 
     private TypeInfo loadTypeDoNotImport(String fqn) {
         TypeInfo inSourceTypes = data.sourceTypeMap.get(fqn, sourceSet());
