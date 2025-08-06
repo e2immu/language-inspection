@@ -641,6 +641,8 @@ public class MethodResolutionImpl implements MethodResolution {
             }
         }
 
+        // FIXME we're doing this in order now, but we may have to iterate until all solved
+        //  but then we'd have to know what 'solved' means
         for (int i : positionsToDo) {
             Expression e = evaluatedExpressions.get(i);
             ReEval reEval = reevaluateParameterExpression(context, index, expressions, outsideContext, methodName,
