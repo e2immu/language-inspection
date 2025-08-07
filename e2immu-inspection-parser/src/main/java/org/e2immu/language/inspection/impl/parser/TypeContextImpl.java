@@ -5,6 +5,7 @@ import org.e2immu.language.cst.api.element.CompilationUnit;
 import org.e2immu.language.cst.api.element.ImportStatement;
 import org.e2immu.language.cst.api.element.SourceSet;
 import org.e2immu.language.cst.api.info.FieldInfo;
+import org.e2immu.language.cst.api.info.Info;
 import org.e2immu.language.cst.api.info.TypeInfo;
 import org.e2immu.language.cst.api.runtime.Runtime;
 import org.e2immu.language.cst.api.type.NamedType;
@@ -20,6 +21,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class TypeContextImpl implements TypeContext {
@@ -419,8 +421,15 @@ public class TypeContextImpl implements TypeContext {
 
     @Override
     public List<TypeInfo> typesInSamePackage(String packageName) {
-        List<TypeInfo> list1 = data.sourceTypeMap().primaryTypesInPackage(packageName);
-        Collection<TypeInfo> list2 = data.compiledTypesManager.primaryTypesInPackageEnsureLoaded(packageName);
+       return typesInSamePackage(packageName, data.sourceTypeMap, data.compiledTypesManager);
+    }
+
+    public static List<TypeInfo> typesInSamePackage(String packageName,
+                                                    SourceTypeMap sourceTypeMap,
+                                                    CompiledTypesManager compiledTypesManager) {
+        List<TypeInfo> list1 = sourceTypeMap.primaryTypesInPackage(packageName);
+        Set<String> fqnToAvoid = list1.stream().map(Info::fullyQualifiedName).collect(Collectors.toUnmodifiableSet());
+        Collection<TypeInfo> list2 = compiledTypesManager.primaryTypesInPackageEnsureLoaded(packageName, fqnToAvoid);
         return Stream.concat(list1.stream(), list2.stream()).toList();
     }
 

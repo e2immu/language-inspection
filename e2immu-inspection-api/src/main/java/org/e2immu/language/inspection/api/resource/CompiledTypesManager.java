@@ -5,6 +5,7 @@ import org.e2immu.language.cst.api.info.TypeInfo;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 
 /**
  * manages all types that come in byte-code form.
@@ -23,7 +24,7 @@ public interface CompiledTypesManager {
     }
 
     default SourceFile fqnToPath(String fqn, String suffix) {
-        throw new UnsupportedOperationException("Don't know how to load "+fqn);
+        throw new UnsupportedOperationException("Don't know how to load " + fqn);
     }
 
     default TypeInfo get(Class<?> clazz) {
@@ -48,15 +49,23 @@ public interface CompiledTypesManager {
         throw new UnsupportedOperationException();
     }
 
+    default boolean packageContainsTypes(String packageName) {
+        throw new UnsupportedOperationException();
+    }
+
     default void preload(String thePackage) {
         throw new UnsupportedOperationException();
     }
 
-    default Collection<TypeInfo> primaryTypesInPackageEnsureLoaded(String packageName) { throw new UnsupportedOperationException(); }
+    default Collection<TypeInfo> primaryTypesInPackageEnsureLoaded(String packageName, Set<String> fqnToAvoid) {
+        throw new UnsupportedOperationException();
+    }
 
     default boolean acceptFQN(String fqn) {
         return !fqn.startsWith("jdk.internal.");
     }
 
-    default List<TypeInfo> typesLoaded() { throw new UnsupportedOperationException(); }
+    default List<TypeInfo> typesLoaded() {
+        throw new UnsupportedOperationException();
+    }
 }

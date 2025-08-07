@@ -3,6 +3,7 @@ package org.e2immu.language.inspection.integration.java.type;
 import org.e2immu.language.cst.api.info.MethodInfo;
 import org.e2immu.language.cst.api.info.TypeInfo;
 import org.e2immu.language.cst.api.info.TypeParameter;
+import org.e2immu.language.inspection.api.resource.CompiledTypesManager;
 import org.e2immu.language.inspection.integration.java.CommonTest;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.web.servlet.setup.AbstractMockMvcBuilder;
@@ -73,4 +74,11 @@ public class TestByteCode extends CommonTest {
         assertFalse(doubleStream.haveOnDemandInspection());
     }
 
+    @Test
+    public void testPackageContainsTypes() {
+        CompiledTypesManager ct = javaInspector.compiledTypesManager();
+        assertTrue(ct.packageContainsTypes("java.util"));
+        assertTrue(ct.packageContainsTypes("java.util.function"));
+        assertFalse(ct.packageContainsTypes("java.utility"));
+    }
 }

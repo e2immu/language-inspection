@@ -12,6 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -105,33 +106,35 @@ public class CompiledTypesManagerImpl implements CompiledTypesManager {
     @Override
     public void preload(String thePackage) {
         LOGGER.info("Start pre-loading {}", thePackage);
-        int inspected = loadAllTypesInPackage(thePackage);
+        int inspected = loadAllTypesInPackage(thePackage, Set.of());
         LOGGER.info("... inspected {} paths", inspected);
     }
 
-    private int loadAllTypesInPackage(String thePackage) {
+    private int loadAllTypesInPackage(String thePackage, Set<String> fqnsToAvoid) {
         AtomicInteger inspected = new AtomicInteger();
         classPath.expandLeaves(thePackage, ".class", (expansion, _) -> {
             // we'll loop over the primary types only
             if (!expansion[expansion.length - 1].contains("$")) {
                 String fqn = fqnOfClassFile(thePackage, expansion);
-                assert acceptFQN(fqn);
-                typeMapLock.readLock().lock();
-                TypeInfo typeInfo;
-                try {
-                    typeInfo = typeMap.get(fqn);
-                } finally {
-                    typeMapLock.readLock().unlock();
-                }
-                if (typeInfo == null) {
-                    SourceFile path = fqnToPath(fqn, ".class");
-                    if (path != null) {
-                        synchronized (byteCodeInspector) {
-                            byteCodeInspector.get().load(path);
-                        }
-                        inspected.incrementAndGet();
+                if (!fqnsToAvoid.contains(fqn)) {
+                    assert acceptFQN(fqn);
+                    typeMapLock.readLock().lock();
+                    TypeInfo typeInfo;
+                    try {
+                        typeInfo = typeMap.get(fqn);
+                    } finally {
+                        typeMapLock.readLock().unlock();
                     }
-                }
+                    if (typeInfo == null) {
+                        SourceFile path = fqnToPath(fqn, ".class");
+                        if (path != null) {
+                            synchronized (byteCodeInspector) {
+                                byteCodeInspector.get().load(path);
+                            }
+                            inspected.incrementAndGet();
+                        }
+                    }
+                } // else: we have a source type with this FQN, will not load the binary type.
             }
         });
         return inspected.get();
@@ -156,14 +159,16 @@ public class CompiledTypesManagerImpl implements CompiledTypesManager {
     }
 
     @Override
-    public Collection<TypeInfo> primaryTypesInPackageEnsureLoaded(String packageName) {
-        ensureAllTypesInThisPackageHaveBeenLoaded(packageName);
+    public Collection<TypeInfo> primaryTypesInPackageEnsureLoaded(String packageName, Set<String> fqnToAvoid) {
+        ensureAllTypesInThisPackageHaveBeenLoaded(packageName, fqnToAvoid);
         String[] packages = packageName.split("\\.");
         List<TypeInfo> result = new ArrayList<>();
         typeMapLock.readLock().lock();
         try {
             typeTrie.visit(packages, (_, list) -> list.stream()
-                    .filter(ti -> ti.isPrimaryType() && packageName.equals(ti.packageName()))
+                    .filter(ti -> ti.isPrimaryType()
+                                  && packageName.equals(ti.packageName())
+                                  && !fqnToAvoid.contains(ti.fullyQualifiedName()))
                     .forEach(result::add));
             return List.copyOf(result);
         } finally {
@@ -171,7 +176,7 @@ public class CompiledTypesManagerImpl implements CompiledTypesManager {
         }
     }
 
-    private void ensureAllTypesInThisPackageHaveBeenLoaded(String packageName) {
+    private void ensureAllTypesInThisPackageHaveBeenLoaded(String packageName, Set<String> fqnToAvoid) {
         allTypesLock.readLock().lock();
         try {
             if (!allTypesInThisPackageHaveBeenLoaded.contains(packageName)) {
@@ -180,7 +185,7 @@ public class CompiledTypesManagerImpl implements CompiledTypesManager {
                 try {
                     try {
                         if (allTypesInThisPackageHaveBeenLoaded.add(packageName)) {
-                            loadAllTypesInPackage(packageName);
+                            loadAllTypesInPackage(packageName, fqnToAvoid);
                         }
                     } finally {
                         allTypesLock.readLock().lock();
@@ -192,5 +197,14 @@ public class CompiledTypesManagerImpl implements CompiledTypesManager {
         } finally {
             allTypesLock.readLock().unlock();
         }
+    }
+
+    @Override
+    public boolean packageContainsTypes(String packageName) {
+        AtomicBoolean found = new AtomicBoolean();
+        classPath.expandLeaves(packageName, ".class", (s, l) -> {
+            if (!l.isEmpty()) found.set(true);
+        });
+        return found.get();
     }
 }
