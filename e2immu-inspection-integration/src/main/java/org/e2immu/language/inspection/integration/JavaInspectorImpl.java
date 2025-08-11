@@ -564,6 +564,7 @@ public class JavaInspectorImpl implements JavaInspector {
                             entry.getValue(), summary, parseOptions.detailedSources());
                 }
             } catch (ParseException parseException) {
+                LOGGER.error("Caught parse exception in {}", sourceFile.uri());
                 summary.addParseException(new Summary.ParseException(sourceFile.uri(), sourceFile.uri(), parseException.getMessage(),
                         parseException));
                 return null;
