@@ -42,7 +42,7 @@ public class TestCompilationProblem {
             Summary.ParseException e = (Summary.ParseException) ff.getCause();
             LOGGER.error("Parse exception", e.getCause() == null ? e : e.getCause());
             assertTrue(e.uri().toString().endsWith("compilationError/a/Faulty.java"));
-            assertTrue(e.getMessage().contains("\nEncountered an error at (or somewhere around) input:4:33"));
+            assertTrue(e.getMessage().contains("Encountered an error at input:4:33"));
             assertInstanceOf(ParseException.class, e.throwable());
         } catch (Exception e) {
             fail("This exception should not be raised: " + e.getClass());
@@ -64,7 +64,7 @@ public class TestCompilationProblem {
             assertEquals(1, summary.parseExceptions().size());
             Summary.ParseException e = summary.parseExceptions().getFirst();
             assertTrue(e.uri().toString().endsWith("compilationError/a/Faulty.java"));
-            assertTrue(e.getMessage().contains("\nEncountered an error at (or somewhere around) input:4:33"));
+            assertTrue(e.getMessage().contains("Encountered an error at input:4:33"));
             assertInstanceOf(ParseException.class, e.throwable());
         } catch (Exception e) {
             fail("This exception should not be raised: " + e.getClass());

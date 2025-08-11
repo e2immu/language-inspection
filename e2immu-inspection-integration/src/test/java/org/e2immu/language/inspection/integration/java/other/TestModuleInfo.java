@@ -37,7 +37,7 @@ public class TestModuleInfo {
                 requires org.e2immu.util.external.support;
                 requires transitive org.e2immu.util.internal.util;
                 requires static org.e2immu.language.cst.analysis;
-                requires transitive org.slf4j;
+                requires transitive static org.slf4j;
                 requires java.xml;
             
                 exports org.e2immu.language.inspection.integration;
@@ -81,6 +81,8 @@ public class TestModuleInfo {
         assertTrue(requires.get(2).isStatic());
         assertFalse(requires.get(2).isTransitive());
         assertEquals("org.slf4j", requires.get(3).name());
+        assertTrue(requires.get(3).isStatic());
+        assertTrue(requires.get(3).isTransitive());
 
         List<ModuleInfo.Exports> exports = moduleInfo.exports();
         assertEquals(2, exports.size());

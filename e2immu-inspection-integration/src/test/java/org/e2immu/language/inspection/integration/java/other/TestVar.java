@@ -11,8 +11,7 @@ import org.e2immu.language.inspection.integration.java.CommonTest;
 import org.intellij.lang.annotations.Language;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class TestVar extends CommonTest {
 
@@ -75,21 +74,29 @@ public class TestVar extends CommonTest {
             Statement s1 = methodInfo.methodBody().statements().getFirst();
             LocalVariableCreation lvc1 = (LocalVariableCreation) s1;
             assertEquals("Type java.util.List<a.b.X.J>", lvc1.localVariable().parameterizedType().toString());
+            assertTrue(lvc1.isVar());
+
             Statement s2 = methodInfo.methodBody().statements().get(1);
             LocalVariableCreation lvc2 = (LocalVariableCreation) s2;
             assertEquals("Type java.util.stream.Stream<a.b.X.J>", lvc2.localVariable().parameterizedType().toString());
+            assertTrue(lvc2.isVar());
+
             Statement s3 = methodInfo.methodBody().statements().get(2);
             LocalVariableCreation lvc3 = (LocalVariableCreation) s3;
             assertEquals("Type java.util.Set<a.b.X.J>", lvc3.localVariable().parameterizedType().toString());
+            assertTrue(lvc3.isVar());
         }
         {
             MethodInfo methodInfo = typeInfo.findUniqueMethod("method", 1);
             Statement s1 = methodInfo.methodBody().statements().getFirst();
             LocalVariableCreation lvc1 = (LocalVariableCreation) s1;
             assertEquals("Type java.util.List<a.b.X.J>", lvc1.localVariable().parameterizedType().toString());
+            assertTrue(lvc1.isVar());
+
             Statement s2 = methodInfo.methodBody().statements().get(1);
             LocalVariableCreation lvc2 = (LocalVariableCreation) s2;
             assertEquals("Type java.util.Set<a.b.X.J>", lvc2.localVariable().parameterizedType().toString());
+            assertTrue(lvc2.isVar());
         }
     }
 
@@ -113,6 +120,7 @@ public class TestVar extends CommonTest {
         MethodInfo methodInfo = typeInfo.findUniqueMethod("method", 1);
         ForEachStatement fe = (ForEachStatement) methodInfo.methodBody().lastStatement();
         assertEquals("Type String", fe.initializer().localVariable().parameterizedType().toString());
+        assertTrue(fe.initializer().isVar());
     }
 
 
@@ -135,6 +143,7 @@ public class TestVar extends CommonTest {
         TypeInfo typeInfo = javaInspector.parse(INPUT3);
         MethodInfo methodInfo = typeInfo.findUniqueMethod("method", 1);
         LocalVariableCreation lvc = (LocalVariableCreation) methodInfo.methodBody().statements().getFirst();
+        assertTrue(lvc.isVar());
         assertFalse(lvc.localVariable().assignmentExpression() instanceof ErasedExpression);
         assertEquals("Type java.util.ArrayList", lvc.localVariable().parameterizedType().toString());
     }
