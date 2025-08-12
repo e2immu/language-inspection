@@ -6,7 +6,9 @@ import org.e2immu.language.cst.api.expression.Expression;
 import org.e2immu.language.cst.api.expression.StringConstant;
 import org.e2immu.language.cst.api.info.FieldInfo;
 import org.e2immu.language.cst.api.info.MethodInfo;
+import org.e2immu.language.cst.api.info.ParameterInfo;
 import org.e2immu.language.cst.api.info.TypeInfo;
+import org.e2immu.language.cst.api.statement.LocalVariableCreation;
 import org.e2immu.language.cst.api.statement.Statement;
 import org.e2immu.language.cst.api.statement.TryStatement;
 import org.e2immu.language.inspection.integration.JavaInspectorImpl;
@@ -453,5 +455,90 @@ public class TestAnnotations extends CommonTest {
         TypeInfo enclosingAnnot = X.findSubType("EnclosingAnnotation");
         assertEquals("java.lang.annotation.Annotation",
                 enclosingAnnot.interfacesImplemented().getFirst().typeInfo().fullyQualifiedName());
+    }
+
+    @Language("java")
+    private static final String INPUT13 = """
+            package a.b;
+            import org.e2immu.annotation.Nullable;
+            class X {
+              static void assertArrayEquals(boolean [] expected, boolean @Nullable ... actual) {
+              }
+            }
+            """;
+
+    @Test
+    public void test13() {
+        TypeInfo X = javaInspector.parse(INPUT13, JavaInspectorImpl.DETAILED_SOURCES);
+        MethodInfo assertArrayEquals = X.findUniqueMethod("assertArrayEquals", 2);
+        ParameterInfo p1 = assertArrayEquals.parameters().getLast();
+        assertEquals(1, p1.annotations().size());
+        assertTrue(p1.isVarArgs());
+        assertEquals("Type boolean[]", p1.parameterizedType().toString());
+    }
+
+    @Language("java")
+    private static final String INPUT14 = """
+            package a.b;
+            import org.e2immu.annotation.Nullable;
+            class X {
+              static void assertArrayEquals(boolean @Nullable [] expected, boolean @Nullable [] actual) {
+              }
+            }
+            """;
+
+    @Test
+    public void test14() {
+        TypeInfo X = javaInspector.parse(INPUT14, JavaInspectorImpl.DETAILED_SOURCES);
+        MethodInfo assertArrayEquals = X.findUniqueMethod("assertArrayEquals", 2);
+        for (ParameterInfo p1 : assertArrayEquals.parameters()) {
+            assertEquals(1, p1.annotations().size());
+            assertFalse(p1.isVarArgs());
+            assertEquals("Type boolean[]", p1.parameterizedType().toString());
+        }
+    }
+
+    @Language("java")
+    private static final String INPUT15 = """
+            package a.b;
+            import org.e2immu.annotation.Nullable;
+            abstract class X {
+              abstract boolean @Nullable [] findBooleans();
+              void assertArrayEquals() {
+                  boolean @Nullable [] expected = findBooleans();
+              }
+            }
+            """;
+
+    @Test
+    public void test15() {
+        TypeInfo X = javaInspector.parse(INPUT15, JavaInspectorImpl.DETAILED_SOURCES);
+        MethodInfo assertArrayEquals = X.findUniqueMethod("assertArrayEquals", 0);
+        MethodInfo findBooleans = X.findUniqueMethod("findBooleans", 0);
+        assertEquals("Type boolean[]", findBooleans.returnType().toString());
+        LocalVariableCreation lvc = (LocalVariableCreation) assertArrayEquals.methodBody().statements().getFirst();
+        assertEquals("Type boolean[]", lvc.localVariable().parameterizedType().toString());
+    }
+
+    @Language("java")
+    private static final String INPUT16 = """
+            package a.b;
+            import org.e2immu.annotation.Nullable;
+            abstract class X {
+              abstract String @Nullable [] findStrings();
+              void assertArrayEquals() {
+                  String @Nullable [] expected = findStrings();
+              }
+            }
+            """;
+
+    @Test
+    public void test16() {
+        TypeInfo X = javaInspector.parse(INPUT16, JavaInspectorImpl.DETAILED_SOURCES);
+        MethodInfo assertArrayEquals = X.findUniqueMethod("assertArrayEquals", 0);
+        MethodInfo findStrings = X.findUniqueMethod("findStrings", 0);
+        assertEquals("Type String[]", findStrings.returnType().toString());
+        LocalVariableCreation lvc = (LocalVariableCreation) assertArrayEquals.methodBody().statements().getFirst();
+        assertEquals("Type String[]", lvc.localVariable().parameterizedType().toString());
     }
 }
