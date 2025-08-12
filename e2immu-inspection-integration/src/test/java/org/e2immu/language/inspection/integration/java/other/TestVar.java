@@ -1,12 +1,15 @@
 package org.e2immu.language.inspection.integration.java.other;
 
 import org.e2immu.language.cst.api.info.MethodInfo;
+import org.e2immu.language.cst.api.info.ParameterInfo;
 import org.e2immu.language.cst.api.info.TypeInfo;
 import org.e2immu.language.cst.api.statement.ExpressionAsStatement;
 import org.e2immu.language.cst.api.statement.ForEachStatement;
 import org.e2immu.language.cst.api.statement.LocalVariableCreation;
 import org.e2immu.language.cst.api.statement.Statement;
+import org.e2immu.language.cst.api.type.ParameterizedType;
 import org.e2immu.language.inspection.api.parser.ErasedExpression;
+import org.e2immu.language.inspection.integration.JavaInspectorImpl;
 import org.e2immu.language.inspection.integration.java.CommonTest;
 import org.intellij.lang.annotations.Language;
 import org.junit.jupiter.api.Test;
@@ -146,6 +149,33 @@ public class TestVar extends CommonTest {
         assertTrue(lvc.isVar());
         assertFalse(lvc.localVariable().assignmentExpression() instanceof ErasedExpression);
         assertEquals("Type java.util.ArrayList", lvc.localVariable().parameterizedType().toString());
+    }
+
+
+    @Language("java")
+    private static final String INPUT4 = """
+            package a.b;
+            import java.util.ArrayList;
+            import java.util.List;
+            
+            class X {
+                void ddouble(double[]... p) {
+                    // nothing here
+                }
+            }
+            """;
+
+    @Test
+    public void test4() {
+        TypeInfo typeInfo = javaInspector.parse(INPUT4, JavaInspectorImpl.DETAILED_SOURCES);
+        MethodInfo methodInfo = typeInfo.findUniqueMethod("ddouble", 1);
+        ParameterInfo p0 = methodInfo.parameters().getFirst();
+        assertEquals("Type double[][]", p0.parameterizedType().toString());
+        assertTrue(p0.isVarArgs());
+
+        assertEquals("6-18:6-28", p0.source().detailedSources().detail(p0.parameterizedType()).compact2());
+        ParameterizedType associated = (ParameterizedType) p0.source().detailedSources().associatedObject(p0.parameterizedType());
+        assertEquals("6-18:6-23", p0.source().detailedSources().detail(associated).compact2());
     }
 
 }

@@ -36,7 +36,7 @@ public class TestArrayInitializer extends CommonTest {
         assertEquals("Type Class<java.util.List>", classExpression.parameterizedType().toString());
         ParameterizedType pt = classExpression.type();
         assertEquals("Type java.util.List", pt.toString());
-        assertEquals("3-31:3-50", classExpression.source().detailedSources().detail(pt).compact2());
+        assertEquals("3-31:3-44", classExpression.source().detailedSources().detail(pt).compact2());
         //noinspection ALL
         List<DetailedSources.Builder.TypeInfoSource> tis = (List<DetailedSources.Builder.TypeInfoSource>)
                 classExpression.source().detailedSources().associatedObject(pt.typeInfo());

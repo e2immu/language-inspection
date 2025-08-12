@@ -471,8 +471,11 @@ public class TestAnnotations extends CommonTest {
     public void test13() {
         TypeInfo X = javaInspector.parse(INPUT13, JavaInspectorImpl.DETAILED_SOURCES);
         MethodInfo assertArrayEquals = X.findUniqueMethod("assertArrayEquals", 2);
+        ParameterInfo p0 = assertArrayEquals.parameters().getFirst();
+        assertEquals("Type boolean[]", p0.parameterizedType().toString());
         ParameterInfo p1 = assertArrayEquals.parameters().getLast();
         assertEquals(1, p1.annotations().size());
+        assertEquals("@Nullable", p1.annotations().getFirst().toString());
         assertTrue(p1.isVarArgs());
         assertEquals("Type boolean[]", p1.parameterizedType().toString());
     }
@@ -540,5 +543,27 @@ public class TestAnnotations extends CommonTest {
         assertEquals("Type String[]", findStrings.returnType().toString());
         LocalVariableCreation lvc = (LocalVariableCreation) assertArrayEquals.methodBody().statements().getFirst();
         assertEquals("Type String[]", lvc.localVariable().parameterizedType().toString());
+    }
+
+
+    @Language("java")
+    private static final String INPUT17 = """
+            package a.b;
+            import org.e2immu.annotation.Independent
+            ;import org.e2immu.annotation.Modified;
+            import org.e2immu.annotation.NotModified;
+            import org.e2immu.annotation.NotNull;
+            import java.util.Collection;
+            abstract class X {
+               <T> boolean addAll(@NotNull @Modified @Independent(hcParameters = {1}) Collection<? super T> c, @NotModified T... elements);
+            }
+            """;
+
+    @Test
+    public void test17() {
+        TypeInfo X = javaInspector.parse(INPUT17, JavaInspectorImpl.DETAILED_SOURCES);
+        MethodInfo method = X.findUniqueMethod("addAll", 2);
+        ParameterInfo p0 = method.parameters().getFirst();
+        assertEquals(3, p0.annotations().size());
     }
 }
