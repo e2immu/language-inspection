@@ -206,6 +206,34 @@ public class TestRecordPattern extends CommonTest {
         assertEquals("a.b.X5.Color", color.localVariable().parameterizedType().fullyQualifiedName());
         assertEquals("c", color.localVariable().fullyQualifiedName());
     }
+
+
+    @Language("java")
+    private static final String INPUT7 = """
+            package a.b;
+            class X {
+                record Point(int x, int y) {}
+                int method(Object obj) {
+                   if(obj instanceof Point(var x, var y)) {
+                       return x + y;
+                   }
+                   return 0;
+                }
+            }
+            """;
+
+    @DisplayName("record pattern 5, unnamed")
+    @Test
+    public void test7() {
+        TypeInfo X = javaInspector.parse(INPUT7, JavaInspectorImpl.DETAILED_SOURCES);
+        MethodInfo methodInfo = X.findUniqueMethod("method", 1);
+        InstanceOf instanceOf = (InstanceOf) methodInfo.methodBody().statements().getFirst().expression();
+        RecordPattern point = instanceOf.patternVariable();
+        RecordPattern x = point.patterns().getFirst();
+        assertEquals("5-32:5-36", x.source().compact2());
+        assertEquals("5-36:5-36", x.source().detailedSources().detail(x.localVariable().fullyQualifiedName()).compact2());
+    }
+
 }
 
 
