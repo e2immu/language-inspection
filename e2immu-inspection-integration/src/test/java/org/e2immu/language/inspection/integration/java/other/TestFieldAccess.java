@@ -2,9 +2,13 @@ package org.e2immu.language.inspection.integration.java.other;
 
 import org.e2immu.language.cst.api.element.Element;
 import org.e2immu.language.cst.api.expression.Assignment;
+import org.e2immu.language.cst.api.expression.BinaryOperator;
+import org.e2immu.language.cst.api.expression.VariableExpression;
 import org.e2immu.language.cst.api.info.FieldInfo;
 import org.e2immu.language.cst.api.info.MethodInfo;
 import org.e2immu.language.cst.api.info.TypeInfo;
+import org.e2immu.language.cst.api.variable.FieldReference;
+import org.e2immu.language.inspection.integration.JavaInspectorImpl;
 import org.e2immu.language.inspection.integration.java.CommonTest;
 import org.intellij.lang.annotations.Language;
 import org.junit.jupiter.api.Test;
@@ -220,5 +224,38 @@ public class TestFieldAccess extends CommonTest {
         MethodInfo create = X.findUniqueMethod("create", 1);
         Assignment assignment = (Assignment) create.methodBody().statements().get(1).expression();
         assertEquals("a.b.X.length#x", assignment.variableTarget().fullyQualifiedName());
+    }
+
+
+    @Language("java")
+    private static final String INPUT6 = """
+            package a.b;
+            class C {
+                static class X {
+                    String s;
+                }
+                static class Y extends X {
+                    String someMethod(String string) {
+                       return s + string;
+                    }
+                }
+            }
+            """;
+
+    @Test
+    public void test6() {
+        TypeInfo C = javaInspector.parse(INPUT6, JavaInspectorImpl.DETAILED_SOURCES);
+        TypeInfo X = C.findSubType("X");
+        FieldInfo s = X.getFieldByName("s", true);
+        assertEquals("s", s.name());
+        assertEquals("4-16:4-16", s.source().detailedSources().detail(s.name()).compact2());
+        TypeInfo Y = C.findSubType("Y");
+        MethodInfo someMethod = Y.findUniqueMethod("someMethod", 1);
+        BinaryOperator bo = (BinaryOperator) someMethod.methodBody().lastStatement().expression();
+        VariableExpression veS = (VariableExpression) bo.lhs();
+        assertEquals("8-19:8-19", veS.source().compact2());
+        if (veS.variable() instanceof FieldReference fr) {
+            assertEquals("8-19:8-19", veS.source().detailedSources().detail(fr.fieldInfo()).compact2());
+        }
     }
 }
